@@ -90,7 +90,7 @@ mcp-ui-poc/
 ### Data Management
 - `POST /api/store-data` - Store user data (JSON body: `userId`, `data`). If `data.kind` is `form-submit`, the server **appends** to a per-user list (max 50); other shapes **replace** the stored blob for that user.
 - `GET /api/get-data/:userId` - Retrieve user data
-- **Browser session**: The React app persists a **demo user id** in `localStorage` (same idea as Glass settings) so refresh keeps one server-side namespace. **New session** clears that id and allocates another. Structured preview **form submit** calls `store-data` with the current demo user id. The header includes **Stored data (server)** with **Refresh** to call `get-data` for the current id (and it refreshes after a successful structured form save).
+- **Browser session**: The React app persists a **demo user id** in `localStorage` (same idea as Glass settings) so refresh keeps one server-side namespace. **New session** clears that id and allocates another. Structured preview **form submit** calls `store-data` with the current demo user id. The header includes **Stored data (server)** with **Refresh** to call `get-data` for the current id (and it refreshes after a successful structured form save). When the payload includes **form-submit** history, the panel shows a **recent submits** list plus collapsible raw JSON; **HTML (iframe)** form posts use the same `postMessage` shape and no longer use a blocking `alert`.
 - `GET /api/component-info/:componentId` - Get component information
 
 ## Builder reference

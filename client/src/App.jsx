@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import './App.css'
 import {
   applyGlassCss,
@@ -24,6 +24,27 @@ function submissionSummaryFromPayload(data) {
     return { kind: 'count', n: 1 }
   }
   return null
+}
+
+function submissionEntriesFromParsed(data) {
+  if (!data || typeof data !== 'object') return []
+  if (Array.isArray(data.submissions)) return data.submissions
+  if (data.kind === 'form-submit') return [data]
+  return []
+}
+
+function submissionEntriesFromJsonText(jsonText) {
+  if (!jsonText) return []
+  try {
+    return submissionEntriesFromParsed(JSON.parse(jsonText))
+  } catch {
+    return []
+  }
+}
+
+function truncatePreview(str, max) {
+  if (str.length <= max) return str
+  return `${str.slice(0, max)}…`
 }
 
 function GlassControls({ glass, setGlass }) {
@@ -669,6 +690,12 @@ function App() {
     }
   }, [storedView.phase, storedView.jsonText])
 
+  const storedTimelineEntries = useMemo(() => {
+    if (storedView.phase !== 'ready' || !storedView.jsonText) return []
+    const raw = submissionEntriesFromJsonText(storedView.jsonText)
+    return [...raw].reverse().slice(0, 15)
+  }, [storedView.phase, storedView.jsonText])
+
   useEffect(() => {
     setStoredView({
       phase: 'idle',
@@ -1011,7 +1038,68 @@ function App() {
               </p>
             )}
             {storedView.phase === 'ready' && (
-              <pre className="stored-data-panel__pre">{storedView.jsonText}</pre>
+              <div className="stored-data-panel__ready">
+                {storedTimelineEntries.length > 0 && (
+                  <div className="stored-data-panel__timeline-wrap">
+                    <p
+                      id="stored-timeline-label"
+                      className="stored-data-panel__timeline-label"
+                    >
+                      Recent form submits (newest first)
+                    </p>
+                    <ol
+                      className="stored-data-panel__timeline"
+                      aria-labelledby="stored-timeline-label"
+                    >
+                      {storedTimelineEntries.map((entry, i) => (
+                        <li
+                          key={
+                            entry.storedAt
+                              ? `${entry.storedAt}-${entry.formId}-${i}`
+                              : `entry-${entry.formId}-${i}`
+                          }
+                        >
+                          <div className="stored-data-panel__timeline-row">
+                            <span className="stored-data-panel__timeline-id">
+                              {entry.formId ?? 'form'}
+                            </span>
+                            {entry.storedAt ? (
+                              <time
+                                className="stored-data-panel__timeline-time"
+                                dateTime={entry.storedAt}
+                              >
+                                {new Date(entry.storedAt).toLocaleString()}
+                              </time>
+                            ) : (
+                              <span className="stored-data-panel__timeline-time">
+                                (no timestamp)
+                              </span>
+                            )}
+                          </div>
+                          <div className="stored-data-panel__timeline-data">
+                            {truncatePreview(
+                              JSON.stringify(entry.data ?? {}),
+                              140
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+                {storedTimelineEntries.length > 0 ? (
+                  <details className="stored-data-panel__raw">
+                    <summary>Raw JSON</summary>
+                    <pre className="stored-data-panel__pre">
+                      {storedView.jsonText}
+                    </pre>
+                  </details>
+                ) : (
+                  <pre className="stored-data-panel__pre">
+                    {storedView.jsonText}
+                  </pre>
+                )}
+              </div>
             )}
             {storedView.phase === 'error' && (
               <p className="stored-data-panel__err">{storedView.error}</p>

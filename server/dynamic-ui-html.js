@@ -79,7 +79,6 @@ export function createFormHTML(config, formId) {
           type: 'form-submit',
           payload: { formId: formId, data: data }
         }, '*');
-        alert('Form submitted successfully!');
       }
     </script>
   `
