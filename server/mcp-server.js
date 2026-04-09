@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createUIResource } from '@mcp-ui/server';
 import {
   createFormHTML,
@@ -59,7 +60,7 @@ export class MCPServer {
 
   // Generate a form-based UI component
   async generateFormUI(userId, formConfig) {
-    const formId = `form-${userId}-${Date.now()}`
+    const formId = `form-${userId}-${randomUUID()}`
 
     const formHTML = createFormHTML(formConfig, formId)
 
@@ -81,7 +82,7 @@ export class MCPServer {
 
   // Generate a dashboard UI component
   async generateDashboardUI(userId, dashboardConfig) {
-    const dashboardId = `dashboard-${userId}-${Date.now()}`
+    const dashboardId = `dashboard-${userId}-${randomUUID()}`
 
     const dashboardHTML = createDashboardHTML(dashboardConfig, dashboardId)
 
@@ -110,7 +111,7 @@ export class MCPServer {
 
   // Generate a data visualization UI component
   async generateChartUI(userId, chartConfig) {
-    const chartId = `chart-${userId}-${Date.now()}`
+    const chartId = `chart-${userId}-${randomUUID()}`
 
     const chartHTML = createChartHTML(chartConfig, chartId)
 

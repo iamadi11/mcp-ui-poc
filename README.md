@@ -17,7 +17,7 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 - **Preview**: Generated HTML renders inline after each build
 
 ### Server
-- **Components & storage**: Track generated components and optional user-scoped data. In-memory maps are **bounded** so the MCP core does not grow without limit: oldest UI component metadata is evicted after **`MCP_MAX_UI_COMPONENTS`** (default 2000); oldest user buckets after **`MCP_MAX_USER_DATA_KEYS`** (default 500); form-submit history per user is capped by **`MCP_MAX_SUBMISSIONS_PER_USER`** (default 50). See **Scaling** below. Request bodies are limited to **512kb** JSON.
+- **Components & storage**: Track generated components and optional user-scoped data. In-memory maps are **bounded** so the MCP core does not grow without limit: oldest UI component metadata is evicted after **`MCP_MAX_UI_COMPONENTS`** (default 2000); oldest user buckets after **`MCP_MAX_USER_DATA_KEYS`** (default 500); form-submit history per user is capped by **`MCP_MAX_SUBMISSIONS_PER_USER`** (default 50). See **Scaling** below. Request bodies are limited to **512kb** JSON. Dynamic and AI-generated component ids use **UUID** suffixes so burst traffic does not collide on millisecond timestamps.
 - **HTML generation**: Form, dashboard, and chart responses are **full HTML documents** (`server/generated-html-skin.js` + `server/dynamic-ui-html.js`) so iframe previews use the same glass mesh, DM Sans, and accent styling as the shell—not legacy purple-gradient fragments
 - **Layout**: Generated embeds are responsive
 

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import {
   createFormHTML,
   createDashboardHTML,
@@ -323,7 +324,7 @@ export class AIGenerator {
       console.log('AI Generating component from description:', description);
       
       const requirements = this.parseDescription(description);
-      const componentId = `ai-${userId}-${Date.now()}`;
+      const componentId = `ai-${userId}-${randomUUID()}`;
       
       let resource;
       
