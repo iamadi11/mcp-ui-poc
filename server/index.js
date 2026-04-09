@@ -5,6 +5,11 @@ import { fileURLToPath } from 'url';
 import { createMCPUIExample } from './mcp-ui-example.js';
 import { MCPServer } from './mcp-server.js';
 import { AIGenerator } from './ai-generator.js';
+import {
+  createGenerateLimiter,
+  createStoreLimiter,
+  createSuggestLimiter,
+} from './rate-limits.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,6 +17,14 @@ const __dirname = path.dirname(__filename);
 const isVercel = process.env.VERCEL === '1';
 
 const app = express();
+if (isVercel) {
+  app.set('trust proxy', 1);
+}
+
+const generateLimiter = createGenerateLimiter();
+const storeLimiter = createStoreLimiter();
+const suggestLimiter = createSuggestLimiter();
+
 const PORT = process.env.PORT || 3001;
 
 // Initialize MCP Server and AI Generator
@@ -47,7 +60,7 @@ app.get('/api/mcp-ui-example', async (req, res) => {
 });
 
 // AI-Powered Component Generation
-app.post('/api/ai/generate', async (req, res) => {
+app.post('/api/ai/generate', generateLimiter, async (req, res) => {
   try {
     const { userId, description } = req.body;
     
@@ -81,7 +94,7 @@ app.get('/api/ai/templates', (req, res) => {
 });
 
 // AI Component Suggestions
-app.post('/api/ai/suggest', (req, res) => {
+app.post('/api/ai/suggest', suggestLimiter, (req, res) => {
   try {
     const { description } = req.body;
     
@@ -98,7 +111,7 @@ app.post('/api/ai/suggest', (req, res) => {
 });
 
 // Dynamic UI Generation Endpoints
-app.post('/api/generate-form', async (req, res) => {
+app.post('/api/generate-form', generateLimiter, async (req, res) => {
   try {
     const { userId, formConfig } = req.body;
     
@@ -114,7 +127,7 @@ app.post('/api/generate-form', async (req, res) => {
   }
 });
 
-app.post('/api/generate-dashboard', async (req, res) => {
+app.post('/api/generate-dashboard', generateLimiter, async (req, res) => {
   try {
     const { userId, dashboardConfig } = req.body;
     
@@ -130,7 +143,7 @@ app.post('/api/generate-dashboard', async (req, res) => {
   }
 });
 
-app.post('/api/generate-chart', async (req, res) => {
+app.post('/api/generate-chart', generateLimiter, async (req, res) => {
   try {
     const { userId, chartConfig } = req.body;
     
@@ -147,7 +160,7 @@ app.post('/api/generate-chart', async (req, res) => {
 });
 
 // Data storage endpoints
-app.post('/api/store-data', (req, res) => {
+app.post('/api/store-data', storeLimiter, (req, res) => {
   try {
     const { userId, data } = req.body;
     

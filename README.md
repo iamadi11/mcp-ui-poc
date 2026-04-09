@@ -17,7 +17,7 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 - **Preview**: Generated HTML renders inline after each build
 
 ### Server
-- **Components & storage**: Track generated components and optional user-scoped data. In-memory maps are **bounded** so the MCP core does not grow without limit: oldest UI component metadata is evicted after **`MCP_MAX_UI_COMPONENTS`** (default 2000); oldest user buckets after **`MCP_MAX_USER_DATA_KEYS`** (default 500); form-submit history per user is capped by **`MCP_MAX_SUBMISSIONS_PER_USER`** (default 50). See **Scaling** below. Request bodies are limited to **512kb** JSON. Dynamic and AI-generated component ids use **UUID** suffixes so burst traffic does not collide on millisecond timestamps.
+- **Components & storage**: Track generated components and optional user-scoped data. In-memory maps are **bounded** so the MCP core does not grow without limit: oldest UI component metadata is evicted after **`MCP_MAX_UI_COMPONENTS`** (default 2000); oldest user buckets after **`MCP_MAX_USER_DATA_KEYS`** (default 500); form-submit history per user is capped by **`MCP_MAX_SUBMISSIONS_PER_USER`** (default 50). See **Scaling** below. Request bodies are limited to **512kb** JSON. Dynamic and AI-generated component ids use **UUID** suffixes so burst traffic does not collide on millisecond timestamps. **Per-IP rate limits** (rolling 1-minute windows) protect expensive `POST` routes: shared cap for generate-form, generate-dashboard, generate-chart, and `ai/generate`; a higher cap for `store-data`; a separate cap for `ai/suggest`—see **Scaling**.
 - **HTML generation**: Form, dashboard, and chart responses are **full HTML documents** (`server/generated-html-skin.js` + `server/dynamic-ui-html.js`) so iframe previews use the same glass mesh, DM Sans, and accent styling as the shell—not legacy purple-gradient fragments
 - **Layout**: Generated embeds are responsive
 
@@ -86,8 +86,11 @@ mcp-ui-poc/
 | `MCP_MAX_UI_COMPONENTS` | `2000` | Max tracked generated component ids (FIFO eviction of oldest). |
 | `MCP_MAX_USER_DATA_KEYS` | `500` | Max distinct `userId` buckets in `store-data` (FIFO eviction of oldest keys). |
 | `MCP_MAX_SUBMISSIONS_PER_USER` | `50` | Max appended `form-submit` rows per user. |
+| `MCP_RATE_LIMIT_GENERATE_PER_MIN` | `45` | Max requests per client IP per minute for `POST` `/api/generate-form`, `/api/generate-dashboard`, `/api/generate-chart`, `/api/ai/generate` (shared counter). |
+| `MCP_RATE_LIMIT_STORE_PER_MIN` | `180` | Max `POST` `/api/store-data` requests per IP per minute. |
+| `MCP_RATE_LIMIT_SUGGEST_PER_MIN` | `60` | Max `POST` `/api/ai/suggest` requests per IP per minute. |
 
-Set in `.env` or the host dashboard (e.g. Vercel). Data is still **ephemeral** on serverless cold starts—limits only bound RAM within a warm instance.
+Set in `.env` or the host dashboard (e.g. Vercel). Data is still **ephemeral** on serverless cold starts—limits only bound RAM within a warm instance. On Vercel, **`trust proxy`** is enabled so the limiter sees the real client IP. Each serverless instance keeps its own in-memory counters (limits still curb abuse per warm instance).
 
 ### MCP UI Components
 - `GET /api/mcp-ui-example` - Get the static MCP UI demo component
