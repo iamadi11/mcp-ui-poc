@@ -17,7 +17,7 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 
 ### Server
 - **Components & storage**: Track generated components and optional user-scoped data
-- **HTML generation**: Server-built HTML/JS for MCP UI payloads
+- **HTML generation**: Form, dashboard, and chart responses are **full HTML documents** (`server/generated-html-skin.js` + `server/dynamic-ui-html.js`) so iframe previews use the same glass mesh, DM Sans, and accent styling as the shell—not legacy purple-gradient fragments
 - **Layout**: Generated embeds are responsive
 
 ### Interface
