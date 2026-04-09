@@ -596,84 +596,112 @@ function DashboardBuilder({ onGenerateDashboard }) {
   )
 }
 
-// Chart Builder Component
+// Chart Builder Component (shadcn/ui + Tailwind)
 function ChartBuilder({ onGenerateChart }) {
   const [chartConfig, setChartConfig] = useState({
     title: 'Sales Chart',
     type: 'bar',
     data: {
       labels: ['Jan', 'Feb', 'Mar', 'Apr'],
-      values: [100, 150, 200, 175]
-    }
-  });
+      values: [100, 150, 200, 175],
+    },
+  })
 
   const handleSubmit = () => {
-    onGenerateChart(chartConfig);
-  };
+    onGenerateChart(chartConfig)
+  }
 
   return (
-    <div className="chart-builder">
-      <h3>Chart Builder</h3>
-      
-      <div className="form-group">
-        <label>Chart Title:</label>
-        <input
-          type="text"
-          className="form-control"
-          value={chartConfig.title}
-          onChange={(e) => setChartConfig(prev => ({ ...prev, title: e.target.value }))}
-        />
-      </div>
+    <Card className="chart-builder-card border-border/50 bg-card/50 text-card-foreground shadow-sm backdrop-blur-sm">
+      <CardHeader>
+        <CardTitle className="text-lg">Chart Builder</CardTitle>
+        <CardDescription>
+          Values and labels are comma-separated lists sent to{' '}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">
+            POST /api/generate-chart
+          </code>
+          .
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="chart-title">Chart title</Label>
+            <Input
+              id="chart-title"
+              value={chartConfig.title}
+              onChange={(e) =>
+                setChartConfig((prev) => ({ ...prev, title: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="chart-type">Chart type</Label>
+            <Select
+              value={chartConfig.type}
+              onValueChange={(value) =>
+                setChartConfig((prev) => ({ ...prev, type: value }))
+              }
+            >
+              <SelectTrigger id="chart-type" className="w-full min-w-0">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bar">Bar chart</SelectItem>
+                <SelectItem value="pie">Pie chart</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
-      <div className="form-group">
-        <label>Chart Type:</label>
-        <select
-          className="form-control"
-          value={chartConfig.type}
-          onChange={(e) => setChartConfig(prev => ({ ...prev, type: e.target.value }))}
-        >
-          <option value="bar">Bar Chart</option>
-          <option value="pie">Pie Chart</option>
-        </select>
-      </div>
+        <Separator />
 
-      <div className="form-group">
-        <label>Data (comma-separated values):</label>
-        <input
-          type="text"
-          className="form-control"
-          value={chartConfig.data.values.join(', ')}
-          onChange={(e) => setChartConfig(prev => ({
-            ...prev,
-            data: {
-              ...prev.data,
-              values: e.target.value.split(',').map(v => parseInt(v.trim()) || 0)
-            }
-          }))}
-          placeholder="100, 150, 200, 175"
-        />
-      </div>
-
-      <div className="form-group">
-        <label>Labels (comma-separated):</label>
-        <input
-          type="text"
-          className="form-control"
-          value={chartConfig.data.labels.join(', ')}
-          onChange={(e) => setChartConfig(prev => ({
-            ...prev,
-            data: {
-              ...prev.data,
-              labels: e.target.value.split(',').map(v => v.trim())
-            }
-          }))}
-          placeholder="Jan, Feb, Mar, Apr"
-        />
-      </div>
-
-      <button onClick={handleSubmit} className="btn btn-success generate-btn">Generate Chart</button>
-    </div>
-  );
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="chart-values">Values (comma-separated)</Label>
+            <Input
+              id="chart-values"
+              value={chartConfig.data.values.join(', ')}
+              onChange={(e) =>
+                setChartConfig((prev) => ({
+                  ...prev,
+                  data: {
+                    ...prev.data,
+                    values: e.target.value
+                      .split(',')
+                      .map((v) => parseInt(v.trim(), 10) || 0),
+                  },
+                }))
+              }
+              placeholder="100, 150, 200, 175"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="chart-labels">Labels (comma-separated)</Label>
+            <Input
+              id="chart-labels"
+              value={chartConfig.data.labels.join(', ')}
+              onChange={(e) =>
+                setChartConfig((prev) => ({
+                  ...prev,
+                  data: {
+                    ...prev.data,
+                    labels: e.target.value.split(',').map((v) => v.trim()),
+                  },
+                }))
+              }
+              placeholder="Jan, Feb, Mar, Apr"
+            />
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
+        <Button type="button" onClick={handleSubmit}>
+          Generate chart
+        </Button>
+      </CardFooter>
+    </Card>
+  )
 }
 
 // AI Generator Component
