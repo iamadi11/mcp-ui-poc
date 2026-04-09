@@ -595,18 +595,29 @@ function App() {
 
   const checkHealth = useCallback(async () => {
     setHealth({ state: 'checking' })
+    const controller = new AbortController()
+    const timeoutMs = 15000
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
     try {
-      const res = await fetch('/api/health')
+      const res = await fetch('/api/health', { signal: controller.signal })
+      clearTimeout(timer)
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`)
       }
       const data = await res.json()
       setHealth({ state: 'ok', payload: data })
     } catch (err) {
+      clearTimeout(timer)
       console.error('Server health check failed:', err)
+      const message =
+        err instanceof Error
+          ? err.name === 'AbortError'
+            ? `Timed out after ${timeoutMs / 1000}s`
+            : err.message
+          : 'Request failed'
       setHealth({
         state: 'error',
-        message: err instanceof Error ? err.message : 'Request failed'
+        message
       })
     }
   }, [])
