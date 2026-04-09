@@ -16,6 +16,16 @@ import {
   normalizeMcpPreviewResponse,
 } from './StructuredUIPreview'
 
+function submissionSummaryFromPayload(data) {
+  if (data && Array.isArray(data.submissions)) {
+    return { kind: 'count', n: data.submissions.length }
+  }
+  if (data && data.kind === 'form-submit') {
+    return { kind: 'count', n: 1 }
+  }
+  return null
+}
+
 function GlassControls({ glass, setGlass }) {
   const [open, setOpen] = useState(false)
 
@@ -586,6 +596,7 @@ function App() {
     jsonText: '',
     error: '',
     fetchedAt: null,
+    submissionSummary: null,
   })
 
   const loadStoredData = useCallback(async () => {
@@ -601,17 +612,20 @@ function App() {
           jsonText: '',
           error: '',
           fetchedAt: new Date(),
+          submissionSummary: null,
         })
         return
       }
       if (!res.ok) {
         throw new Error(body.error || `HTTP ${res.status}`)
       }
+      const data = body.data
       setStoredView({
         phase: 'ready',
-        jsonText: JSON.stringify(body.data, null, 2),
+        jsonText: JSON.stringify(data, null, 2),
         error: '',
         fetchedAt: new Date(),
+        submissionSummary: submissionSummaryFromPayload(data),
       })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Request failed'
@@ -620,9 +634,40 @@ function App() {
         jsonText: '',
         error: msg,
         fetchedAt: new Date(),
+        submissionSummary: null,
       })
     }
   }, [userId])
+
+  const copyStoredJson = useCallback(async () => {
+    if (storedView.phase !== 'ready' || !storedView.jsonText) return
+    try {
+      await navigator.clipboard.writeText(storedView.jsonText)
+      const id = Date.now()
+      const note = {
+        id,
+        message: 'Copied stored JSON to clipboard',
+        type: 'info',
+      }
+      setNotifications((prev) => [...prev, note])
+      setTimeout(() => {
+        setNotifications((prev) => prev.filter((n) => n.id !== id))
+      }, 3200)
+    } catch {
+      const id = Date.now()
+      setNotifications((prev) => [
+        ...prev,
+        {
+          id,
+          message: 'Could not copy (clipboard permission?)',
+          type: 'error',
+        },
+      ])
+      setTimeout(() => {
+        setNotifications((prev) => prev.filter((n) => n.id !== id))
+      }, 5000)
+    }
+  }, [storedView.phase, storedView.jsonText])
 
   useEffect(() => {
     setStoredView({
@@ -630,6 +675,7 @@ function App() {
       jsonText: '',
       error: '',
       fetchedAt: null,
+      submissionSummary: null,
     })
   }, [userId])
 
@@ -901,17 +947,37 @@ function App() {
           aria-labelledby="stored-data-heading"
         >
           <div className="stored-data-panel__head">
-            <h2 id="stored-data-heading" className="stored-data-panel__title">
-              Stored data (server)
-            </h2>
-            <button
-              type="button"
-              className="btn btn-outline stored-data-panel__refresh"
-              onClick={() => void loadStoredData()}
-              disabled={storedView.phase === 'loading'}
-            >
-              {storedView.phase === 'loading' ? 'Loading…' : 'Refresh'}
-            </button>
+            <div className="stored-data-panel__title-row">
+              <h2 id="stored-data-heading" className="stored-data-panel__title">
+                Stored data (server)
+              </h2>
+              {storedView.submissionSummary && (
+                <span className="stored-data-panel__badge" aria-label="Form submits stored">
+                  {storedView.submissionSummary.n} submit
+                  {storedView.submissionSummary.n === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+            <div className="stored-data-panel__actions">
+              <button
+                type="button"
+                className="btn btn-outline stored-data-panel__refresh"
+                onClick={() => void loadStoredData()}
+                disabled={storedView.phase === 'loading'}
+              >
+                {storedView.phase === 'loading' ? 'Loading…' : 'Refresh'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline stored-data-panel__copy"
+                onClick={() => void copyStoredJson()}
+                disabled={
+                  storedView.phase !== 'ready' || !storedView.jsonText
+                }
+              >
+                Copy JSON
+              </button>
+            </div>
           </div>
           <p className="stored-data-panel__hint">
             In-memory for this demo; structured form submits append (up to 50 per
