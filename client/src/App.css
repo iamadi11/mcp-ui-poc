@@ -111,7 +111,12 @@ body {
 .server-status {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  max-width: min(100%, 42rem);
+  margin-left: auto;
+  margin-right: auto;
   padding: var(--spacing-sm) var(--spacing-md);
   background: var(--glass-bg);
   backdrop-filter: var(--glass-backdrop);
@@ -119,6 +124,7 @@ body {
   border-radius: var(--border-radius-sm);
   font-weight: 500;
   font-size: 0.9rem;
+  text-align: left;
 }
 
 .status-ok {
@@ -129,6 +135,58 @@ body {
 .status-error {
   color: #f87171;
   border-color: rgba(248, 113, 113, 0.3);
+}
+
+.status-checking {
+  color: var(--text-secondary);
+  border-color: rgba(255, 255, 255, 0.25);
+  animation: statusPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-checking {
+    animation: none;
+  }
+}
+
+.status-label {
+  line-height: 1.45;
+}
+
+.status-meta {
+  font-weight: 400;
+  opacity: 0.85;
+  font-size: 0.85em;
+}
+
+.status-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88em;
+  padding: 0.1em 0.35em;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.status-error-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+}
+
+.status-retry {
+  flex-shrink: 0;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 /* Main Container */

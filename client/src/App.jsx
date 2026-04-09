@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import './App.css'
 
 // Simple UI Resource Renderer component
@@ -457,7 +457,7 @@ function AIGenerator({ onGenerateAI }) {
 }
 
 function App() {
-  const [serverStatus, setServerStatus] = useState(null)
+  const [health, setHealth] = useState({ state: 'checking' })
   const [mcpUIResource, setMcpUIResource] = useState(null)
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(false)
@@ -465,13 +465,27 @@ function App() {
   const [activeTab, setActiveTab] = useState('ai')
   const [userId] = useState(`user-${Date.now()}`)
 
-  // Check server health
-  useEffect(() => {
-    fetch('/api/health')
-      .then(res => res.json())
-      .then(data => setServerStatus(data))
-      .catch(err => console.error('Server health check failed:', err))
+  const checkHealth = useCallback(async () => {
+    setHealth({ state: 'checking' })
+    try {
+      const res = await fetch('/api/health')
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`)
+      }
+      const data = await res.json()
+      setHealth({ state: 'ok', payload: data })
+    } catch (err) {
+      console.error('Server health check failed:', err)
+      setHealth({
+        state: 'error',
+        message: err instanceof Error ? err.message : 'Request failed'
+      })
+    }
   }, [])
+
+  useEffect(() => {
+    checkHealth()
+  }, [checkHealth])
 
   // Generate Form UI
   const generateForm = async (formConfig) => {
@@ -635,11 +649,46 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Dynamic MCP UI Generator</h1>
-        <div className="server-status">
-          {serverStatus ? (
-            <span className="status-ok">✅ Server Connected</span>
-          ) : (
-            <span className="status-error">❌ Server Disconnected</span>
+        <div
+          className={`server-status ${
+            health.state === 'ok'
+              ? 'status-ok'
+              : health.state === 'error'
+                ? 'status-error'
+                : 'status-checking'
+          }`}
+          role="status"
+          aria-live="polite"
+          aria-busy={health.state === 'checking'}
+        >
+          {health.state === 'checking' && (
+            <span className="status-label">Checking API connection…</span>
+          )}
+          {health.state === 'ok' && health.payload && (
+            <span className="status-label">
+              API connected
+              {health.payload.timestamp && (
+                <span className="status-meta">
+                  {' '}
+                  ({new Date(health.payload.timestamp).toLocaleTimeString()})
+                </span>
+              )}
+            </span>
+          )}
+          {health.state === 'error' && (
+            <div className="status-error-body">
+              <span className="status-label">
+                Cannot reach API ({health.message}). Start the backend on port 3001 (
+                <code className="status-code">npm run dev</code> from the repo root).
+              </span>
+              <button
+                type="button"
+                className="btn status-retry"
+                onClick={() => checkHealth()}
+              >
+                Retry
+              </button>
+            </div>
           )}
         </div>
       </header>
