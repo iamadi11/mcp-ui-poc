@@ -17,7 +17,7 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 - **Preview**: Generated HTML renders inline after each build
 
 ### Server
-- **Components & storage**: Track generated components and optional user-scoped data
+- **Components & storage**: Track generated components and optional user-scoped data. In-memory maps are **bounded** so the MCP core does not grow without limit: oldest UI component metadata is evicted after **`MCP_MAX_UI_COMPONENTS`** (default 2000); oldest user buckets after **`MCP_MAX_USER_DATA_KEYS`** (default 500); form-submit history per user is capped by **`MCP_MAX_SUBMISSIONS_PER_USER`** (default 50). See **Scaling** below. Request bodies are limited to **512kb** JSON.
 - **HTML generation**: Form, dashboard, and chart responses are **full HTML documents** (`server/generated-html-skin.js` + `server/dynamic-ui-html.js`) so iframe previews use the same glass mesh, DM Sans, and accent styling as the shell—not legacy purple-gradient fragments
 - **Layout**: Generated embeds are responsive
 
@@ -77,7 +77,17 @@ mcp-ui-poc/
 ## API endpoints
 
 ### Health Check
-- `GET /api/health` - Server status and health information
+- `GET /api/health` - Server status and health information. Response includes **`mcp`**: current in-memory counts and configured limits (`maxUiComponents`, `maxUserDataKeys`, `maxSubmissionsPerUser`) for operators.
+
+### Scaling (in-memory MCP demo)
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `MCP_MAX_UI_COMPONENTS` | `2000` | Max tracked generated component ids (FIFO eviction of oldest). |
+| `MCP_MAX_USER_DATA_KEYS` | `500` | Max distinct `userId` buckets in `store-data` (FIFO eviction of oldest keys). |
+| `MCP_MAX_SUBMISSIONS_PER_USER` | `50` | Max appended `form-submit` rows per user. |
+
+Set in `.env` or the host dashboard (e.g. Vercel). Data is still **ephemeral** on serverless cold starts—limits only bound RAM within a warm instance.
 
 ### MCP UI Components
 - `GET /api/mcp-ui-example` - Get the static MCP UI demo component
@@ -88,7 +98,7 @@ mcp-ui-poc/
 - `POST /api/generate-chart` - Generate a chart UI (response includes `resource` + `structured`)
 
 ### Data Management
-- `POST /api/store-data` - Store user data (JSON body: `userId`, `data`). If `data.kind` is `form-submit`, the server **appends** to a per-user list (max 50); other shapes **replace** the stored blob for that user.
+- `POST /api/store-data` - Store user data (JSON body: `userId`, `data`). If `data.kind` is `form-submit`, the server **appends** to a per-user list (default max **`MCP_MAX_SUBMISSIONS_PER_USER`**); other shapes **replace** the stored blob for that user.
 - `GET /api/get-data/:userId` - Retrieve user data
 - **Browser session**: The React app persists a **demo user id** in `localStorage` (same idea as Glass settings) so refresh keeps one server-side namespace. **New session** clears that id and allocates another. Structured preview **form submit** calls `store-data` with the current demo user id. The header includes **Stored data (server)** with **Refresh** to call `get-data` for the current id (and it refreshes after a successful structured form save). When the payload includes **form-submit** history, the panel shows a **recent submits** list plus collapsible raw JSON; **HTML (iframe)** form posts use the same `postMessage` shape and no longer use a blocking `alert`.
 - `GET /api/component-info/:componentId` - Get component information

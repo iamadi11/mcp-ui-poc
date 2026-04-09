@@ -6,121 +6,171 @@ import {
 } from './dynamic-ui-html.js';
 import { buildStructuredEnvelope } from './mcp-structured-ui.js';
 
+/** Env-driven caps (min 1, max 1e6). Tuning helps long-lived demos and multi-tenant-ish traffic. */
+function readLimitEnv(name, fallback) {
+  const raw = process.env[name]
+  if (raw == null || raw === '') return fallback
+  const n = parseInt(String(raw), 10)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(Math.max(n, 1), 1_000_000)
+}
+
+const MCP_MAX_UI_COMPONENTS = readLimitEnv('MCP_MAX_UI_COMPONENTS', 2000)
+const MCP_MAX_USER_DATA_KEYS = readLimitEnv('MCP_MAX_USER_DATA_KEYS', 500)
+const MCP_MAX_SUBMISSIONS_PER_USER = readLimitEnv(
+  'MCP_MAX_SUBMISSIONS_PER_USER',
+  50
+)
+
 // MCP Server for dynamic UI generation
 export class MCPServer {
   constructor() {
-    this.uiComponents = new Map();
-    this.userData = new Map();
+    this.uiComponents = new Map()
+    this.userData = new Map()
+  }
+
+  getMcpStats() {
+    return {
+      uiComponentCount: this.uiComponents.size,
+      userDataKeyCount: this.userData.size,
+      limits: {
+        maxUiComponents: MCP_MAX_UI_COMPONENTS,
+        maxUserDataKeys: MCP_MAX_USER_DATA_KEYS,
+        maxSubmissionsPerUser: MCP_MAX_SUBMISSIONS_PER_USER,
+      },
+    }
+  }
+
+  _registerUiComponent(id, meta) {
+    this.uiComponents.set(id, meta)
+    while (this.uiComponents.size > MCP_MAX_UI_COMPONENTS) {
+      const oldest = this.uiComponents.keys().next().value
+      this.uiComponents.delete(oldest)
+    }
+  }
+
+  _setUserData(userId, value) {
+    this.userData.set(userId, value)
+    while (this.userData.size > MCP_MAX_USER_DATA_KEYS) {
+      const oldest = this.userData.keys().next().value
+      this.userData.delete(oldest)
+    }
   }
 
   // Generate a form-based UI component
   async generateFormUI(userId, formConfig) {
-    const formId = `form-${userId}-${Date.now()}`;
-    
-    const formHTML = createFormHTML(formConfig, formId);
-    
+    const formId = `form-${userId}-${Date.now()}`
+
+    const formHTML = createFormHTML(formConfig, formId)
+
     const resource = createUIResource({
       uri: `ui://dynamic/form/${formId}`,
-      content: { 
-        type: 'rawHtml', 
-        htmlString: formHTML
+      content: {
+        type: 'rawHtml',
+        htmlString: formHTML,
       },
-      encoding: 'text'
-    });
+      encoding: 'text',
+    })
 
-    this.uiComponents.set(formId, { type: 'form', config: formConfig });
+    this._registerUiComponent(formId, { type: 'form', config: formConfig })
     return {
       ...resource,
       structured: buildStructuredEnvelope('form', formId, formConfig),
-    };
+    }
   }
 
   // Generate a dashboard UI component
   async generateDashboardUI(userId, dashboardConfig) {
-    const dashboardId = `dashboard-${userId}-${Date.now()}`;
-    
-    const dashboardHTML = createDashboardHTML(dashboardConfig, dashboardId);
-    
+    const dashboardId = `dashboard-${userId}-${Date.now()}`
+
+    const dashboardHTML = createDashboardHTML(dashboardConfig, dashboardId)
+
     const resource = createUIResource({
       uri: `ui://dynamic/dashboard/${dashboardId}`,
-      content: { 
-        type: 'rawHtml', 
-        htmlString: dashboardHTML
+      content: {
+        type: 'rawHtml',
+        htmlString: dashboardHTML,
       },
-      encoding: 'text'
-    });
+      encoding: 'text',
+    })
 
-    this.uiComponents.set(dashboardId, { type: 'dashboard', config: dashboardConfig });
+    this._registerUiComponent(dashboardId, {
+      type: 'dashboard',
+      config: dashboardConfig,
+    })
     return {
       ...resource,
-      structured: buildStructuredEnvelope('dashboard', dashboardId, dashboardConfig),
-    };
+      structured: buildStructuredEnvelope(
+        'dashboard',
+        dashboardId,
+        dashboardConfig
+      ),
+    }
   }
 
   // Generate a data visualization UI component
   async generateChartUI(userId, chartConfig) {
-    const chartId = `chart-${userId}-${Date.now()}`;
-    
-    const chartHTML = createChartHTML(chartConfig, chartId);
-    
+    const chartId = `chart-${userId}-${Date.now()}`
+
+    const chartHTML = createChartHTML(chartConfig, chartId)
+
     const resource = createUIResource({
       uri: `ui://dynamic/chart/${chartId}`,
-      content: { 
-        type: 'rawHtml', 
-        htmlString: chartHTML
+      content: {
+        type: 'rawHtml',
+        htmlString: chartHTML,
       },
-      encoding: 'text'
-    });
+      encoding: 'text',
+    })
 
-    this.uiComponents.set(chartId, { type: 'chart', config: chartConfig });
+    this._registerUiComponent(chartId, { type: 'chart', config: chartConfig })
     return {
       ...resource,
       structured: buildStructuredEnvelope('chart', chartId, chartConfig),
-    };
+    }
   }
 
   // form-submit: append to capped list; other JSON: replace per-user bucket
   storeUserData(userId, incoming) {
     if (incoming == null || typeof incoming !== 'object') {
-      this.userData.set(userId, incoming);
-      return;
+      this._setUserData(userId, incoming)
+      return
     }
     if (incoming.kind !== 'form-submit') {
-      this.userData.set(userId, incoming);
-      return;
+      this._setUserData(userId, incoming)
+      return
     }
 
-    const prev = this.userData.get(userId);
-    let submissions = [];
+    const prev = this.userData.get(userId)
+    let submissions = []
 
     if (prev && typeof prev === 'object') {
       if (Array.isArray(prev.submissions)) {
-        submissions = prev.submissions.slice();
+        submissions = prev.submissions.slice()
       } else if (prev.kind === 'form-submit') {
-        submissions = [{ ...prev }];
+        submissions = [{ ...prev }]
       }
     }
 
     submissions.push({
       ...incoming,
       storedAt: new Date().toISOString(),
-    });
+    })
 
-    const maxSubmissions = 50;
-    if (submissions.length > maxSubmissions) {
-      submissions = submissions.slice(-maxSubmissions);
+    if (submissions.length > MCP_MAX_SUBMISSIONS_PER_USER) {
+      submissions = submissions.slice(-MCP_MAX_SUBMISSIONS_PER_USER)
     }
 
-    this.userData.set(userId, { submissions });
+    this._setUserData(userId, { submissions })
   }
 
   // Get user data
   getUserData(userId) {
-    return this.userData.get(userId);
+    return this.userData.get(userId)
   }
 
   // Get component info
   getComponentInfo(componentId) {
-    return this.uiComponents.get(componentId);
+    return this.uiComponents.get(componentId)
   }
-} 
+}
