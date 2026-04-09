@@ -705,6 +705,19 @@ function App() {
     }
   }, [storedView.phase, storedView.jsonText])
 
+  const pushToast = useCallback(
+    (message, type = 'info', dismissMs = 5000) => {
+      const id =
+        globalThis.crypto?.randomUUID?.() ??
+        `${Date.now()}-${Math.random().toString(16).slice(2)}`
+      setNotifications((prev) => [...prev, { id, message, type }])
+      setTimeout(() => {
+        setNotifications((prev) => prev.filter((n) => n.id !== id))
+      }, dismissMs)
+    },
+    []
+  )
+
   const storedTimelineEntries = useMemo(() => {
     if (storedView.phase !== 'ready' || !storedView.jsonText) return []
     const raw = submissionEntriesFromJsonText(storedView.jsonText)
@@ -868,10 +881,13 @@ function App() {
       
       switch (toolName) {
         case 'applySettings':
-          alert(`Settings applied: Theme=${params.theme}, Font Size=${params.fontSize}px`)
+          pushToast(
+            `Settings applied: Theme=${params.theme}, Font Size=${params.fontSize}px`,
+            'info'
+          )
           break
         case 'setAnimationSpeed':
-          alert(`Animation speed set to: ${params.speed}`)
+          pushToast(`Animation speed set to: ${params.speed}`, 'info')
           break
         default:
           console.log('Unknown tool:', toolName, params)
