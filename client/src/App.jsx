@@ -510,6 +510,7 @@ function AIGenerator({ onGenerateAI, userId }) {
   const [description, setDescription] = useState('');
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   // Load templates on component mount
   useEffect(() => {
@@ -521,10 +522,11 @@ function AIGenerator({ onGenerateAI, userId }) {
 
   const handleSubmit = async () => {
     if (!description.trim()) {
-      alert('Please enter a description');
+      setSubmitError('Please enter a description.');
       return;
     }
 
+    setSubmitError(null);
     setLoading(true);
     try {
       const response = await fetch('/api/ai/generate', {
@@ -547,7 +549,9 @@ function AIGenerator({ onGenerateAI, userId }) {
       setDescription('');
     } catch (error) {
       console.error('Error generating AI component:', error);
-      alert('Error generating component: ' + error.message);
+      const msg =
+        error instanceof Error ? error.message : 'Failed to generate component';
+      setSubmitError(msg);
     } finally {
       setLoading(false);
     }
@@ -555,6 +559,7 @@ function AIGenerator({ onGenerateAI, userId }) {
 
   const useTemplate = (template) => {
     setDescription(template.description);
+    setSubmitError(null);
   };
 
   return (
@@ -570,7 +575,10 @@ function AIGenerator({ onGenerateAI, userId }) {
         <textarea
           className="form-control"
           value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          onChange={(e) => {
+            setDescription(e.target.value);
+            if (submitError) setSubmitError(null);
+          }}
           placeholder="e.g., Create a contact form with name, email, and message fields"
           rows={4}
         />
@@ -590,6 +598,12 @@ function AIGenerator({ onGenerateAI, userId }) {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {submitError && (
+        <div className="error-message ai-generator__error" role="alert">
+          <p>{submitError}</p>
         </div>
       )}
 

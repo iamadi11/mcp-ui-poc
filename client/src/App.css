@@ -901,6 +901,10 @@ body {
   max-width: 52ch;
 }
 
+.ai-generator__error {
+  margin-top: var(--spacing-md);
+}
+
 .templates-section {
   margin: var(--spacing-lg) 0;
 }
