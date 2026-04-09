@@ -876,11 +876,14 @@ function App() {
       }, 5000)
     } else if (action.type === 'form-submit') {
       const payload = action.payload
+      const preview =
+        payload.preview === 'html' ? 'html' : 'structured'
       const stored = {
         kind: 'form-submit',
         formId: payload.formId,
         submittedAt: new Date().toISOString(),
         data: payload.data,
+        preview,
       }
       ;(async () => {
         try {
@@ -1062,6 +1065,15 @@ function App() {
                           <div className="stored-data-panel__timeline-row">
                             <span className="stored-data-panel__timeline-id">
                               {entry.formId ?? 'form'}
+                            </span>
+                            <span
+                              className={`stored-data-panel__preview-pill ${
+                                entry.preview === 'html'
+                                  ? 'stored-data-panel__preview-pill--html'
+                                  : ''
+                              }`}
+                            >
+                              {entry.preview === 'html' ? 'HTML' : 'Data'}
                             </span>
                             {entry.storedAt ? (
                               <time

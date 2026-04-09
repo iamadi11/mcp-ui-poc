@@ -6,7 +6,7 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 
 ### Core MCP UI
 - **Dynamic UI generation**: Forms, dashboards, and charts from configuration
-- **Structured + HTML**: Generate endpoints return an MCP `resource` (HTML for iframe hosts) plus a **`structured`** JSON envelope (`schemaVersion`, `kind`, `id`, `config`) so this app can render the same UI in React without an iframe; the preview defaults to **Data (React)** with an optional **HTML (iframe)** toggle
+- **Structured + HTML**: Generate endpoints return an MCP `resource` (HTML for iframe hosts) plus a **`structured`** JSON envelope (`schemaVersion`, `kind`, `id`, `config`) so this app can render the same UI in React without an iframe; the preview defaults to **Data (React)** with an optional **HTML (iframe)** toggle. Stored **form-submit** payloads include **`preview`: `structured` \| `html`** so the server timeline can show which mode produced each row.
 - **PostMessage**: Parent page and generated iframe stay in sync for tools and events when using HTML preview
 - **Toasts**: Short-lived notifications for submissions and actions
 

@@ -30,7 +30,10 @@ function StructForm({ id, config, onAction }) {
     for (const [k, v] of fd.entries()) {
       data[k] = v
     }
-    onAction({ type: 'form-submit', payload: { formId: id, data } })
+    onAction({
+      type: 'form-submit',
+      payload: { formId: id, data, preview: 'structured' },
+    })
   }
 
   return (

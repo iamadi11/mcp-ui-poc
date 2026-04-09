@@ -77,7 +77,7 @@ export function createFormHTML(config, formId) {
         }
         window.parent.postMessage({
           type: 'form-submit',
-          payload: { formId: formId, data: data }
+          payload: { formId: formId, data: data, preview: 'html' }
         }, '*');
       }
     </script>
