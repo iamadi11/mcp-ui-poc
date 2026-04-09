@@ -41,10 +41,14 @@ mcp-ui-poc/
 │   │   ├── apiError.js          # Fetch error helper (JSON body, 429 / 413 hints)
 │   │   ├── userSession.js       # Demo user id (`mcp-ui-user-id-v1` in localStorage)
 │   │   ├── glassAppearance.js   # Glass CSS variables + persistence
-│   │   ├── index.css            # Base reset
-│   │   └── main.jsx             # React entry
+│   │   ├── index.css            # Tailwind v4 + shadcn semantic tokens (`@theme inline`)
+│   │   ├── main.jsx             # React entry
+│   │   ├── components/ui/       # shadcn/ui primitives (Button, Card, Tabs, …)
+│   │   └── lib/utils.js         # `cn()` helper (clsx + tailwind-merge)
+│   ├── components.json          # shadcn/ui config (`tsx: false` → `.jsx` output)
+│   ├── jsconfig.json            # `@/*` → `src/*` for imports
 │   ├── package.json
-│   └── vite.config.js           # Dev server port 3000; proxies /api → backend
+│   └── vite.config.js           # Tailwind Vite plugin, `@` alias, `/api` proxy
 ├── server/                      # Express API + MCP generation
 │   ├── index.js                 # Routes, rate limits, JSON body limit, Vercel trust proxy
 │   ├── mcp-server.js            # generate-* UI, store/get user data, stats
@@ -163,20 +167,33 @@ Create data visualizations:
 
 ## Design system
 
-The UI is **token-driven** (`client/src/App.css` plus runtime CSS variables from `client/src/glassAppearance.js`). Base colors follow the OS light/dark preference; **glass** variables (`--glass-blur`, `--glass-fill`, `--glass-border-color`, `--mesh-strength`, etc.) update live from the **Glass** panel.
+The shell uses two layers: **glass + DM Sans** from `client/src/App.css` and `glassAppearance.js`, and **Tailwind CSS v4** + **[shadcn/ui](https://ui.shadcn.com/)** (Radix primitives) for composable controls. Semantic tokens (`--background`, `--primary`, `--muted`, …) live in `client/src/index.css` and map into Tailwind via `@theme inline`, aligned with the existing blue accent in light/dark (system `prefers-color-scheme`).
 
 - **Backdrop**: Soft page gradient plus an animated color mesh (disabled when `prefers-reduced-motion` is set)
 - **Surfaces**: Frosted glass (`backdrop-filter` blur + saturation) on header, main card, tabs, inputs, and notifications
-- **Accent**: Primary blue for actions and the active tab
+- **Accent**: Primary blue for actions and the active tab (shared between CSS variables and shadcn `--primary`)
 - **Type**: DM Sans; hero title uses a subtle gradient clip
 - **Persistence**: Glass slider values are stored in `localStorage` under `mcp-ui-glass-settings-v1`
+
+### Adding shell components
+
+From **`client/`**:
+
+```bash
+npx shadcn@latest add dialog
+npx shadcn@latest add dropdown-menu
+```
+
+Imports use the **`@/`** alias (e.g. `import { Button } from '@/components/ui/button'`). New primitives should respect existing glass surfaces—prefer `className` + `cn()` to blend with `App.css` panels rather than replacing the mesh shell.
 
 ## Technologies
 
 ### Frontend
 - **React 18**: Hooks and functional components
 - **Vite**: Dev server and production build
-- **CSS**: Custom properties for theming (no UI framework)
+- **Tailwind CSS v4** (`@tailwindcss/vite`): utility styling; dark mode follows system preference by default
+- **shadcn/ui** + **radix-ui**: accessible Button, Card, Tabs, Badge, Input, Label, Separator, etc. under `client/src/components/ui/`
+- **CSS**: App-wide glass tokens in `App.css`; shadcn semantic tokens in `index.css`
 
 ### Backend
 - **Node.js**: JavaScript runtime
@@ -297,4 +314,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Stack:** React, Vite, Node.js, Express, `express-rate-limit`, `@mcp-ui/server`.
+**Stack:** React, Vite, Tailwind CSS v4, shadcn/ui, Node.js, Express, `express-rate-limit`, `@mcp-ui/server`.

@@ -16,6 +16,8 @@ import {
   McpPreviewRouter,
   normalizeMcpPreviewResponse,
 } from './StructuredUIPreview'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
 
 function submissionSummaryFromPayload(data) {
   if (data && Array.isArray(data.submissions)) {
@@ -1246,83 +1248,78 @@ function App() {
       )}
 
       <main className="app-main">
-        <div className="tab-navigation">
-          <button 
-            className={`tab-btn ${activeTab === 'ai' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ai')}
-          >
-            AI Generator
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'form' ? 'active' : ''}`}
-            onClick={() => setActiveTab('form')}
-          >
-            Form Builder
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            Dashboard Builder
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'chart' ? 'active' : ''}`}
-            onClick={() => setActiveTab('chart')}
-          >
-            Chart Builder
-          </button>
-        </div>
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
+          <TabsList className="tab-navigation">
+            <TabsTrigger value="ai" className="tab-btn">
+              AI Generator
+            </TabsTrigger>
+            <TabsTrigger value="form" className="tab-btn">
+              Form Builder
+            </TabsTrigger>
+            <TabsTrigger value="dashboard" className="tab-btn">
+              Dashboard Builder
+            </TabsTrigger>
+            <TabsTrigger value="chart" className="tab-btn">
+              Chart Builder
+            </TabsTrigger>
+          </TabsList>
 
-        <section className="mcp-ui-section">
-          {activeTab === 'ai' && (
-            <>
+          <section className="mcp-ui-section">
+            <div className="section-header kit-badges">
+              <span className="kit-badges__label">Shell UI</span>
+              <Badge variant="secondary">Tailwind 4</Badge>
+              <Badge variant="outline">shadcn/ui</Badge>
+            </div>
+
+            <TabsContent value="ai" className="mt-0 outline-none">
               <div className="section-header">
                 <h2>AI-Powered Component Generator</h2>
               </div>
               <AIGenerator onGenerateAI={generateAI} userId={userId} />
-            </>
-          )}
+            </TabsContent>
 
-          {activeTab === 'form' && (
-            <>
+            <TabsContent value="form" className="mt-0 outline-none">
               <div className="section-header">
                 <h2>Dynamic Form Generator</h2>
               </div>
               <FormBuilder onGenerateForm={generateForm} />
-            </>
-          )}
+            </TabsContent>
 
-          {activeTab === 'dashboard' && (
-            <>
+            <TabsContent value="dashboard" className="mt-0 outline-none">
               <div className="section-header">
                 <h2>Dynamic Dashboard Generator</h2>
               </div>
               <DashboardBuilder onGenerateDashboard={generateDashboard} />
-            </>
-          )}
+            </TabsContent>
 
-          {activeTab === 'chart' && (
-            <>
+            <TabsContent value="chart" className="mt-0 outline-none">
               <div className="section-header">
                 <h2>Dynamic Chart Generator</h2>
               </div>
               <ChartBuilder onGenerateChart={generateChart} />
-            </>
-          )}
+            </TabsContent>
 
-          {error && (
-            <div className="error-message">
-              <p>Error: {error}</p>
-            </div>
-          )}
+            {error && (
+              <div className="error-message">
+                <p>Error: {error}</p>
+              </div>
+            )}
 
-          {mcpUIResource && (
-            <div className="generated-ui">
-              <h3>Generated UI Component</h3>
-              <McpPreviewRouter preview={mcpUIResource} onUIAction={handleUIAction} />
-            </div>
-          )}
-        </section>
+            {mcpUIResource && (
+              <div className="generated-ui">
+                <h3>Generated UI Component</h3>
+                <McpPreviewRouter
+                  preview={mcpUIResource}
+                  onUIAction={handleUIAction}
+                />
+              </div>
+            )}
+          </section>
+        </Tabs>
       </main>
 
       <GlassControls glass={glass} setGlass={setGlass} />

@@ -2,7 +2,7 @@
 
 ## Stack & layout
 
-- **Stack**: Node.js (ES modules), Express (`server/`), React 18 + Vite (`client/`), `@mcp-ui` usage in server MCP code paths.
+- **Stack**: Node.js (ES modules), Express (`server/`), React 18 + Vite (`client/`), Tailwind CSS v4 + shadcn/ui in the shell (`client/src/components/ui/`), `@mcp-ui` usage in server MCP code paths.
 - **Client UI**: Glassmorphism-style layout (blur, mesh backdrop); light/dark follows system preference. Real-time glass tuning lives in `client/src/glassAppearance.js` and the **Glass** control in `App.jsx` (persisted in `localStorage`).
 - **Monorepo**: Two packages — root (server + scripts) and `client/` (frontend). Install: `npm install` at root, `npm run install-all` for both.
 

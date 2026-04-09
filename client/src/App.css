@@ -567,6 +567,19 @@ body {
   box-shadow: var(--glass-shadow);
 }
 
+/* shadcn TabsList: keep glass chrome over default muted pill bar */
+.tab-navigation[data-slot='tabs-list'] {
+  height: auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+  background: var(--glass-fill-subtle) !important;
+  border: 1px solid var(--glass-border-color) !important;
+  box-shadow: var(--glass-shadow);
+}
+
 .tab-btn {
   flex: 1 1 auto;
   min-width: 0;
@@ -586,14 +599,16 @@ body {
   background: var(--glass-fill);
 }
 
-.tab-btn.active {
+.tab-btn.active,
+.tab-btn[data-state='active'] {
   background: var(--accent);
   color: #fff;
   box-shadow: 0 4px 18px rgba(37, 99, 235, 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
-  .tab-btn.active {
+  .tab-btn.active,
+  .tab-btn[data-state='active'] {
     box-shadow: 0 4px 22px rgba(96, 165, 250, 0.25);
   }
 }
@@ -608,6 +623,21 @@ body {
   padding: var(--spacing-xl);
   box-shadow: var(--glass-shadow);
   margin-bottom: var(--spacing-xl);
+}
+
+.kit-badges {
+  margin-bottom: var(--spacing-md);
+  justify-content: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.kit-badges__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-right: var(--spacing-xs);
 }
 
 .section-header {
