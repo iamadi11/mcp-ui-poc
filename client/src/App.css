@@ -755,6 +755,22 @@ body {
   letter-spacing: -0.02em;
 }
 
+/* Form Builder (shadcn shell) */
+.form-builder-card .form-builder-fields-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  padding-bottom: var(--spacing-sm);
+}
+
+.form-builder-card .form-builder-field-card {
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  border-color: color-mix(in srgb, var(--border) 68%, transparent);
+  border-radius: calc(var(--radius-md) * var(--glass-radius-scale));
+}
+
+.form-builder-card .form-builder-field-actions {
+  border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
+}
+
 .fields-section,
 .widgets-section {
   margin: var(--spacing-xl) 0;

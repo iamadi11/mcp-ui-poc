@@ -304,7 +304,7 @@ function FormBuilder({ onGenerateForm, generating }) {
         <Separator />
 
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="form-builder-fields-header flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-sm font-semibold tracking-tight">Fields</h4>
             <Button type="button" variant="outline" size="sm" onClick={addField}>
               Add field
@@ -314,10 +314,10 @@ function FormBuilder({ onGenerateForm, generating }) {
           {formConfig.fields.map((field, index) => (
             <Card
               key={index}
-              className="border-border/40 bg-muted/15 py-0 shadow-none"
+              className="form-builder-field-card border-border/40 bg-muted/15 py-0 shadow-none"
             >
               <CardContent className="space-y-4 px-4 py-4">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-2">
                     <Label htmlFor={`field-${index}-name`}>Name</Label>
                     <Input
@@ -379,7 +379,7 @@ function FormBuilder({ onGenerateForm, generating }) {
                     />
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-3">
+                <div className="form-builder-field-actions flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-3">
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id={`field-${index}-required`}
