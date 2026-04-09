@@ -23,6 +23,7 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 - **Layout**: Generated embeds are responsive
 
 ### Interface
+- **Generate feedback**: Form, Dashboard, and Chart builders disable their primary **Generate** control and show **Generating…** while the corresponding `POST /api/generate-*` request is in flight (same idea as the AI tab’s loading state).
 - **Typography**: DM Sans, restrained scale
 - **Theme**: CSS variables; light and dark follow OS preference
 - **Glassmorphism**: Frosted panels, mesh backdrop, and tunable blur—use the **Glass** control (bottom-right) to adjust blur, frost, edge light, saturation, mesh strength, and corner roundness in real time (saved in `localStorage` under `mcp-ui-glass-settings-v1`)

@@ -206,7 +206,7 @@ function GlassControls({ glass, setGlass }) {
 }
 
 // Form Builder Component (shadcn/ui + Tailwind)
-function FormBuilder({ onGenerateForm }) {
+function FormBuilder({ onGenerateForm, generating }) {
   const [formConfig, setFormConfig] = useState({
     title: 'Contact Form',
     fields: [
@@ -413,8 +413,13 @@ function FormBuilder({ onGenerateForm }) {
         </div>
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
-        <Button type="button" onClick={handleSubmit}>
-          Generate form
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={generating}
+          aria-busy={generating}
+        >
+          {generating ? 'Generating…' : 'Generate form'}
         </Button>
       </CardFooter>
     </Card>
@@ -431,7 +436,7 @@ function dashboardDefaultDataForType(type) {
 }
 
 // Dashboard Builder Component (shadcn/ui + Tailwind)
-function DashboardBuilder({ onGenerateDashboard }) {
+function DashboardBuilder({ onGenerateDashboard, generating }) {
   const [dashboardConfig, setDashboardConfig] = useState({
     title: 'Analytics Dashboard',
     widgets: [
@@ -588,8 +593,13 @@ function DashboardBuilder({ onGenerateDashboard }) {
         </div>
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
-        <Button type="button" onClick={handleSubmit}>
-          Generate dashboard
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={generating}
+          aria-busy={generating}
+        >
+          {generating ? 'Generating…' : 'Generate dashboard'}
         </Button>
       </CardFooter>
     </Card>
@@ -597,7 +607,7 @@ function DashboardBuilder({ onGenerateDashboard }) {
 }
 
 // Chart Builder Component (shadcn/ui + Tailwind)
-function ChartBuilder({ onGenerateChart }) {
+function ChartBuilder({ onGenerateChart, generating }) {
   const [chartConfig, setChartConfig] = useState({
     title: 'Sales Chart',
     type: 'bar',
@@ -696,8 +706,13 @@ function ChartBuilder({ onGenerateChart }) {
         </div>
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
-        <Button type="button" onClick={handleSubmit}>
-          Generate chart
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={generating}
+          aria-busy={generating}
+        >
+          {generating ? 'Generating…' : 'Generate chart'}
         </Button>
       </CardFooter>
     </Card>
@@ -823,6 +838,7 @@ function App() {
   const [mcpUIResource, setMcpUIResource] = useState(null)
   const [notifications, setNotifications] = useState([])
   const [error, setError] = useState(null)
+  const [builderGenerating, setBuilderGenerating] = useState(false)
   const [activeTab, setActiveTab] = useState('ai')
   const [userId, setUserId] = useState(() => readOrCreateUserId())
   const [storedView, setStoredView] = useState({
@@ -984,7 +1000,7 @@ function App() {
   // Generate Form UI
   const generateForm = async (formConfig) => {
     setError(null)
-    
+    setBuilderGenerating(true)
     try {
       const response = await fetch('/api/generate-form', {
         method: 'POST',
@@ -1003,13 +1019,15 @@ function App() {
     } catch (error) {
       console.error('Error generating form:', error);
       setError(error.message);
+    } finally {
+      setBuilderGenerating(false)
     }
   };
 
   // Generate Dashboard UI
   const generateDashboard = async (dashboardConfig) => {
     setError(null)
-    
+    setBuilderGenerating(true)
     try {
       const response = await fetch('/api/generate-dashboard', {
         method: 'POST',
@@ -1028,13 +1046,15 @@ function App() {
     } catch (error) {
       console.error('Error generating dashboard:', error);
       setError(error.message);
+    } finally {
+      setBuilderGenerating(false)
     }
   };
 
   // Generate Chart UI
   const generateChart = async (chartConfig) => {
     setError(null)
-    
+    setBuilderGenerating(true)
     try {
       const response = await fetch('/api/generate-chart', {
         method: 'POST',
@@ -1053,6 +1073,8 @@ function App() {
     } catch (error) {
       console.error('Error generating chart:', error);
       setError(error.message);
+    } finally {
+      setBuilderGenerating(false)
     }
   };
 
@@ -1473,21 +1495,30 @@ function App() {
               <div className="section-header">
                 <h2>Dynamic Form Generator</h2>
               </div>
-              <FormBuilder onGenerateForm={generateForm} />
+              <FormBuilder
+                onGenerateForm={generateForm}
+                generating={builderGenerating}
+              />
             </TabsContent>
 
             <TabsContent value="dashboard" className="mt-0 outline-none">
               <div className="section-header">
                 <h2>Dynamic Dashboard Generator</h2>
               </div>
-              <DashboardBuilder onGenerateDashboard={generateDashboard} />
+              <DashboardBuilder
+                onGenerateDashboard={generateDashboard}
+                generating={builderGenerating}
+              />
             </TabsContent>
 
             <TabsContent value="chart" className="mt-0 outline-none">
               <div className="section-header">
                 <h2>Dynamic Chart Generator</h2>
               </div>
-              <ChartBuilder onGenerateChart={generateChart} />
+              <ChartBuilder
+                onGenerateChart={generateChart}
+                generating={builderGenerating}
+              />
             </TabsContent>
 
             {error && (
