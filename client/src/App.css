@@ -172,6 +172,36 @@ body {
   box-shadow: var(--glass-shadow);
 }
 
+.user-session {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  max-width: min(100%, 42rem);
+  margin: 0 auto var(--spacing-md);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.user-session__label {
+  font-weight: 500;
+}
+
+.user-session__id {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: calc(var(--radius-sm) * var(--glass-radius-scale));
+  background: var(--glass-fill-subtle);
+  border: 1px solid var(--glass-border-color);
+  color: var(--text);
+}
+
+.user-session__reset {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.65rem;
+}
+
 .app-header h1 {
   font-size: clamp(1.5rem, 4vw, 2rem);
   font-weight: 600;

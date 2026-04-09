@@ -88,8 +88,9 @@ mcp-ui-poc/
 - `POST /api/generate-chart` - Generate a chart UI (response includes `resource` + `structured`)
 
 ### Data Management
-- `POST /api/store-data` - Store user data
+- `POST /api/store-data` - Store user data (JSON body: `userId`, `data`)
 - `GET /api/get-data/:userId` - Retrieve user data
+- **Browser session**: The React app persists a **demo user id** in `localStorage` (same idea as Glass settings) so refresh keeps one server-side namespace. **New session** clears that id and allocates another. Structured preview **form submit** calls `store-data` with the current demo user id.
 - `GET /api/component-info/:componentId` - Get component information
 
 ## Builder reference

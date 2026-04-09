@@ -7,6 +7,11 @@ import {
   GLASS_STORAGE_KEY,
 } from './glassAppearance.js'
 import {
+  readOrCreateUserId,
+  resetUserId,
+  formatUserIdShort,
+} from './userSession.js'
+import {
   McpPreviewRouter,
   normalizeMcpPreviewResponse,
 } from './StructuredUIPreview'
@@ -469,7 +474,7 @@ function ChartBuilder({ onGenerateChart }) {
 }
 
 // AI Generator Component
-function AIGenerator({ onGenerateAI }) {
+function AIGenerator({ onGenerateAI, userId }) {
   const [description, setDescription] = useState('');
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -495,9 +500,9 @@ function AIGenerator({ onGenerateAI }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          userId: `user-${Date.now()}`, 
-          description: description.trim() 
+        body: JSON.stringify({
+          userId,
+          description: description.trim(),
         }),
       });
       
@@ -575,7 +580,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('ai')
-  const [userId] = useState(`user-${Date.now()}`)
+  const [userId, setUserId] = useState(() => readOrCreateUserId())
 
   useEffect(() => {
     applyGlassCss(glass)
@@ -746,17 +751,47 @@ function App() {
         setNotifications(prev => prev.filter(n => n.id !== newNotification.id))
       }, 5000)
     } else if (action.type === 'form-submit') {
-      // Handle form submission
-      const newNotification = {
-        id: Date.now(),
-        message: `Form submitted: ${JSON.stringify(action.payload.data)}`,
-        type: 'success'
+      const payload = action.payload
+      const stored = {
+        kind: 'form-submit',
+        formId: payload.formId,
+        submittedAt: new Date().toISOString(),
+        data: payload.data,
       }
-      setNotifications(prev => [...prev, newNotification])
-      
-      setTimeout(() => {
-        setNotifications(prev => prev.filter(n => n.id !== newNotification.id))
-      }, 5000)
+      ;(async () => {
+        try {
+          const res = await fetch('/api/store-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, data: stored }),
+          })
+          const body = await res.json().catch(() => ({}))
+          if (!res.ok) {
+            throw new Error(body.error || `HTTP ${res.status}`)
+          }
+          const newNotification = {
+            id: Date.now(),
+            message: `Form saved for this session: ${JSON.stringify(payload.data)}`,
+            type: 'success',
+          }
+          setNotifications((prev) => [...prev, newNotification])
+          setTimeout(() => {
+            setNotifications((prev) => prev.filter((n) => n.id !== newNotification.id))
+          }, 5000)
+        } catch (err) {
+          const msg =
+            err instanceof Error ? err.message : 'Failed to store submission'
+          const newNotification = {
+            id: Date.now(),
+            message: `Could not save form data: ${msg}`,
+            type: 'error',
+          }
+          setNotifications((prev) => [...prev, newNotification])
+          setTimeout(() => {
+            setNotifications((prev) => prev.filter((n) => n.id !== newNotification.id))
+          }, 8000)
+        }
+      })()
     } else if (action.type === 'dashboard-refresh') {
       // Handle dashboard refresh
       const newNotification = {
@@ -788,6 +823,27 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Dynamic MCP UI Generator</h1>
+        <p className="user-session" role="status">
+          <span className="user-session__label">Demo user id</span>
+          <code className="user-session__id" title={userId}>
+            {formatUserIdShort(userId)}
+          </code>
+          <button
+            type="button"
+            className="btn btn-outline user-session__reset"
+            onClick={() => {
+              if (
+                window.confirm(
+                  'Start a new session? The server will treat the next actions as a different user.'
+                )
+              ) {
+                setUserId(resetUserId())
+              }
+            }}
+          >
+            New session
+          </button>
+        </p>
         <div
           className={`server-status ${
             health.state === 'ok'
@@ -877,7 +933,7 @@ function App() {
               <div className="section-header">
                 <h2>AI-Powered Component Generator</h2>
               </div>
-              <AIGenerator onGenerateAI={generateAI} />
+              <AIGenerator onGenerateAI={generateAI} userId={userId} />
             </>
           )}
 
