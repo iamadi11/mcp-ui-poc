@@ -231,7 +231,7 @@ The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn sh
 
 ### AI Generator
 1. Open the **AI Generator** tab (default)
-2. Describe the UI you want (forms, dashboards, or charts—keywords in the description steer `parseDescription` in `server/ai-generator.js`)
+2. Describe the UI you want (forms, dashboards, or charts—keywords in the description steer `parseDescription` in `server/ai-generator.js`; chart prompts mentioning `line`, `trend`, `time series`, `over time`, or `timeline` select the line chart type)
 3. Click **Generate Component**; errors appear inline under the form
 4. The preview below uses the same **Data (React)** / **HTML (iframe)** pipeline as the builders
 
@@ -250,7 +250,7 @@ The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn sh
 
 ### Creating Charts
 1. Select the "Chart Builder" tab
-2. Choose chart type (bar or pie)
+2. Choose chart type (bar, pie, or line)
 3. Enter data values and labels
 4. Generate the chart for visualization
 
