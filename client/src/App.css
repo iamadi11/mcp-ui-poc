@@ -892,6 +892,31 @@ body {
   margin-bottom: 0;
 }
 
+@media (min-width: 1024px) {
+  .builder-main-content {
+    gap: var(--spacing-xl);
+  }
+
+  .builder-item-content {
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+
+  .builder-fields-grid {
+    row-gap: var(--spacing-md);
+    column-gap: var(--spacing-md);
+  }
+
+  .builder-item-actions {
+    padding-top: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+  }
+
+  .builder-main-content label {
+    margin-bottom: 0.2rem;
+  }
+}
+
 .builder-item-card:hover {
   border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
   box-shadow:
@@ -916,7 +941,7 @@ body {
 
 @media (max-width: 640px) {
   .builder-main-content {
-    gap: calc(var(--spacing-md) + 2px);
+    gap: var(--spacing-lg);
   }
 
   .form-builder-card [data-slot="card-header"],
@@ -941,7 +966,18 @@ body {
   }
 
   .builder-item-content {
+    gap: var(--spacing-md);
     padding: var(--spacing-md);
+  }
+
+  .builder-fields-grid {
+    row-gap: var(--spacing-md);
+    column-gap: var(--spacing-sm);
+  }
+
+  .builder-item-actions {
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-md);
   }
 
   .builder-remove-btn {
