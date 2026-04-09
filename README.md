@@ -23,7 +23,8 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 ### Interface
 - **Typography**: DM Sans, restrained scale
 - **Theme**: CSS variables; light and dark follow OS preference
-- **Layout**: Narrow content width, clear hierarchy, no animated page background
+- **Glassmorphism**: Frosted panels, mesh backdrop, and tunable blur—use the **Glass** control (bottom-right) to adjust blur, frost, edge light, saturation, mesh strength, and corner roundness in real time (saved in `localStorage`)
+- **Layout**: Narrow content width; animated mesh layer respects reduced motion
 
 ## Project structure
 
@@ -115,13 +116,13 @@ Create data visualizations:
 
 ## Design system
 
-The UI is **token-driven** (`client/src/App.css`): background, surface, border, text, and accent colors adapt when the OS switches between light and dark mode.
+The UI is **token-driven** (`client/src/App.css` plus runtime CSS variables from `client/src/glassAppearance.js`). Base colors follow the OS light/dark preference; **glass** variables (`--glass-blur`, `--glass-fill`, `--glass-border-color`, `--mesh-strength`, etc.) update live from the **Glass** panel.
 
-- **Surfaces**: Page background vs. elevated cards; 1px borders instead of glass or blur stacks
-- **Accent**: One primary interactive color (blue family in light, softer blue in dark)
-- **Type**: DM Sans; headings use tight letter-spacing and weight, not gradient text
-- **Motion**: Short transitions on hovers and focus; connection status may pulse lightly; respect `prefers-reduced-motion`
-- **Components**: Segmented tabs, flat primary buttons, secondary actions as outline or muted fills
+- **Backdrop**: Soft page gradient plus an animated color mesh (disabled when `prefers-reduced-motion` is set)
+- **Surfaces**: Frosted glass (`backdrop-filter` blur + saturation) on header, main card, tabs, inputs, and notifications
+- **Accent**: Primary blue for actions and the active tab
+- **Type**: DM Sans; hero title uses a subtle gradient clip
+- **Persistence**: Glass slider values are stored in `localStorage` under `mcp-ui-glass-settings-v1`
 
 ## Technologies
 

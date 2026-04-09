@@ -12,7 +12,7 @@ Follow **`docs/AI_WORKFLOW.md`** for the mandatory sequence (research â†’ plan â
 ## Stack & layout
 
 - **Stack**: Node.js (ES modules), Express in **`server/`**, React 18 + Vite in **`client/`**.
-- **Client UI**: Minimal layout; system light/dark via CSS variables in **`client/src/App.css`** (no component library).
+- **Client UI**: Glass-style UI with tunable blur/mesh (`client/src/glassAppearance.js`); system light/dark via CSS variables in **`client/src/App.css`** (no component library).
 - **Monorepo**: Root **`package.json`** (server + scripts); **`client/package.json`** (frontend). Install: `npm install` at root; `npm run install-all` for both trees.
 
 ## Mandatory checks

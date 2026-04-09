@@ -1,5 +1,146 @@
 import { useState, useEffect, useCallback } from 'react'
 import './App.css'
+import {
+  applyGlassCss,
+  readStoredGlass,
+  DEFAULT_GLASS,
+  GLASS_STORAGE_KEY,
+} from './glassAppearance.js'
+
+function GlassControls({ glass, setGlass }) {
+  const [open, setOpen] = useState(false)
+
+  const update = (key) => (e) => {
+    const v = Number(e.target.value)
+    setGlass((g) => ({ ...g, [key]: v }))
+  }
+
+  return (
+    <aside className="glass-controls">
+      <button
+        type="button"
+        className="glass-controls__fab"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls="glass-controls-panel"
+        id="glass-controls-trigger"
+      >
+        Glass
+      </button>
+      {open && (
+        <div
+          id="glass-controls-panel"
+          className="glass-controls__panel"
+          role="region"
+          aria-labelledby="glass-controls-trigger"
+        >
+          <div className="glass-controls__head">
+            <span className="glass-controls__title">Glass look</span>
+            <button
+              type="button"
+              className="glass-controls__reset"
+              onClick={() => setGlass({ ...DEFAULT_GLASS })}
+            >
+              Reset
+            </button>
+          </div>
+
+          <div className="glass-controls__row">
+            <div className="glass-controls__row-top">
+              <label htmlFor="glass-blur">Blur</label>
+              <span className="glass-controls__val">{glass.blur}px</span>
+            </div>
+            <input
+              id="glass-blur"
+              type="range"
+              min={6}
+              max={44}
+              value={glass.blur}
+              onChange={update('blur')}
+            />
+          </div>
+
+          <div className="glass-controls__row">
+            <div className="glass-controls__row-top">
+              <label htmlFor="glass-frost">Frost</label>
+              <span className="glass-controls__val">{glass.frost}</span>
+            </div>
+            <input
+              id="glass-frost"
+              type="range"
+              min={0}
+              max={100}
+              value={glass.frost}
+              onChange={update('frost')}
+            />
+          </div>
+
+          <div className="glass-controls__row">
+            <div className="glass-controls__row-top">
+              <label htmlFor="glass-border">Edge light</label>
+              <span className="glass-controls__val">{glass.border}</span>
+            </div>
+            <input
+              id="glass-border"
+              type="range"
+              min={0}
+              max={100}
+              value={glass.border}
+              onChange={update('border')}
+            />
+          </div>
+
+          <div className="glass-controls__row">
+            <div className="glass-controls__row-top">
+              <label htmlFor="glass-sat">Color pop</label>
+              <span className="glass-controls__val">{glass.saturate}%</span>
+            </div>
+            <input
+              id="glass-sat"
+              type="range"
+              min={100}
+              max={220}
+              value={glass.saturate}
+              onChange={update('saturate')}
+            />
+          </div>
+
+          <div className="glass-controls__row">
+            <div className="glass-controls__row-top">
+              <label htmlFor="glass-mesh">Backdrop mesh</label>
+              <span className="glass-controls__val">{glass.mesh}</span>
+            </div>
+            <input
+              id="glass-mesh"
+              type="range"
+              min={0}
+              max={100}
+              value={glass.mesh}
+              onChange={update('mesh')}
+            />
+          </div>
+
+          <div className="glass-controls__row">
+            <div className="glass-controls__row-top">
+              <label htmlFor="glass-round">Roundness</label>
+              <span className="glass-controls__val">{glass.roundness}</span>
+            </div>
+            <input
+              id="glass-round"
+              type="range"
+              min={0}
+              max={100}
+              value={glass.roundness}
+              onChange={update('roundness')}
+            />
+          </div>
+
+          <p className="glass-controls__hint">Saved in this browser only.</p>
+        </div>
+      )}
+    </aside>
+  )
+}
 
 // Simple UI Resource Renderer component
 function UIResourceRenderer({ resource, onUIAction }) {
@@ -452,6 +593,7 @@ function AIGenerator({ onGenerateAI }) {
 }
 
 function App() {
+  const [glass, setGlass] = useState(() => readStoredGlass())
   const [health, setHealth] = useState({ state: 'checking' })
   const [mcpUIResource, setMcpUIResource] = useState(null)
   const [notifications, setNotifications] = useState([])
@@ -459,6 +601,22 @@ function App() {
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('ai')
   const [userId] = useState(`user-${Date.now()}`)
+
+  useEffect(() => {
+    applyGlassCss(glass)
+    try {
+      localStorage.setItem(GLASS_STORAGE_KEY, JSON.stringify(glass))
+    } catch {
+      /* ignore quota */
+    }
+  }, [glass])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const sync = () => applyGlassCss(glass)
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [glass])
 
   const checkHealth = useCallback(async () => {
     setHealth({ state: 'checking' })
@@ -778,6 +936,8 @@ function App() {
           )}
         </section>
       </main>
+
+      <GlassControls glass={glass} setGlass={setGlass} />
     </div>
   )
 }
