@@ -20,13 +20,8 @@ function UIResourceRenderer({ resource, onUIAction }) {
     return (
       <iframe
         srcDoc={resource.text}
-        style={{
-          width: '100%',
-          height: '600px',
-          border: 'none',
-          borderRadius: '16px',
-          backgroundColor: 'transparent'
-        }}
+        className="mcp-preview-frame"
+        style={{ width: '100%', height: '600px', border: 'none' }}
         title="MCP-UI Resource"
       />
     );

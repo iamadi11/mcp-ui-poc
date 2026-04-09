@@ -1,43 +1,39 @@
 # Dynamic MCP UI Generator
 
-A comprehensive full-stack application that demonstrates the power of MCP (Model Context Protocol) UI components with dynamic generation capabilities. This application allows users to create, customize, and generate interactive UI components through a sophisticated MCP server with a modern glassmorphism design.
+Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, and charts in the browser, backed by a Node server that returns MCP UI resources. The client is intentionally **minimal**—neutral surfaces, a single accent color, and **light/dark styling from the system** (`prefers-color-scheme`), not decorative gradients or heavy effects.
 
-## 🚀 Features
+## Features
 
-### Core MCP UI Components
-- **Dynamic UI Generation**: Create custom forms, dashboards, and charts on-the-fly
-- **Real-time Communication**: PostMessage API integration for seamless parent-child communication
-- **Notification System**: Toast notifications for user feedback and system events
-- **Modern Glassmorphism Design**: Beautiful glass-like UI with backdrop blur effects
+### Core MCP UI
+- **Dynamic UI generation**: Forms, dashboards, and charts from configuration
+- **PostMessage**: Parent page and generated iframe stay in sync for tools and events
+- **Toasts**: Short-lived notifications for submissions and actions
 
-### Dynamic UI Generation
-- **Form Builder**: Create custom forms with various field types (text, email, number, select, textarea)
-- **Dashboard Builder**: Generate analytics dashboards with metrics, lists, and charts
-- **Chart Builder**: Create bar charts and pie charts with custom data
-- **Real-time Preview**: See generated components immediately after creation
+### Builders
+- **Form builder**: Text, email, number, select, textarea; required flags and labels
+- **Dashboard builder**: Metrics, lists, and chart widgets
+- **Chart builder**: Bar and pie charts from comma-separated values and labels
+- **Preview**: Generated HTML renders inline after each build
 
-### Advanced MCP Server Features
-- **Component Management**: Track and manage generated UI components
-- **User Data Storage**: Store and retrieve user-specific data
-- **Dynamic HTML Generation**: Server-side HTML generation with embedded JavaScript
-- **Responsive Design**: All generated components are mobile-friendly
+### Server
+- **Components & storage**: Track generated components and optional user-scoped data
+- **HTML generation**: Server-built HTML/JS for MCP UI payloads
+- **Layout**: Generated embeds are responsive
 
-### Modern Design System
-- **Glassmorphism**: Translucent glass-like components with backdrop blur
-- **Animated Background**: Subtle animated gradient background
-- **Modern Typography**: Inter font family for clean, readable text
-- **Smooth Animations**: Fluid transitions and hover effects
-- **Responsive Layout**: Optimized for all device sizes
+### Interface
+- **Typography**: DM Sans, restrained scale
+- **Theme**: CSS variables; light and dark follow OS preference
+- **Layout**: Narrow content width, clear hierarchy, no animated page background
 
-## 🏗️ Project Structure
+## Project structure
 
 ```
 mcp-ui-poc/
 ├── client/                 # React frontend
 │   ├── src/
 │   │   ├── App.jsx        # Main React component with UI builders
-│   │   ├── App.css        # Modern glassmorphism styling
-│   │   ├── index.css      # Global styles and utilities
+│   │   ├── App.css        # Theme tokens and layout
+│   │   ├── index.css      # Base reset
 │   │   └── main.jsx       # React entry point
 │   ├── package.json       # Frontend dependencies
 │   └── vite.config.js     # Vite configuration
@@ -49,7 +45,7 @@ mcp-ui-poc/
 └── README.md             # Project documentation
 ```
 
-## 🛠️ Installation
+## Installation
 
 1. **Clone the repository**
    ```bash
@@ -76,7 +72,7 @@ mcp-ui-poc/
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:3001
 
-## 📊 API Endpoints
+## API endpoints
 
 ### Health Check
 - `GET /api/health` - Server status and health information
@@ -94,7 +90,7 @@ mcp-ui-poc/
 - `GET /api/get-data/:userId` - Retrieve user data
 - `GET /api/component-info/:componentId` - Get component information
 
-## 🎨 UI Components
+## Builder reference
 
 ### Form Builder
 Create dynamic forms with:
@@ -117,38 +113,22 @@ Create data visualizations:
 - **Custom Data**: Input values and labels via comma-separated format
 - **Export Functionality**: Chart export capabilities
 
-## 🎨 Design System
+## Design system
 
-### Glassmorphism Components
-- **Translucent Backgrounds**: Semi-transparent glass-like surfaces
-- **Backdrop Blur**: Modern blur effects for depth
-- **Subtle Borders**: Light borders for definition
-- **Soft Shadows**: Layered shadow system for depth
+The UI is **token-driven** (`client/src/App.css`): background, surface, border, text, and accent colors adapt when the OS switches between light and dark mode.
 
-### Color Palette
-- **Primary Gradient**: Purple to blue gradient (#667eea to #764ba2)
-- **Success Gradient**: Blue to cyan (#4facfe to #00f2fe)
-- **Warning Gradient**: Green to teal (#43e97b to #38f9d7)
-- **Danger Gradient**: Pink to yellow (#fa709a to #fee140)
+- **Surfaces**: Page background vs. elevated cards; 1px borders instead of glass or blur stacks
+- **Accent**: One primary interactive color (blue family in light, softer blue in dark)
+- **Type**: DM Sans; headings use tight letter-spacing and weight, not gradient text
+- **Motion**: Short transitions on hovers and focus; connection status may pulse lightly; respect `prefers-reduced-motion`
+- **Components**: Segmented tabs, flat primary buttons, secondary actions as outline or muted fills
 
-### Typography
-- **Font Family**: Inter (Google Fonts)
-- **Font Weights**: 300, 400, 500, 600, 700
-- **Responsive**: Fluid typography scaling
-
-### Animations
-- **Smooth Transitions**: 0.3s cubic-bezier easing
-- **Hover Effects**: Subtle lift and glow effects
-- **Loading States**: Pulse animations for feedback
-- **Background Animation**: Subtle gradient shifts
-
-## 🔧 Technologies Used
+## Technologies
 
 ### Frontend
-- **React 18**: Modern React with hooks and functional components
-- **Vite**: Fast build tool and development server
-- **CSS3**: Advanced styling with glassmorphism effects
-- **Inter Font**: Modern, readable typography
+- **React 18**: Hooks and functional components
+- **Vite**: Dev server and production build
+- **CSS**: Custom properties for theming (no UI framework)
 
 ### Backend
 - **Node.js**: JavaScript runtime
@@ -160,7 +140,7 @@ Create data visualizations:
 - **Nodemon**: Automatic server restart on file changes
 - **ES6 Modules**: Modern JavaScript module system
 
-## 🚀 Scripts
+## Scripts
 
 ### Development
 - `npm run dev` - Start backend server with nodemon
@@ -172,7 +152,7 @@ Create data visualizations:
 - `npm run install-client` - Install only frontend dependencies
 - `npm run install-server` - Install only backend dependencies
 
-## 🎯 Usage Examples
+## Usage
 
 ### Creating a Custom Form
 1. Navigate to the "Form Builder" tab
@@ -193,7 +173,7 @@ Create data visualizations:
 3. Enter data values and labels
 4. Generate the chart for visualization
 
-## 🔄 Real-time Features
+## Real-time behavior
 
 ### Form Submission
 - Forms automatically send data to the parent application
@@ -210,21 +190,13 @@ Create data visualizations:
 - Notification system for export events
 - Customizable chart appearance and data
 
-## 🎨 Styling and Design
+## Styling and layout
 
-### Modern UI Design
-- **Glassmorphism**: Translucent glass-like components
-- **Animated Background**: Subtle gradient animations
-- **Responsive Design**: Works on all screen sizes
-- **Interactive Elements**: Hover effects and transitions
+- **Tokens**: Shared variables for color, radius, and spacing
+- **Responsive**: Builders collapse to a single column on small screens; toasts move to the bottom on narrow viewports
+- **Feedback**: Focus rings on keyboard focus; selection and scrollbars stay low-contrast
 
-### Component Styling
-- **Custom CSS Variables**: Consistent design tokens
-- **Grid-based Layouts**: Flexible field management
-- **Toast Notifications**: Different types with animations
-- **Tab Navigation**: Active states with smooth transitions
-
-## 🔒 Security and Best Practices
+## Security and practices
 
 ### Data Handling
 - User data is stored securely on the server
@@ -237,12 +209,11 @@ Create data visualizations:
 - No cross-site scripting vulnerabilities
 
 ### Accessibility
-- **Focus States**: Clear focus indicators
-- **High Contrast**: Support for high contrast mode
-- **Reduced Motion**: Respects user motion preferences
-- **Screen Reader**: Proper ARIA labels and structure
+- **Focus**: Visible `:focus-visible` styles on interactive controls
+- **Reduced motion**: Honors `prefers-reduced-motion` for animations
+- **Status**: API health uses a live region where applicable
 
-## 🚀 Future Enhancements
+## Future enhancements
 
 ### Planned Features
 - **More Chart Types**: Line charts, scatter plots, area charts
@@ -257,13 +228,12 @@ Create data visualizations:
 - **Component Library**: Reusable UI component system
 - **Performance Optimization**: Lazy loading and code splitting
 
-### Design Enhancements
-- **Dark/Light Mode**: Theme switching capability
-- **Custom Themes**: User-defined color schemes
-- **Animation Library**: Advanced motion design
-- **Micro-interactions**: Delightful user experience details
+### Design enhancements
+- **Explicit theme toggle**: Optional in-app override of system light/dark
+- **Additional chart types**: Line, area, scatter
+- **Export**: PDF or image export for previews
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -271,10 +241,10 @@ Create data visualizations:
 4. Test thoroughly
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-**Built with ❤️ using React, Node.js, and MCP UI technology with modern glassmorphism design** 
+Stack: React, Vite, Node.js, Express, `@mcp-ui/server`. 

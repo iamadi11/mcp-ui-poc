@@ -3,6 +3,7 @@
 ## Stack & layout
 
 - **Stack**: Node.js (ES modules), Express (`server/`), React 18 + Vite (`client/`), `@mcp-ui` usage in server MCP code paths.
+- **Client UI**: Minimal layout and typography; light/dark follows system preference via CSS variables in `client/src/App.css` (no UI framework).
 - **Monorepo**: Two packages — root (server + scripts) and `client/` (frontend). Install: `npm install` at root, `npm run install-all` for both.
 
 ## Mandatory workflow
