@@ -9,6 +9,8 @@ import { AIGenerator } from './ai-generator.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const isVercel = process.env.VERCEL === '1';
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -19,7 +21,9 @@ const aiGenerator = new AIGenerator();
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../client/dist')));
+if (!isVercel) {
+  app.use(express.static(path.join(__dirname, '../client/dist')));
+}
 
 // API Routes
 app.get('/api/health', (req, res) => {
@@ -191,13 +195,29 @@ app.get('/api/component-info/:componentId', (req, res) => {
   }
 });
 
-// Serve React app for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-});
+// Serve React app for non-API routes (local / traditional hosting only; Vercel ignores express.static)
+if (!isVercel) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.json({
+      service: 'mcp-ui-poc-api',
+      health: '/api/health',
+    });
+  });
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Not found' });
+  });
+}
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 API available at http://localhost:${PORT}/api`);
-  console.log(`🤖 AI Generator ready at http://localhost:${PORT}/api/ai`);
-}); 
+export default app;
+
+if (!isVercel) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📊 API available at http://localhost:${PORT}/api`);
+    console.log(`🤖 AI Generator ready at http://localhost:${PORT}/api/ai`);
+  });
+} 

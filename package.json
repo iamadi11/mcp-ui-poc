@@ -14,9 +14,13 @@
     "install-all": "npm run install-server && npm run install-client"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "@mcp-ui/server": "^5.2.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
