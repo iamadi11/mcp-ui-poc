@@ -158,7 +158,7 @@ Create dynamic forms with:
 Generate analytics dashboards with:
 - **Metric Widgets**: Display key performance indicators
 - **List Widgets**: Show activity feeds and data lists
-- **Chart Widgets**: Embedded visualizations with selectable bar/pie/line style
+- **Chart Widgets**: Embedded visualizations with selectable bar/pie/line style plus comma-separated values/labels editors
 - **Responsive Layout**: Auto-adjusting grid system
 
 ### Chart Builder
@@ -247,7 +247,8 @@ The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn sh
 1. Go to the "Dashboard Builder" tab
 2. Configure the dashboard title
 3. Add widgets (metrics, lists, charts)
-4. Generate the dashboard to see the interactive component
+4. For chart widgets, choose chart style and edit values/labels (comma-separated)
+5. Generate the dashboard to see the interactive component
 
 ### Creating Charts
 1. Select the "Chart Builder" tab

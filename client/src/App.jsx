@@ -579,35 +579,83 @@ function DashboardBuilder({ onGenerateDashboard, generating }) {
                   </div>
                 </div>
                 {widget.type === 'chart' && (
-                  <div className="space-y-2">
-                    <Label htmlFor={`widget-${index}-chart-type`}>
-                      Chart style
-                    </Label>
-                    <Select
-                      value={widget.data?.chartType ?? 'bar'}
-                      onValueChange={(newChartType) =>
-                        updateWidget(index, {
-                          ...widget,
-                          data: {
-                            ...dashboardDefaultDataForType('chart'),
-                            ...widget.data,
-                            chartType: newChartType,
-                          },
-                        })
-                      }
-                    >
-                      <SelectTrigger
-                        id={`widget-${index}-chart-type`}
-                        className="w-full min-w-0"
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor={`widget-${index}-chart-type`}>
+                        Chart style
+                      </Label>
+                      <Select
+                        value={widget.data?.chartType ?? 'bar'}
+                        onValueChange={(newChartType) =>
+                          updateWidget(index, {
+                            ...widget,
+                            data: {
+                              ...dashboardDefaultDataForType('chart'),
+                              ...widget.data,
+                              chartType: newChartType,
+                            },
+                          })
+                        }
                       >
-                        <SelectValue placeholder="Chart style" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="bar">Bar chart</SelectItem>
-                        <SelectItem value="pie">Pie chart</SelectItem>
-                        <SelectItem value="line">Line chart</SelectItem>
-                      </SelectContent>
-                    </Select>
+                        <SelectTrigger
+                          id={`widget-${index}-chart-type`}
+                          className="w-full min-w-0"
+                        >
+                          <SelectValue placeholder="Chart style" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="bar">Bar chart</SelectItem>
+                          <SelectItem value="pie">Pie chart</SelectItem>
+                          <SelectItem value="line">Line chart</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor={`widget-${index}-chart-values`}>
+                          Values (comma-separated)
+                        </Label>
+                        <Input
+                          id={`widget-${index}-chart-values`}
+                          value={(widget.data?.values ?? []).join(', ')}
+                          onChange={(e) =>
+                            updateWidget(index, {
+                              ...widget,
+                              data: {
+                                ...dashboardDefaultDataForType('chart'),
+                                ...widget.data,
+                                values: e.target.value
+                                  .split(',')
+                                  .map((v) => parseInt(v.trim(), 10) || 0),
+                              },
+                            })
+                          }
+                          placeholder="100, 150, 200"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`widget-${index}-chart-labels`}>
+                          Labels (comma-separated)
+                        </Label>
+                        <Input
+                          id={`widget-${index}-chart-labels`}
+                          value={(widget.data?.labels ?? []).join(', ')}
+                          onChange={(e) =>
+                            updateWidget(index, {
+                              ...widget,
+                              data: {
+                                ...dashboardDefaultDataForType('chart'),
+                                ...widget.data,
+                                labels: e.target.value
+                                  .split(',')
+                                  .map((v) => v.trim()),
+                              },
+                            })
+                          }
+                          placeholder="Q1, Q2, Q3"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
                 <div className="builder-item-actions flex justify-end border-t border-border/40 pt-3">
