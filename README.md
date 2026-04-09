@@ -28,6 +28,9 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 - **Form Builder polish**: Field editor cards use the glass palette/borders from the shell and keep a cleaner responsive grid (`2` columns on medium widths, `4` on extra-wide screens) to avoid cramped controls.
 - **Builder spacing polish**: Form, Dashboard, and Chart now share section headers, nested card spacing, and action-row rhythm for a more consistent editing flow across tabs.
 - **Builder control alignment**: Editor rows use shared field-grid spacing and stable remove-button sizing so controls no longer crowd/clip on medium and narrow widths.
+- **Responsive spacing tune**: Builder density is now tuned by breakpoint (cleaner, tighter desktop rhythm; roomier mobile touch spacing).
+- **Header simplification**: The shell header now shows only a subtle **Shell UI** label (Tailwind/shadcn tech pills removed).
+- **Button padding pass**: Legacy shell buttons (`.btn`, retry/storage actions, glass settings FAB) use larger tap-friendly padding to match builder controls.
 - **Typography**: DM Sans, restrained scale
 - **Theme**: CSS variables; light and dark follow OS preference
 - **Glassmorphism**: Frosted panels, mesh backdrop, and tunable blur—use the **Glass** control (bottom-right) to adjust blur, frost, edge light, saturation, mesh strength, and corner roundness in real time (saved in `localStorage` under `mcp-ui-glass-settings-v1`)
@@ -180,6 +183,7 @@ The shell uses two layers: **glass + DM Sans** from `client/src/App.css` and `gl
 - **Accent**: Primary blue for actions and the active tab (shared between CSS variables and shadcn `--primary`)
 - **Type**: DM Sans; hero title uses a subtle gradient clip
 - **Persistence**: Glass slider values are stored in `localStorage` under `mcp-ui-glass-settings-v1`
+- **UI labeling**: The section header uses product-facing copy; framework labels are intentionally hidden in the runtime UI.
 
 ### Adding shell components
 
