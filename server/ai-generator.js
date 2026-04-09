@@ -3,6 +3,7 @@ import {
   createDashboardHTML,
   createChartHTML,
 } from './dynamic-ui-html.js'
+import { buildStructuredEnvelope } from './mcp-structured-ui.js'
 
 // AI-Powered Code Generator
 export class AIGenerator {
@@ -369,7 +370,10 @@ export class AIGenerator {
       encoding: 'text'
     });
 
-    return resource;
+    return {
+      ...resource,
+      structured: buildStructuredEnvelope('form', componentId, formConfig),
+    };
   }
 
   // Generate dashboard from AI requirements
@@ -390,7 +394,10 @@ export class AIGenerator {
       encoding: 'text'
     });
 
-    return resource;
+    return {
+      ...resource,
+      structured: buildStructuredEnvelope('dashboard', componentId, dashboardConfig),
+    };
   }
 
   // Generate chart from AI requirements
@@ -412,7 +419,10 @@ export class AIGenerator {
       encoding: 'text'
     });
 
-    return resource;
+    return {
+      ...resource,
+      structured: buildStructuredEnvelope('chart', componentId, chartConfig),
+    };
   }
 
   // Generate custom component from AI requirements

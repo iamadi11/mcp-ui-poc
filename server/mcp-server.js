@@ -4,6 +4,7 @@ import {
   createDashboardHTML,
   createChartHTML,
 } from './dynamic-ui-html.js';
+import { buildStructuredEnvelope } from './mcp-structured-ui.js';
 
 // MCP Server for dynamic UI generation
 export class MCPServer {
@@ -28,7 +29,10 @@ export class MCPServer {
     });
 
     this.uiComponents.set(formId, { type: 'form', config: formConfig });
-    return resource;
+    return {
+      ...resource,
+      structured: buildStructuredEnvelope('form', formId, formConfig),
+    };
   }
 
   // Generate a dashboard UI component
@@ -47,7 +51,10 @@ export class MCPServer {
     });
 
     this.uiComponents.set(dashboardId, { type: 'dashboard', config: dashboardConfig });
-    return resource;
+    return {
+      ...resource,
+      structured: buildStructuredEnvelope('dashboard', dashboardId, dashboardConfig),
+    };
   }
 
   // Generate a data visualization UI component
@@ -66,7 +73,10 @@ export class MCPServer {
     });
 
     this.uiComponents.set(chartId, { type: 'chart', config: chartConfig });
-    return resource;
+    return {
+      ...resource,
+      structured: buildStructuredEnvelope('chart', chartId, chartConfig),
+    };
   }
 
   // Store user data
