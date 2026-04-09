@@ -914,7 +914,8 @@ function App() {
             </button>
           </div>
           <p className="stored-data-panel__hint">
-            In-memory for this demo; last write per user id wins. Matches{' '}
+            In-memory for this demo; structured form submits append (up to 50 per
+            id). Other JSON bodies replace the bucket. Matches{' '}
             <code className="stored-data-panel__code">GET /api/get-data/:userId</code>.
           </p>
           {storedView.fetchedAt && (

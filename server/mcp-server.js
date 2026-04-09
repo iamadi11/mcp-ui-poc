@@ -79,9 +79,42 @@ export class MCPServer {
     };
   }
 
-  // Store user data
-  storeUserData(userId, data) {
-    this.userData.set(userId, data);
+  /**
+   * Store user data. Payloads with `kind: 'form-submit'` append to a capped list
+   * so repeated demo submits are visible; other shapes replace the bucket (demo API).
+   */
+  storeUserData(userId, incoming) {
+    if (incoming == null || typeof incoming !== 'object') {
+      this.userData.set(userId, incoming);
+      return;
+    }
+    if (incoming.kind !== 'form-submit') {
+      this.userData.set(userId, incoming);
+      return;
+    }
+
+    const prev = this.userData.get(userId);
+    let submissions = [];
+
+    if (prev && typeof prev === 'object') {
+      if (Array.isArray(prev.submissions)) {
+        submissions = prev.submissions.slice();
+      } else if (prev.kind === 'form-submit') {
+        submissions = [{ ...prev }];
+      }
+    }
+
+    submissions.push({
+      ...incoming,
+      storedAt: new Date().toISOString(),
+    });
+
+    const maxSubmissions = 50;
+    if (submissions.length > maxSubmissions) {
+      submissions = submissions.slice(-maxSubmissions);
+    }
+
+    this.userData.set(userId, { submissions });
   }
 
   // Get user data
