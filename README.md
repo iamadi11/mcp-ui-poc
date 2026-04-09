@@ -282,6 +282,23 @@ The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn sh
 - **Responsive**: Builders collapse to a single column on small screens; toasts move to the bottom on narrow viewports
 - **Feedback**: Focus rings on keyboard focus; selection and scrollbars stay low-contrast
 
+### Tailwind troubleshooting
+
+If utility classes appear missing (for example `text-lg`, `space-y-6`, or responsive `sm:*` styles), run this quick checklist:
+
+1. Confirm `client/src/main.jsx` imports `./index.css`.
+2. Confirm `client/vite.config.js` includes `@tailwindcss/vite` in `plugins`.
+3. Confirm `client/src/index.css` starts with:
+   ```css
+   @import 'tailwindcss';
+   @source "./**/*.{js,jsx}";
+   ```
+4. Rebuild from repo root:
+   ```bash
+   npm run build
+   ```
+5. Verify generated CSS in `client/dist/assets/*.css` includes utility selectors such as `.text-lg` and `.space-y-6`.
+
 ## Security and practices
 
 ### Data handling (demo scope)
