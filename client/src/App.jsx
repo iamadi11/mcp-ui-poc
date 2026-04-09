@@ -430,6 +430,7 @@ function dashboardDefaultDataForType(type) {
   if (type === 'metric') return { value: '0', label: 'No data' }
   if (type === 'list') return { items: ['Item 1', 'Item 2', 'Item 3'] }
   return {
+    chartType: 'bar',
     values: [100, 150, 200],
     labels: ['Jan', 'Feb', 'Mar'],
   }
@@ -577,6 +578,38 @@ function DashboardBuilder({ onGenerateDashboard, generating }) {
                     />
                   </div>
                 </div>
+                {widget.type === 'chart' && (
+                  <div className="space-y-2">
+                    <Label htmlFor={`widget-${index}-chart-type`}>
+                      Chart style
+                    </Label>
+                    <Select
+                      value={widget.data?.chartType ?? 'bar'}
+                      onValueChange={(newChartType) =>
+                        updateWidget(index, {
+                          ...widget,
+                          data: {
+                            ...dashboardDefaultDataForType('chart'),
+                            ...widget.data,
+                            chartType: newChartType,
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id={`widget-${index}-chart-type`}
+                        className="w-full min-w-0"
+                      >
+                        <SelectValue placeholder="Chart style" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bar">Bar chart</SelectItem>
+                        <SelectItem value="pie">Pie chart</SelectItem>
+                        <SelectItem value="line">Line chart</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="flex justify-end border-t border-border/40 pt-3">
                   <Button
                     type="button"

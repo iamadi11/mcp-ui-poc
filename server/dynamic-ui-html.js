@@ -120,27 +120,59 @@ export function createDashboardHTML(config, dashboardId) {
         let chartData = data
         if (data.value && data.label && !data.values) {
           chartData = {
+            chartType: data.chartType ?? 'bar',
             values: [parseInt(String(data.value).replace(/,/g, ''), 10) || 0],
             labels: [data.label],
           }
         }
         if (!chartData.values || !chartData.labels) {
-          chartData = { values: [0], labels: ['No Data'] }
+          chartData = { chartType: chartData.chartType ?? 'bar', values: [0], labels: ['No Data'] }
         }
+        const chartType = chartData.chartType ?? 'bar'
         const maxV = Math.max(1, ...chartData.values)
-        const bars = chartData.values
-          .map(
-            (value) =>
-              `<div class="gen-bar" style="height:${(value / maxV) * 160}px">${value}</div>`
-          )
-          .join('')
         const labels = chartData.labels
           .map((label) => `<span>${label}</span>`)
           .join('')
+        let chartBody = ''
+        if (chartType === 'line') {
+          const pts = lineChartPolylinePoints(chartData.values)
+          chartBody = `
+            <div class="gen-line-chart">
+              <svg class="gen-line-svg" viewBox="0 0 100 50" preserveAspectRatio="none" role="img" aria-label="Line chart">
+                <polyline class="gen-line-poly" points="${pts}" />
+              </svg>
+            </div>
+          `
+        } else if (chartType === 'pie') {
+          const total = chartData.values.reduce((sum, val) => sum + val, 0) || 1
+          const segments = chartData.values
+            .map((value, index) => {
+              const pct = (value / total) * 100
+              const start = chartData.values
+                .slice(0, index)
+                .reduce((s, v) => s + (v / total) * 100, 0)
+              const end = start + pct
+              return `${PIE_COLORS[index % PIE_COLORS.length]} ${start}% ${end}%`
+            })
+            .join(', ')
+          chartBody = `
+            <div class="gen-pie-wrap">
+              <div class="gen-pie" style="background:conic-gradient(${segments})"></div>
+            </div>
+          `
+        } else {
+          const bars = chartData.values
+            .map(
+              (value) =>
+                `<div class="gen-bar" style="height:${(value / maxV) * 160}px">${value}</div>`
+            )
+            .join('')
+          chartBody = `<div class="gen-chart-row">${bars}</div>`
+        }
         return `
           <div class="gen-widget">
             <h3>${wtitle}</h3>
-            <div class="gen-chart-row">${bars}</div>
+            ${chartBody}
             <div class="gen-chart-labels">${labels}</div>
           </div>
         `

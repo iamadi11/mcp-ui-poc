@@ -123,18 +123,19 @@ function StructForm({ id, config, onAction }) {
 }
 
 function normalizeChartWidgetData(data) {
-  if (!data) return { values: [0], labels: ['No Data'] }
+  if (!data) return { chartType: 'bar', values: [0], labels: ['No Data'] }
   let chartData = data
   if (data.value != null && data.label != null && !data.values) {
     chartData = {
+      chartType: data.chartType ?? 'bar',
       values: [parseInt(String(data.value).replace(/,/g, ''), 10) || 0],
       labels: [data.label],
     }
   }
   if (!chartData.values || !chartData.labels) {
-    return { values: [0], labels: ['No Data'] }
+    return { chartType: chartData.chartType ?? 'bar', values: [0], labels: ['No Data'] }
   }
-  return chartData
+  return { chartType: 'bar', ...chartData }
 }
 
 function StructDashboardWidget({ widget }) {
@@ -164,10 +165,47 @@ function StructDashboardWidget({ widget }) {
   }
   if (type === 'chart') {
     const chartData = normalizeChartWidgetData(data)
+    const chartType = chartData.chartType ?? 'bar'
     const maxV = Math.max(1, ...chartData.values)
-    return (
-      <div className="struct-widget">
-        <h3>{wtitle}</h3>
+    let chartBody = null
+
+    if (chartType === 'line') {
+      const pts = lineChartPolylinePoints(chartData.values)
+      chartBody = (
+        <div className="struct-line-chart">
+          <svg
+            className="struct-line-svg"
+            viewBox="0 0 100 50"
+            preserveAspectRatio="none"
+            role="img"
+            aria-label="Line chart"
+          >
+            <polyline className="struct-line-poly" points={pts} />
+          </svg>
+        </div>
+      )
+    } else if (chartType === 'pie') {
+      const total = chartData.values.reduce((s, v) => s + v, 0) || 1
+      let start = 0
+      const segments = chartData.values
+        .map((value, index) => {
+          const pct = (value / total) * 100
+          const s = start
+          start += pct
+          const end = start
+          return `${PIE_COLORS[index % PIE_COLORS.length]} ${s}% ${end}%`
+        })
+        .join(', ')
+      chartBody = (
+        <div className="struct-pie-wrap">
+          <div
+            className="struct-pie"
+            style={{ background: `conic-gradient(${segments})` }}
+          />
+        </div>
+      )
+    } else {
+      chartBody = (
         <div className="struct-chart-row">
           {chartData.values.map((value, i) => (
             <div
@@ -179,6 +217,12 @@ function StructDashboardWidget({ widget }) {
             </div>
           ))}
         </div>
+      )
+    }
+    return (
+      <div className="struct-widget">
+        <h3>{wtitle}</h3>
+        {chartBody}
         <div className="struct-chart-labels">
           {chartData.labels.map((label, i) => (
             <span key={i}>{label}</span>

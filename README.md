@@ -157,7 +157,7 @@ Create dynamic forms with:
 Generate analytics dashboards with:
 - **Metric Widgets**: Display key performance indicators
 - **List Widgets**: Show activity feeds and data lists
-- **Chart Widgets**: Embedded data visualizations
+- **Chart Widgets**: Embedded visualizations with selectable bar/pie/line style
 - **Responsive Layout**: Auto-adjusting grid system
 
 ### Chart Builder
