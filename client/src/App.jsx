@@ -274,7 +274,7 @@ function FormBuilder({ onGenerateForm, generating }) {
           .
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="builder-main-content space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="form-title">Form title</Label>
@@ -506,7 +506,7 @@ function DashboardBuilder({ onGenerateDashboard, generating }) {
           . Switching type resets sample data for that widget shape.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="builder-main-content space-y-6">
         <div className="space-y-2">
           <Label htmlFor="dashboard-title">Dashboard title</Label>
           <Input
@@ -524,7 +524,7 @@ function DashboardBuilder({ onGenerateDashboard, generating }) {
         <Separator />
 
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="builder-section-header flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-sm font-semibold tracking-tight">Widgets</h4>
             <Button type="button" variant="outline" size="sm" onClick={addWidget}>
               Add widget
@@ -534,9 +534,9 @@ function DashboardBuilder({ onGenerateDashboard, generating }) {
           {dashboardConfig.widgets.map((widget, index) => (
             <Card
               key={index}
-              className="border-border/40 bg-muted/15 py-0 shadow-none"
+              className="builder-item-card border-border/40 bg-muted/15 py-0 shadow-none"
             >
-              <CardContent className="space-y-4 px-4 py-4">
+              <CardContent className="builder-item-content space-y-4 px-4 py-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor={`widget-${index}-type`}>Type</Label>
@@ -610,7 +610,7 @@ function DashboardBuilder({ onGenerateDashboard, generating }) {
                     </Select>
                   </div>
                 )}
-                <div className="flex justify-end border-t border-border/40 pt-3">
+                <div className="builder-item-actions flex justify-end border-t border-border/40 pt-3">
                   <Button
                     type="button"
                     variant="destructive"
@@ -666,7 +666,7 @@ function ChartBuilder({ onGenerateChart, generating }) {
           .
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="builder-main-content space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="chart-title">Chart title</Label>
