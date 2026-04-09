@@ -6,6 +6,14 @@
   "outputDirectory": "client/dist",
   "rewrites": [
     {
+      "source": "/api",
+      "destination": "/api"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
