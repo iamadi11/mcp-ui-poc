@@ -77,7 +77,7 @@ mcp-ui-poc/
 ## API endpoints
 
 ### Health Check
-- `GET /api/health` - Server status and health information. Response includes **`mcp`**: current in-memory counts and configured limits (`maxUiComponents`, `maxUserDataKeys`, `maxSubmissionsPerUser`) for operators.
+- `GET /api/health` - Server status and health information. Response includes **`mcp`**: current in-memory counts and configured limits (`maxUiComponents`, `maxUserDataKeys`, `maxSubmissionsPerUser`) for operators. The app header shows these values when the API is reachable (no extra request beyond the existing health poll).
 
 ### Scaling (in-memory MCP demo)
 

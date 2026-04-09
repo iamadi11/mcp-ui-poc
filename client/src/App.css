@@ -490,6 +490,25 @@ body {
   font-size: 0.85em;
 }
 
+.status-mcp-line {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: inherit;
+  opacity: 0.92;
+}
+
+.status-mcp-seg {
+  white-space: nowrap;
+}
+
+.status-mcp-dot {
+  margin: 0 0.2rem;
+  opacity: 0.65;
+}
+
 .status-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.88em;

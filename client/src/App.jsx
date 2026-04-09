@@ -1142,6 +1142,30 @@ function App() {
                   ({new Date(health.payload.timestamp).toLocaleTimeString()})
                 </span>
               )}
+              {health.payload.mcp && (
+                <span className="status-mcp-line">
+                  <span className="status-mcp-seg" title="Tracked UI components vs limit">
+                    UI {health.payload.mcp.uiComponentCount}/
+                    {health.payload.mcp.limits.maxUiComponents}
+                  </span>
+                  <span className="status-mcp-dot" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="status-mcp-seg" title="User data keys vs limit">
+                    Keys {health.payload.mcp.userDataKeyCount}/
+                    {health.payload.mcp.limits.maxUserDataKeys}
+                  </span>
+                  <span className="status-mcp-dot" aria-hidden="true">
+                    ·
+                  </span>
+                  <span
+                    className="status-mcp-seg"
+                    title="Max form-submit rows stored per user id"
+                  >
+                    ≤{health.payload.mcp.limits.maxSubmissionsPerUser} subs/user
+                  </span>
+                </span>
+              )}
             </span>
           )}
           {health.state === 'error' && (
