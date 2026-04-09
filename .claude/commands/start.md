@@ -4,29 +4,44 @@
 
 Always follow **`docs/AI_WORKFLOW.md`** (Research → Plan → Test definition → Implement → Tests & checks → Validate → Document → Instrument). Do not skip steps without a one-line rationale.
 
+### Source of truth
+
+- **The codebase is the source of truth** for behavior, APIs, patterns, and what is actually shipped. Read and trace real code paths before deciding what to build.
+- **`README.md`** (and **`CLAUDE.md`**, **`docs/AI_WORKFLOW.md`**) supply product intent, structure overview, ports, and scripts — use them to understand **what this project is supposed to do** and how to run it.
+- If README and code disagree (endpoints, flows, folder layout), **follow the code** and note the doc drift only if you fix docs in scope.
+
 ---
 
-## Phase A — Auto-collect and pick a feature
+## Phase A — Project context, then auto-collect and pick a feature
 
 Run this **before** writing implementation code.
 
-1. **Orient** — Read **`README.md`**, **`CLAUDE.md`**, and **`docs/AI_WORKFLOW.md`**.
-2. **Harvest candidates** (scoped search in `server/` and `client/` first):
-   - `TODO`, `FIXME`, `HACK`, `XXX` comments
-   - Obvious gaps: missing validation, error states, accessibility, inconsistent UX, undocumented API behavior
-   - **`explore-codebase`** skill if the repo layout is unclear
-3. **Optional external signals** (only if available in-session): issue trackers, product notes, team MCP — never invent tickets.
-4. **Choose exactly one** item to ship in this run:
-   - Prefer **small, high-impact** scope with clear acceptance criteria
-   - Reject vague multi-week epics; narrow until one vertical slice is feasible now
-5. **Record** in your working notes: chosen feature, why it wins over alternatives, and **definition of done** (observable behavior).
+### A1 — Understand the project (codebase first, README second)
+
+1. **Codebase (mandatory)** — Establish how the app actually works:
+   - Entry points: e.g. **`server/index.js`**, **`client/src/main.jsx`**, **`client/src/App.jsx`** (adjust if the repo differs).
+   - Trace **`server/`** routes, MCP-related modules, and **`client/src/`** UI flow enough to describe the main user journey in plain language.
+   - Use **`explore-codebase`** when layout or dependencies are unclear; prefer scoped search under `server/` and `client/` per **`docs/AI_WORKFLOW.md`**.
+2. **README + project docs** — Read **`README.md`** for feature list, API summary, ports, and install/run steps; skim **`CLAUDE.md`** and **`docs/AI_WORKFLOW.md`** for workflow and boundaries.
+3. **Synthesize** — In your working notes, write a short **“what this project does”** paragraph grounded in **code + README** (not generic stack guesses). This is the lens for every later step.
+
+### A2 — Harvest candidates and choose one feature
+
+1. **Harvest** (still code-led): `TODO`, `FIXME`, `HACK`, `XXX` in `server/` and `client/`; gaps you observed while mapping (validation, errors, a11y, UX, undocumented behavior).
+2. **Optional external signals** (only if available in-session): issue trackers, product notes, team MCP — never invent tickets.
+3. **Choose exactly one** item to ship in this run:
+   - Prefer **small, high-impact** scope with clear acceptance criteria that **fits existing patterns** you already saw in the codebase.
+   - Reject vague multi-week epics; narrow until one vertical slice is feasible now.
+4. **Record**: chosen feature, why it wins over alternatives, and **definition of done** (observable behavior).
 
 ---
 
-## Phase B — Research, plan, test definition
+## Phase B — Research, plan, test definition (extends A1)
 
-1. **`research-first`** (`.claude/skills/research-first/SKILL.md`) — feasibility, constraints, alternatives, security (no secrets in code or logs).
-2. **`plan-task`** (`.claude/skills/plan-task/SKILL.md`) — atomic tasks, files/modules touched, API/UX impact.
+Research **builds on** the project context from Phase A1; do not “research in a vacuum.”
+
+1. **`research-first`** (`.claude/skills/research-first/SKILL.md`) — Re-check **`README.md`** and **relevant files** under **`server/`** / **`client/`** for the chosen feature; confirm feasibility, constraints, and alternatives against **actual** imports and patterns. Security: no secrets in code or logs.
+2. **`plan-task`** (`.claude/skills/plan-task/SKILL.md`) — Atomic tasks, concrete files/modules to touch, API/UX impact — aligned with how similar work is already done in this repo.
 3. State **how you will prove** correctness: `client/` lint, `npm run build`, and **manual browser steps** for any UI change.
 
 ---
