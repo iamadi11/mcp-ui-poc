@@ -191,7 +191,7 @@ npx shadcn@latest add dropdown-menu
 
 Imports use the **`@/`** alias (e.g. `import { Button } from '@/components/ui/button'`). New primitives should respect existing glass surfaces—prefer `className` + `cn()` to blend with `App.css` panels rather than replacing the mesh shell.
 
-The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn shell: **`Card`**, **`Button`**, **`Input`**, **`Label`**, **`Select`**, **`Checkbox`** (forms only), and **`Separator`**, preserving the existing payloads for **`generate-form`**, **`generate-dashboard`**, and **`generate-chart`**.
+The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn shell: **`Card`**, **`Button`**, **`Input`**, **`Label`**, **`Select`**, **`Checkbox`** (forms only), and **`Separator`**, preserving the existing payloads for **`generate-form`**, **`generate-dashboard`**, and **`generate-chart`**. The **AI Generator** tab now follows the same shell language (`Card`, `Button`, `Label`) with a styled textarea input for natural-language prompts.
 
 ## Technologies
 

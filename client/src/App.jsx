@@ -885,59 +885,63 @@ function AIGenerator({ onGenerateAI, userId }) {
   };
 
   return (
-    <div className="ai-generator">
-      <h3>AI-Powered Component Generator</h3>
-      <p className="ai-description">
-        Describe the component you want to create using natural language. 
-        The AI will generate a component based on your description.
-      </p>
-      
-      <div className="form-group">
-        <label>Component Description:</label>
-        <textarea
-          className="form-control"
-          value={description}
-          onChange={(e) => {
-            setDescription(e.target.value)
-            if (submitError) setSubmitError(null)
-          }}
-          placeholder="e.g., Create a contact form with name, email, and message fields"
-          rows={4}
-        />
-      </div>
+    <Card className="ai-builder-card border-border/50 bg-card/50 text-card-foreground shadow-sm backdrop-blur-sm">
+      <CardHeader>
+        <CardTitle className="text-lg">AI Generator</CardTitle>
+        <CardDescription className="ai-description">
+          Describe the component you want to create using natural language. The
+          AI will generate a component based on your description.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="builder-main-content space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="ai-description">Component description</Label>
+          <textarea
+            id="ai-description"
+            className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            value={description}
+            onChange={(e) => {
+              setDescription(e.target.value)
+              if (submitError) setSubmitError(null)
+            }}
+            placeholder="e.g., Create a contact form with name, email, and message fields"
+            rows={4}
+          />
+        </div>
 
-      {templates.length > 0 && (
-        <div className="templates-section">
-          <h4>Quick Templates</h4>
-          <div className="template-buttons">
-            {templates.map((template, index) => (
-              <button
-                key={index}
-                onClick={() => applyTemplate(template)}
-                className="btn btn-outline template-btn"
-              >
-                {template.type}
-              </button>
-            ))}
+        {templates.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold tracking-tight text-muted-foreground">
+              Quick templates
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {templates.map((template, index) => (
+                <Button
+                  key={index}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyTemplate(template)}
+                >
+                  {template.type}
+                </Button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
-      {submitError && (
-        <div className="error-message ai-generator__error" role="alert">
-          <p>{submitError}</p>
-        </div>
-      )}
-
-      <button 
-        onClick={handleSubmit} 
-        className="btn btn-success generate-btn"
-        disabled={loading}
-      >
-        {loading ? 'Generating...' : 'Generate Component'}
-      </button>
-    </div>
-  );
+        )}
+      </CardContent>
+      <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
+        {submitError && (
+          <p className="builder-inline-error" role="alert">
+            {submitError}
+          </p>
+        )}
+        <Button type="button" onClick={handleSubmit} disabled={loading}>
+          {loading ? 'Generating…' : 'Generate component'}
+        </Button>
+      </CardFooter>
+    </Card>
+  )
 }
 
 function App() {
