@@ -43,7 +43,7 @@ mcp-ui-poc/
 │   │   ├── glassAppearance.js   # Glass CSS variables + persistence
 │   │   ├── index.css            # Tailwind v4 + shadcn semantic tokens (`@theme inline`)
 │   │   ├── main.jsx             # React entry
-│   │   ├── components/ui/       # shadcn/ui primitives (Button, Card, Tabs, …)
+│   │   ├── components/ui/       # shadcn/ui primitives (Button, Card, Tabs, Select, …)
 │   │   └── lib/utils.js         # `cn()` helper (clsx + tailwind-merge)
 │   ├── components.json          # shadcn/ui config (`tsx: false` → `.jsx` output)
 │   ├── jsconfig.json            # `@/*` → `src/*` for imports
@@ -185,6 +185,8 @@ npx shadcn@latest add dropdown-menu
 ```
 
 Imports use the **`@/`** alias (e.g. `import { Button } from '@/components/ui/button'`). New primitives should respect existing glass surfaces—prefer `className` + `cn()` to blend with `App.css` panels rather than replacing the mesh shell.
+
+The **Form Builder** tab is the reference implementation: **`Card`**, **`Button`**, **`Input`**, **`Label`**, **`Select`**, **`Checkbox`**, and **`Separator`** wired to the same `formConfig` shape as before.
 
 ## Technologies
 

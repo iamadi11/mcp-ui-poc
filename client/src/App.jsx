@@ -18,6 +18,26 @@ import {
 } from './StructuredUIPreview'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Separator } from '@/components/ui/separator'
 
 function submissionSummaryFromPayload(data) {
   if (data && Array.isArray(data.submissions)) {
@@ -185,127 +205,220 @@ function GlassControls({ glass, setGlass }) {
   )
 }
 
-// Form Builder Component
+// Form Builder Component (shadcn/ui + Tailwind)
 function FormBuilder({ onGenerateForm }) {
   const [formConfig, setFormConfig] = useState({
     title: 'Contact Form',
     fields: [
-      { name: 'name', type: 'text', label: 'Full Name', placeholder: 'Enter your full name', required: true },
-      { name: 'email', type: 'email', label: 'Email Address', placeholder: 'Enter your email', required: true }
+      {
+        name: 'name',
+        type: 'text',
+        label: 'Full Name',
+        placeholder: 'Enter your full name',
+        required: true,
+      },
+      {
+        name: 'email',
+        type: 'email',
+        label: 'Email Address',
+        placeholder: 'Enter your email',
+        required: true,
+      },
     ],
-    submitText: 'Submit'
-  });
+    submitText: 'Submit',
+  })
 
   const addField = () => {
-    setFormConfig(prev => ({
+    setFormConfig((prev) => ({
       ...prev,
-      fields: [...prev.fields, {
-        name: `field_${prev.fields.length + 1}`,
-        type: 'text',
-        label: 'New Field',
-        placeholder: 'Enter value',
-        required: false
-      }]
-    }));
-  };
+      fields: [
+        ...prev.fields,
+        {
+          name: `field_${prev.fields.length + 1}`,
+          type: 'text',
+          label: 'New Field',
+          placeholder: 'Enter value',
+          required: false,
+        },
+      ],
+    }))
+  }
 
   const updateField = (index, field) => {
-    setFormConfig(prev => ({
+    setFormConfig((prev) => ({
       ...prev,
-      fields: prev.fields.map((f, i) => i === index ? field : f)
-    }));
-  };
+      fields: prev.fields.map((f, i) => (i === index ? field : f)),
+    }))
+  }
 
   const removeField = (index) => {
-    setFormConfig(prev => ({
+    setFormConfig((prev) => ({
       ...prev,
-      fields: prev.fields.filter((_, i) => i !== index)
-    }));
-  };
+      fields: prev.fields.filter((_, i) => i !== index),
+    }))
+  }
 
   const handleSubmit = () => {
-    onGenerateForm(formConfig);
-  };
+    onGenerateForm(formConfig)
+  }
 
   return (
-    <div className="form-builder">
-      <h3>Form Builder</h3>
-      
-      <div className="form-group">
-        <label>Form Title:</label>
-        <input
-          type="text"
-          className="form-control"
-          value={formConfig.title}
-          onChange={(e) => setFormConfig(prev => ({ ...prev, title: e.target.value }))}
-        />
-      </div>
-
-      <div className="form-group">
-        <label>Submit Button Text:</label>
-        <input
-          type="text"
-          className="form-control"
-          value={formConfig.submitText}
-          onChange={(e) => setFormConfig(prev => ({ ...prev, submitText: e.target.value }))}
-        />
-      </div>
-
-      <div className="fields-section">
-        <h4>Form Fields</h4>
-        {formConfig.fields.map((field, index) => (
-          <div key={index} className="field-editor">
-            <div className="field-row">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Field name"
-                value={field.name}
-                onChange={(e) => updateField(index, { ...field, name: e.target.value })}
-              />
-              <select
-                className="form-control"
-                value={field.type}
-                onChange={(e) => updateField(index, { ...field, type: e.target.value })}
-              >
-                <option value="text">Text</option>
-                <option value="email">Email</option>
-                <option value="number">Number</option>
-                <option value="select">Select</option>
-                <option value="textarea">Textarea</option>
-              </select>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Label"
-                value={field.label}
-                onChange={(e) => updateField(index, { ...field, label: e.target.value })}
-              />
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Placeholder"
-                value={field.placeholder || ''}
-                onChange={(e) => updateField(index, { ...field, placeholder: e.target.value })}
-              />
-              <label>
-                <input
-                  type="checkbox"
-                  checked={field.required}
-                  onChange={(e) => updateField(index, { ...field, required: e.target.checked })}
-                />
-                Required
-              </label>
-              <button onClick={() => removeField(index)} className="btn btn-danger remove-btn">Remove</button>
-            </div>
+    <Card className="form-builder-card border-border/50 bg-card/50 text-card-foreground shadow-sm backdrop-blur-sm">
+      <CardHeader>
+        <CardTitle className="text-lg">Form Builder</CardTitle>
+        <CardDescription>
+          Title, submit label, and field list are sent to{' '}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">
+            POST /api/generate-form
+          </code>
+          .
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="form-title">Form title</Label>
+            <Input
+              id="form-title"
+              value={formConfig.title}
+              onChange={(e) =>
+                setFormConfig((prev) => ({ ...prev, title: e.target.value }))
+              }
+            />
           </div>
-        ))}
-        <button onClick={addField} className="btn btn-success add-btn">Add Field</button>
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="form-submit">Submit button text</Label>
+            <Input
+              id="form-submit"
+              value={formConfig.submitText}
+              onChange={(e) =>
+                setFormConfig((prev) => ({
+                  ...prev,
+                  submitText: e.target.value,
+                }))
+              }
+            />
+          </div>
+        </div>
 
-      <button onClick={handleSubmit} className="btn btn-success generate-btn">Generate Form</button>
-    </div>
-  );
+        <Separator />
+
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-sm font-semibold tracking-tight">Fields</h4>
+            <Button type="button" variant="outline" size="sm" onClick={addField}>
+              Add field
+            </Button>
+          </div>
+
+          {formConfig.fields.map((field, index) => (
+            <Card
+              key={index}
+              className="border-border/40 bg-muted/15 py-0 shadow-none"
+            >
+              <CardContent className="space-y-4 px-4 py-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-2">
+                    <Label htmlFor={`field-${index}-name`}>Name</Label>
+                    <Input
+                      id={`field-${index}-name`}
+                      placeholder="field_name"
+                      value={field.name}
+                      onChange={(e) =>
+                        updateField(index, { ...field, name: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`field-${index}-type`}>Type</Label>
+                    <Select
+                      value={field.type}
+                      onValueChange={(value) =>
+                        updateField(index, { ...field, type: value })
+                      }
+                    >
+                      <SelectTrigger
+                        id={`field-${index}-type`}
+                        className="w-full min-w-0"
+                        size="default"
+                      >
+                        <SelectValue placeholder="Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="email">Email</SelectItem>
+                        <SelectItem value="number">Number</SelectItem>
+                        <SelectItem value="select">Select</SelectItem>
+                        <SelectItem value="textarea">Textarea</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`field-${index}-label`}>Label</Label>
+                    <Input
+                      id={`field-${index}-label`}
+                      placeholder="Label"
+                      value={field.label}
+                      onChange={(e) =>
+                        updateField(index, { ...field, label: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`field-${index}-ph`}>Placeholder</Label>
+                    <Input
+                      id={`field-${index}-ph`}
+                      placeholder="Placeholder"
+                      value={field.placeholder || ''}
+                      onChange={(e) =>
+                        updateField(index, {
+                          ...field,
+                          placeholder: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-3">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`field-${index}-required`}
+                      checked={field.required}
+                      onCheckedChange={(checked) =>
+                        updateField(index, {
+                          ...field,
+                          required: checked === true,
+                        })
+                      }
+                    />
+                    <Label
+                      htmlFor={`field-${index}-required`}
+                      className="text-sm font-normal"
+                    >
+                      Required
+                    </Label>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => removeField(index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </CardContent>
+      <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
+        <Button type="button" onClick={handleSubmit}>
+          Generate form
+        </Button>
+      </CardFooter>
+    </Card>
+  )
 }
 
 // Dashboard Builder Component
