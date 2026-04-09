@@ -316,8 +316,8 @@ function FormBuilder({ onGenerateForm, generating }) {
               key={index}
               className="form-builder-field-card border-border/40 bg-muted/15 py-0 shadow-none"
             >
-              <CardContent className="space-y-4 px-4 py-4">
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <CardContent className="builder-item-content space-y-4 px-4 py-4">
+                <div className="builder-fields-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-2">
                     <Label htmlFor={`field-${index}-name`}>Name</Label>
                     <Input
@@ -379,7 +379,7 @@ function FormBuilder({ onGenerateForm, generating }) {
                     />
                   </div>
                 </div>
-                <div className="form-builder-field-actions flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-3">
+                <div className="form-builder-field-actions flex flex-wrap items-start justify-between gap-3 border-t border-border/40 pt-3 sm:items-center">
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id={`field-${index}-required`}
@@ -402,6 +402,7 @@ function FormBuilder({ onGenerateForm, generating }) {
                     type="button"
                     variant="destructive"
                     size="sm"
+                    className="builder-remove-btn sm:ml-auto"
                     onClick={() => removeField(index)}
                   >
                     Remove
@@ -547,7 +548,7 @@ function DashboardBuilder({ onGenerateDashboard, generating }) {
               className="builder-item-card border-border/40 bg-muted/15 py-0 shadow-none"
             >
               <CardContent className="builder-item-content space-y-4 px-4 py-4">
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="builder-fields-grid grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor={`widget-${index}-type`}>Type</Label>
                     <Select
@@ -673,6 +674,7 @@ function DashboardBuilder({ onGenerateDashboard, generating }) {
                     type="button"
                     variant="destructive"
                     size="sm"
+                    className="builder-remove-btn"
                     onClick={() => removeWidget(index)}
                   >
                     Remove
@@ -736,7 +738,7 @@ function ChartBuilder({ onGenerateChart, generating }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="builder-main-content space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="builder-fields-grid grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="chart-title">Chart title</Label>
             <Input
@@ -769,7 +771,7 @@ function ChartBuilder({ onGenerateChart, generating }) {
 
         <Separator />
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="builder-fields-grid grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="chart-values">Values (comma-separated)</Label>
             <Input

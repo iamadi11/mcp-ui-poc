@@ -776,9 +776,17 @@ body {
   padding: var(--spacing-md);
 }
 
+.builder-fields-grid {
+  row-gap: var(--spacing-md);
+}
+
 .builder-item-actions {
   border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
   padding-top: var(--spacing-sm);
+}
+
+.builder-remove-btn {
+  min-width: 6.25rem;
 }
 
 .builder-inline-error {
@@ -809,6 +817,10 @@ body {
 
   .builder-item-content {
     padding: var(--spacing-sm);
+  }
+
+  .builder-remove-btn {
+    width: 100%;
   }
 }
 

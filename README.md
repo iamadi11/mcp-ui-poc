@@ -27,6 +27,7 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 - **Generate feedback**: Form, Dashboard, and Chart builders disable their primary **Generate** control and show **Generating…** while the corresponding `POST /api/generate-*` request is in flight (same idea as the AI tab’s loading state).
 - **Form Builder polish**: Field editor cards use the glass palette/borders from the shell and keep a cleaner responsive grid (`2` columns on medium widths, `4` on extra-wide screens) to avoid cramped controls.
 - **Builder spacing polish**: Form, Dashboard, and Chart now share section headers, nested card spacing, and action-row rhythm for a more consistent editing flow across tabs.
+- **Builder control alignment**: Editor rows use shared field-grid spacing and stable remove-button sizing so controls no longer crowd/clip on medium and narrow widths.
 - **Typography**: DM Sans, restrained scale
 - **Theme**: CSS variables; light and dark follow OS preference
 - **Glassmorphism**: Frosted panels, mesh backdrop, and tunable blur—use the **Glass** control (bottom-right) to adjust blur, frost, edge light, saturation, mesh strength, and corner roundness in real time (saved in `localStorage` under `mcp-ui-glass-settings-v1`)
