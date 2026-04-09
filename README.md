@@ -90,7 +90,7 @@ mcp-ui-poc/
 | `MCP_RATE_LIMIT_STORE_PER_MIN` | `180` | Max `POST` `/api/store-data` requests per IP per minute. |
 | `MCP_RATE_LIMIT_SUGGEST_PER_MIN` | `60` | Max `POST` `/api/ai/suggest` requests per IP per minute. |
 
-Set in `.env` or the host dashboard (e.g. Vercel). Data is still **ephemeral** on serverless cold starts—limits only bound RAM within a warm instance. On Vercel, **`trust proxy`** is enabled so the limiter sees the real client IP. Each serverless instance keeps its own in-memory counters (limits still curb abuse per warm instance).
+Set in `.env` or the host dashboard (e.g. Vercel). Data is still **ephemeral** on serverless cold starts—limits only bound RAM within a warm instance. On Vercel, **`trust proxy`** is enabled so the limiter sees the real client IP. Each serverless instance keeps its own in-memory counters (limits still curb abuse per warm instance). When a limit is hit, responses are **429** with JSON `{ "error": "...", "code": "RATE_LIMIT" }` and a **`Retry-After`** header (seconds); the React app shows the server `error` text (and retry hint when present) for generate, AI generate, store-data, and get-data failures.
 
 ### MCP UI Components
 - `GET /api/mcp-ui-example` - Get the static MCP UI demo component

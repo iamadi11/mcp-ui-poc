@@ -11,6 +11,7 @@ import {
   resetUserId,
   formatUserIdShort,
 } from './userSession.js'
+import { errorFromResponse } from './apiError.js'
 import {
   McpPreviewRouter,
   normalizeMcpPreviewResponse,
@@ -538,11 +539,11 @@ function AIGenerator({ onGenerateAI, userId }) {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw await errorFromResponse(response)
       }
-      
-      const data = await response.json();
-      onGenerateAI(data);
+
+      const data = await response.json()
+      onGenerateAI(data)
       setDescription('');
     } catch (error) {
       console.error('Error generating AI component:', error);
@@ -638,7 +639,7 @@ function App() {
         return
       }
       if (!res.ok) {
-        throw new Error(body.error || `HTTP ${res.status}`)
+        throw await errorFromResponse(res, body)
       }
       const data = body.data
       setStoredView({
@@ -770,11 +771,11 @@ function App() {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw await errorFromResponse(response)
       }
-      
-      const data = await response.json();
-      setMcpUIResource(normalizeMcpPreviewResponse(data));
+
+      const data = await response.json()
+      setMcpUIResource(normalizeMcpPreviewResponse(data))
     } catch (error) {
       console.error('Error generating form:', error);
       setError(error.message);
@@ -798,11 +799,11 @@ function App() {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw await errorFromResponse(response)
       }
-      
-      const data = await response.json();
-      setMcpUIResource(normalizeMcpPreviewResponse(data));
+
+      const data = await response.json()
+      setMcpUIResource(normalizeMcpPreviewResponse(data))
     } catch (error) {
       console.error('Error generating dashboard:', error);
       setError(error.message);
@@ -826,11 +827,11 @@ function App() {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw await errorFromResponse(response)
       }
-      
-      const data = await response.json();
-      setMcpUIResource(normalizeMcpPreviewResponse(data));
+
+      const data = await response.json()
+      setMcpUIResource(normalizeMcpPreviewResponse(data))
     } catch (error) {
       console.error('Error generating chart:', error);
       setError(error.message);
@@ -894,7 +895,7 @@ function App() {
           })
           const body = await res.json().catch(() => ({}))
           if (!res.ok) {
-            throw new Error(body.error || `HTTP ${res.status}`)
+            throw await errorFromResponse(res, body)
           }
           const newNotification = {
             id: Date.now(),
