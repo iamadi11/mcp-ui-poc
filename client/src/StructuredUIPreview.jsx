@@ -2,6 +2,24 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 
 const PIE_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#a855f7']
 
+/** SVG viewBox 0 0 100 50 — matches server/dynamic-ui-html.js line chart */
+function lineChartPolylinePoints(values) {
+  const n = values.length
+  if (n === 0) return ''
+  const maxV = Math.max(1, ...values)
+  if (n === 1) {
+    const y = 45 - (values[0] / maxV) * 35
+    return `48,${y} 52,${y}`
+  }
+  return values
+    .map((v, i) => {
+      const x = (i / (n - 1)) * 100
+      const y = 45 - (v / maxV) * 35
+      return `${x},${y}`
+    })
+    .join(' ')
+}
+
 function selectOptions(field) {
   const { options = [], label } = field
   if (!options.length) {
@@ -223,6 +241,28 @@ function StructChart({ id, config, onAction }) {
               {value}
             </div>
           ))}
+        </div>
+        <div className="struct-chart-labels">
+          {data.labels.map((label, i) => (
+            <span key={i}>{label}</span>
+          ))}
+        </div>
+      </>
+    )
+  } else if (type === 'line' && data.values?.length) {
+    const pts = lineChartPolylinePoints(data.values)
+    body = (
+      <>
+        <div className="struct-line-chart">
+          <svg
+            className="struct-line-svg"
+            viewBox="0 0 100 50"
+            preserveAspectRatio="none"
+            role="img"
+            aria-label="Line chart"
+          >
+            <polyline className="struct-line-poly" points={pts} />
+          </svg>
         </div>
         <div className="struct-chart-labels">
           {data.labels.map((label, i) => (

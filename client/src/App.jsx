@@ -659,6 +659,7 @@ function ChartBuilder({ onGenerateChart, generating }) {
               <SelectContent>
                 <SelectItem value="bar">Bar chart</SelectItem>
                 <SelectItem value="pie">Pie chart</SelectItem>
+                <SelectItem value="line">Line chart</SelectItem>
               </SelectContent>
             </Select>
           </div>

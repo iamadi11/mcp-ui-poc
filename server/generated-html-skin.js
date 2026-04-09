@@ -336,4 +336,25 @@ const GENERATED_SKIN_CSS = `
   border-radius: 3px;
   flex-shrink: 0;
 }
+
+.gen-line-chart {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.gen-line-svg {
+  width: 100%;
+  height: 200px;
+  display: block;
+}
+
+.gen-line-poly {
+  fill: none;
+  stroke: var(--gen-accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 `

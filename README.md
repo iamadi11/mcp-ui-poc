@@ -14,7 +14,7 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 - **AI Generator** (default tab): Natural-language descriptions produce the same MCP resources as the typed builders (`POST /api/ai/generate`); inline errors for validation and API failures (no modal alerts)
 - **Form builder**: Text, email, number, select, textarea; required flags and labels
 - **Dashboard builder**: Metrics, lists, and chart widgets
-- **Chart builder**: Bar and pie charts from comma-separated values and labels
+- **Chart builder**: Bar, pie, and line charts from comma-separated values and labels
 - **Preview**: Generated HTML renders inline after each build
 
 ### Server
@@ -163,6 +163,7 @@ Generate analytics dashboards with:
 Create data visualizations:
 - **Bar Charts**: Horizontal bar charts with custom data
 - **Pie Charts**: Circular charts with color-coded segments
+- **Line Charts**: SVG polyline over time-series–style labels (same comma-separated values/labels as bar/pie)
 - **Custom Data**: Input values and labels via comma-separated format
 - **Export Functionality**: Chart export capabilities
 
@@ -293,7 +294,7 @@ The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn sh
 ## Future enhancements
 
 ### Product
-- **More chart types**: Line, area, scatter
+- **More chart types**: Area, scatter (line charts are supported in builders, HTML preview, structured preview, and AI when the description mentions line/trend/over time)
 - **Stronger validation** on builder payloads and stored JSON
 - **Explicit theme toggle** (optional override of system light/dark)
 

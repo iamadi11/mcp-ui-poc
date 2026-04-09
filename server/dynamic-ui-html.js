@@ -172,6 +172,24 @@ export function createDashboardHTML(config, dashboardId) {
 
 const PIE_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#a855f7']
 
+/** SVG viewBox 0 0 100 50 — y axis down; returns polyline `points` attribute value */
+function lineChartPolylinePoints(values) {
+  const n = values.length
+  if (n === 0) return ''
+  const maxV = Math.max(1, ...values)
+  if (n === 1) {
+    const y = 45 - (values[0] / maxV) * 35
+    return `48,${y} 52,${y}`
+  }
+  return values
+    .map((v, i) => {
+      const x = (i / (n - 1)) * 100
+      const y = 45 - (v / maxV) * 35
+      return `${x},${y}`
+    })
+    .join(' ')
+}
+
 export function createChartHTML(config, chartId) {
   const { title, type, data } = config
 
@@ -215,6 +233,19 @@ export function createChartHTML(config, chartId) {
         <div class="gen-pie" style="background:conic-gradient(${segments})"></div>
       </div>
       <div class="gen-legend">${legend}</div>
+    `
+  } else if (type === 'line' && data.values?.length) {
+    const pts = lineChartPolylinePoints(data.values)
+    const labels = data.labels
+      .map((label) => `<span>${label}</span>`)
+      .join('')
+    chartBody = `
+      <div class="gen-line-chart">
+        <svg class="gen-line-svg" viewBox="0 0 100 50" preserveAspectRatio="none" role="img" aria-label="Line chart">
+          <polyline class="gen-line-poly" points="${pts}" />
+        </svg>
+        <div class="gen-chart-labels">${labels}</div>
+      </div>
     `
   }
 

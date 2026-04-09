@@ -169,6 +169,14 @@ export class AIGenerator {
     // Determine chart type
     if (lowerDesc.includes('pie') || lowerDesc.includes('circle')) {
       requirements.data.type = 'pie';
+    } else if (
+      lowerDesc.includes('line') ||
+      lowerDesc.includes('trend') ||
+      lowerDesc.includes('time series') ||
+      lowerDesc.includes('over time') ||
+      lowerDesc.includes('timeline')
+    ) {
+      requirements.data.type = 'line';
     } else {
       requirements.data.type = 'bar';
     }
