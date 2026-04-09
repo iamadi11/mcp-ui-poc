@@ -249,13 +249,15 @@ The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn sh
 2. Configure the dashboard title
 3. Add widgets (metrics, lists, charts)
 4. For chart widgets, choose chart style and edit values/labels (comma-separated)
-5. Generate the dashboard to see the interactive component
+5. Ensure each chart widget has the same number of values and labels (otherwise an inline warning appears and **Generate dashboard** stays disabled)
+6. Generate the dashboard to see the interactive component
 
 ### Creating Charts
 1. Select the "Chart Builder" tab
 2. Choose chart type (bar, pie, or line)
 3. Enter data values and labels
-4. Generate the chart for visualization
+4. Keep values and labels counts equal (otherwise an inline warning appears and **Generate chart** stays disabled)
+5. Generate the chart for visualization
 
 ## Real-time behavior
 
