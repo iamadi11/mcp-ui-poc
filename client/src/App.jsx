@@ -6,6 +6,10 @@ import {
   DEFAULT_GLASS,
   GLASS_STORAGE_KEY,
 } from './glassAppearance.js'
+import {
+  McpPreviewRouter,
+  normalizeMcpPreviewResponse,
+} from './StructuredUIPreview'
 
 function GlassControls({ glass, setGlass }) {
   const [open, setOpen] = useState(false)
@@ -140,35 +144,6 @@ function GlassControls({ glass, setGlass }) {
       )}
     </aside>
   )
-}
-
-// Simple UI Resource Renderer component
-function UIResourceRenderer({ resource, onUIAction }) {
-  const handleMessage = (event) => {
-    if (event.data && (event.data.type === 'tool' || event.data.type === 'notify' || 
-        event.data.type === 'form-submit' || event.data.type === 'dashboard-refresh' || 
-        event.data.type === 'chart-export')) {
-      onUIAction(event.data);
-    }
-  };
-
-  useEffect(() => {
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [onUIAction]);
-
-  if (resource.mimeType === 'text/html') {
-    return (
-      <iframe
-        srcDoc={resource.text}
-        className="mcp-preview-frame"
-        style={{ width: '100%', height: '600px', border: 'none' }}
-        title="MCP-UI Resource"
-      />
-    );
-  }
-
-  return <div>Unsupported resource type: {resource.mimeType}</div>;
 }
 
 // Form Builder Component
@@ -659,7 +634,7 @@ function App() {
       }
       
       const data = await response.json();
-      setMcpUIResource(data.resource);
+      setMcpUIResource(normalizeMcpPreviewResponse(data));
     } catch (error) {
       console.error('Error generating form:', error);
       setError(error.message);
@@ -687,7 +662,7 @@ function App() {
       }
       
       const data = await response.json();
-      setMcpUIResource(data.resource);
+      setMcpUIResource(normalizeMcpPreviewResponse(data));
     } catch (error) {
       console.error('Error generating dashboard:', error);
       setError(error.message);
@@ -715,7 +690,7 @@ function App() {
       }
       
       const data = await response.json();
-      setMcpUIResource(data.resource);
+      setMcpUIResource(normalizeMcpPreviewResponse(data));
     } catch (error) {
       console.error('Error generating chart:', error);
       setError(error.message);
@@ -725,8 +700,8 @@ function App() {
   };
 
   // Generate AI Component
-  const generateAI = async (aiResource) => {
-    setMcpUIResource(aiResource);
+  const generateAI = async (aiPayload) => {
+    setMcpUIResource(normalizeMcpPreviewResponse(aiPayload));
   };
 
   // Handle MCP UI actions
@@ -931,7 +906,7 @@ function App() {
           {mcpUIResource && (
             <div className="generated-ui">
               <h3>Generated UI Component</h3>
-              <UIResourceRenderer resource={mcpUIResource} onUIAction={handleUIAction} />
+              <McpPreviewRouter preview={mcpUIResource} onUIAction={handleUIAction} />
             </div>
           )}
         </section>

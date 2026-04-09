@@ -908,3 +908,229 @@ button:focus-visible,
   line-height: 1.4;
   color: var(--text-muted);
 }
+
+/* Structured (data) MCP preview — matches glass shell, no iframe */
+.mcp-preview-router {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.mcp-preview-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.mcp-preview-mode__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.mcp-preview-mode__opt input {
+  accent-color: var(--accent);
+}
+
+.struct-card {
+  background: var(--glass-fill);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border: 1px solid var(--glass-border-color);
+  border-radius: calc(var(--radius) * var(--glass-radius-scale));
+  box-shadow: var(--glass-shadow);
+  padding: var(--spacing-lg);
+}
+
+.struct-card--wide {
+  max-width: 100%;
+}
+
+.struct-title {
+  margin: 0 0 var(--spacing-lg);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.struct-field {
+  margin-bottom: var(--spacing-md);
+}
+
+.struct-field label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.struct-field input,
+.struct-field select,
+.struct-field textarea {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: calc(var(--radius-sm) * var(--glass-radius-scale));
+  border: 1px solid var(--glass-border-color);
+  background: var(--glass-input-fill);
+  color: var(--text);
+  font: inherit;
+}
+
+.struct-actions {
+  margin-top: var(--spacing-lg);
+}
+
+.struct-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: calc(var(--radius-sm) * var(--glass-radius-scale));
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.struct-btn--ghost {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--glass-border-color);
+}
+
+.struct-btn--amber {
+  background: #d97706;
+  color: #fff;
+}
+
+.struct-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.struct-widget {
+  background: var(--glass-fill-subtle);
+  border: 1px solid var(--glass-border-color);
+  border-radius: calc(var(--radius-sm) * var(--glass-radius-scale));
+  padding: var(--spacing-md);
+}
+
+.struct-widget h3 {
+  margin: 0 0 var(--spacing-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.struct-metric-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.struct-metric-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.struct-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.struct-chart-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  min-height: 120px;
+}
+
+.struct-chart-row--tall {
+  min-height: 200px;
+}
+
+.struct-bar {
+  flex: 1;
+  min-width: 28px;
+  max-width: 64px;
+  background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #000));
+  border-radius: 4px 4px 0 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.struct-chart-labels {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.struct-pie-wrap {
+  display: flex;
+  justify-content: center;
+  margin: var(--spacing-md) 0;
+}
+
+.struct-pie {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+}
+
+.struct-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  justify-content: center;
+  margin-top: var(--spacing-md);
+}
+
+.struct-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.struct-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.struct-error,
+.struct-empty {
+  padding: var(--spacing-md);
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.generated-ui .mcp-preview-frame,
+.mcp-ui-container .mcp-preview-frame {
+  border: 1px solid var(--glass-border-color);
+  border-radius: calc(var(--radius) * var(--glass-radius-scale));
+  box-shadow: var(--glass-shadow);
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  display: block;
+  background: var(--glass-input-fill);
+}
