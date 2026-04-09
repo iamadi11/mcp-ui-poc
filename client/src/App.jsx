@@ -576,8 +576,8 @@ function AIGenerator({ onGenerateAI, userId }) {
           className="form-control"
           value={description}
           onChange={(e) => {
-            setDescription(e.target.value);
-            if (submitError) setSubmitError(null);
+            setDescription(e.target.value)
+            if (submitError) setSubmitError(null)
           }}
           placeholder="e.g., Create a contact form with name, email, and message fields"
           rows={4}
