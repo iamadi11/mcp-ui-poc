@@ -24,5 +24,13 @@ export async function errorFromResponse(response, preReadBody) {
         : ` (${ra})`
     }
   }
+  if (
+    response.status === 413 &&
+    body &&
+    body.code === 'HTML_TOO_LARGE' &&
+    typeof body.limitBytes === 'number'
+  ) {
+    msg += ` (limit ${body.limitBytes} bytes)`
+  }
   return new Error(msg)
 }

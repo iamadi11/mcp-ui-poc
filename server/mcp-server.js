@@ -6,6 +6,7 @@ import {
   createChartHTML,
 } from './dynamic-ui-html.js';
 import { buildStructuredEnvelope } from './mcp-structured-ui.js';
+import { assertGeneratedHtmlWithinLimit, MCP_MAX_HTML_BYTES } from './generated-html-limit.js';
 
 /** Env-driven caps (min 1, max 1e6). Tuning helps long-lived demos and multi-tenant-ish traffic. */
 function readLimitEnv(name, fallback) {
@@ -38,6 +39,7 @@ export class MCPServer {
         maxUiComponents: MCP_MAX_UI_COMPONENTS,
         maxUserDataKeys: MCP_MAX_USER_DATA_KEYS,
         maxSubmissionsPerUser: MCP_MAX_SUBMISSIONS_PER_USER,
+        maxHtmlBytes: MCP_MAX_HTML_BYTES,
       },
     }
   }
@@ -63,6 +65,7 @@ export class MCPServer {
     const formId = `form-${userId}-${randomUUID()}`
 
     const formHTML = createFormHTML(formConfig, formId)
+    assertGeneratedHtmlWithinLimit(formHTML)
 
     const resource = createUIResource({
       uri: `ui://dynamic/form/${formId}`,
@@ -85,6 +88,7 @@ export class MCPServer {
     const dashboardId = `dashboard-${userId}-${randomUUID()}`
 
     const dashboardHTML = createDashboardHTML(dashboardConfig, dashboardId)
+    assertGeneratedHtmlWithinLimit(dashboardHTML)
 
     const resource = createUIResource({
       uri: `ui://dynamic/dashboard/${dashboardId}`,
@@ -114,6 +118,7 @@ export class MCPServer {
     const chartId = `chart-${userId}-${randomUUID()}`
 
     const chartHTML = createChartHTML(chartConfig, chartId)
+    assertGeneratedHtmlWithinLimit(chartHTML)
 
     const resource = createUIResource({
       uri: `ui://dynamic/chart/${chartId}`,

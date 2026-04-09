@@ -10,6 +10,10 @@ import {
   createStoreLimiter,
   createSuggestLimiter,
 } from './rate-limits.js';
+import {
+  isHtmlPayloadError,
+  sendHtmlTooLarge,
+} from './generated-html-limit.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +58,9 @@ app.get('/api/mcp-ui-example', async (req, res) => {
     const result = await createMCPUIExample();
     res.json(result);
   } catch (error) {
+    if (isHtmlPayloadError(error)) {
+      return sendHtmlTooLarge(res, error);
+    }
     console.error('Error creating MCP UI example:', error);
     res.status(500).json({ error: 'Failed to create MCP UI example' });
   }
@@ -73,6 +80,9 @@ app.post('/api/ai/generate', generateLimiter, async (req, res) => {
     const result = await aiGenerator.generateFromDescription(userId, description);
     res.json(result);
   } catch (error) {
+    if (isHtmlPayloadError(error)) {
+      return sendHtmlTooLarge(res, error);
+    }
     console.error('Error generating AI component:', error);
     res.status(500).json({ error: 'Failed to generate AI component' });
   }
@@ -122,6 +132,9 @@ app.post('/api/generate-form', generateLimiter, async (req, res) => {
     const result = await mcpServer.generateFormUI(userId, formConfig);
     res.json(result);
   } catch (error) {
+    if (isHtmlPayloadError(error)) {
+      return sendHtmlTooLarge(res, error);
+    }
     console.error('Error generating form UI:', error);
     res.status(500).json({ error: 'Failed to generate form UI' });
   }
@@ -138,6 +151,9 @@ app.post('/api/generate-dashboard', generateLimiter, async (req, res) => {
     const result = await mcpServer.generateDashboardUI(userId, dashboardConfig);
     res.json(result);
   } catch (error) {
+    if (isHtmlPayloadError(error)) {
+      return sendHtmlTooLarge(res, error);
+    }
     console.error('Error generating dashboard UI:', error);
     res.status(500).json({ error: 'Failed to generate dashboard UI' });
   }
@@ -154,6 +170,9 @@ app.post('/api/generate-chart', generateLimiter, async (req, res) => {
     const result = await mcpServer.generateChartUI(userId, chartConfig);
     res.json(result);
   } catch (error) {
+    if (isHtmlPayloadError(error)) {
+      return sendHtmlTooLarge(res, error);
+    }
     console.error('Error generating chart UI:', error);
     res.status(500).json({ error: 'Failed to generate chart UI' });
   }

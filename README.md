@@ -17,7 +17,7 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 - **Preview**: Generated HTML renders inline after each build
 
 ### Server
-- **Components & storage**: Track generated components and optional user-scoped data. In-memory maps are **bounded** so the MCP core does not grow without limit: oldest UI component metadata is evicted after **`MCP_MAX_UI_COMPONENTS`** (default 2000); oldest user buckets after **`MCP_MAX_USER_DATA_KEYS`** (default 500); form-submit history per user is capped by **`MCP_MAX_SUBMISSIONS_PER_USER`** (default 50). See **Scaling** below. Request bodies are limited to **512kb** JSON. Dynamic and AI-generated component ids use **UUID** suffixes so burst traffic does not collide on millisecond timestamps. **Per-IP rate limits** (rolling 1-minute windows) protect expensive `POST` routes: shared cap for generate-form, generate-dashboard, generate-chart, and `ai/generate`; a higher cap for `store-data`; a separate cap for `ai/suggest`—see **Scaling**.
+- **Components & storage**: Track generated components and optional user-scoped data. In-memory maps are **bounded** so the MCP core does not grow without limit: oldest UI component metadata is evicted after **`MCP_MAX_UI_COMPONENTS`** (default 2000); oldest user buckets after **`MCP_MAX_USER_DATA_KEYS`** (default 500); form-submit history per user is capped by **`MCP_MAX_SUBMISSIONS_PER_USER`** (default 50). See **Scaling** below. Request bodies are limited to **512kb** JSON. Each **generated HTML document** (builders, AI paths, static example) is rejected with **413** if its UTF-8 size exceeds **`MCP_MAX_HTML_BYTES`** (default 768 KiB), keeping responses and RAM predictable. Dynamic and AI-generated component ids use **UUID** suffixes so burst traffic does not collide on millisecond timestamps. **Per-IP rate limits** (rolling 1-minute windows) protect expensive `POST` routes: shared cap for generate-form, generate-dashboard, generate-chart, and `ai/generate`; a higher cap for `store-data`; a separate cap for `ai/suggest`—see **Scaling**.
 - **HTML generation**: Form, dashboard, and chart responses are **full HTML documents** (`server/generated-html-skin.js` + `server/dynamic-ui-html.js`) so iframe previews use the same glass mesh, DM Sans, and accent styling as the shell—not legacy purple-gradient fragments
 - **Layout**: Generated embeds are responsive
 
@@ -77,7 +77,7 @@ mcp-ui-poc/
 ## API endpoints
 
 ### Health Check
-- `GET /api/health` - Server status and health information. Response includes **`mcp`**: current in-memory counts and configured limits (`maxUiComponents`, `maxUserDataKeys`, `maxSubmissionsPerUser`) for operators. The app header shows these values when the API is reachable (no extra request beyond the existing health poll).
+- `GET /api/health` - Server status and health information. Response includes **`mcp`**: current in-memory counts and configured limits (`maxUiComponents`, `maxUserDataKeys`, `maxSubmissionsPerUser`, `maxHtmlBytes`) for operators. The app header shows these values when the API is reachable (no extra request beyond the existing health poll).
 
 ### Scaling (in-memory MCP demo)
 
@@ -89,6 +89,7 @@ mcp-ui-poc/
 | `MCP_RATE_LIMIT_GENERATE_PER_MIN` | `45` | Max requests per client IP per minute for `POST` `/api/generate-form`, `/api/generate-dashboard`, `/api/generate-chart`, `/api/ai/generate` (shared counter). |
 | `MCP_RATE_LIMIT_STORE_PER_MIN` | `180` | Max `POST` `/api/store-data` requests per IP per minute. |
 | `MCP_RATE_LIMIT_SUGGEST_PER_MIN` | `60` | Max `POST` `/api/ai/suggest` requests per IP per minute. |
+| `MCP_MAX_HTML_BYTES` | `786432` (768 KiB) | Max UTF-8 bytes for one generated HTML document; over-limit returns **413** with `{ "code": "HTML_TOO_LARGE", "limitBytes", "bytes" }`. Tunable between **1024** and **10000000**. |
 
 Set in `.env` or the host dashboard (e.g. Vercel). Data is still **ephemeral** on serverless cold starts—limits only bound RAM within a warm instance. On Vercel, **`trust proxy`** is enabled so the limiter sees the real client IP. Each serverless instance keeps its own in-memory counters (limits still curb abuse per warm instance). When a limit is hit, responses are **429** with JSON `{ "error": "...", "code": "RATE_LIMIT" }` and a **`Retry-After`** header (seconds); the React app shows the server `error` text (and retry hint when present) for generate, AI generate, store-data, and get-data failures.
 

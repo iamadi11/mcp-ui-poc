@@ -1,4 +1,5 @@
 import { createUIResource } from '@mcp-ui/server';
+import { assertGeneratedHtmlWithinLimit } from './generated-html-limit.js';
 
 export async function createMCPUIExample(input) {
   const resource = createUIResource({
@@ -172,6 +173,8 @@ export async function createMCPUIExample(input) {
     },
     encoding: 'text'
   });
+
+  assertGeneratedHtmlWithinLimit(resource?.resource?.text);
 
   return resource;
 } 

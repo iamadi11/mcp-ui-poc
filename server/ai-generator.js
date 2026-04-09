@@ -5,6 +5,7 @@ import {
   createChartHTML,
 } from './dynamic-ui-html.js'
 import { buildStructuredEnvelope } from './mcp-structured-ui.js'
+import { assertGeneratedHtmlWithinLimit } from './generated-html-limit.js'
 
 // AI-Powered Code Generator
 export class AIGenerator {
@@ -361,7 +362,8 @@ export class AIGenerator {
     };
 
     const formHTML = createFormHTML(formConfig, componentId);
-    
+    assertGeneratedHtmlWithinLimit(formHTML);
+
     const resource = this.createUIResource({
       uri: `ui://ai/form/${componentId}`,
       content: { 
@@ -385,7 +387,8 @@ export class AIGenerator {
     };
 
     const dashboardHTML = createDashboardHTML(dashboardConfig, componentId);
-    
+    assertGeneratedHtmlWithinLimit(dashboardHTML);
+
     const resource = this.createUIResource({
       uri: `ui://ai/dashboard/${componentId}`,
       content: { 
@@ -410,7 +413,8 @@ export class AIGenerator {
     };
 
     const chartHTML = createChartHTML(chartConfig, componentId);
-    
+    assertGeneratedHtmlWithinLimit(chartHTML);
+
     const resource = this.createUIResource({
       uri: `ui://ai/chart/${componentId}`,
       content: { 
@@ -428,6 +432,8 @@ export class AIGenerator {
 
   // Generate custom component from AI requirements
   async generateCustomFromDescription(requirements, componentId) {
+    assertGeneratedHtmlWithinLimit(requirements.html);
+
     const resource = this.createUIResource({
       uri: `ui://ai/custom/${componentId}`,
       content: { 

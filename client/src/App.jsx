@@ -1165,6 +1165,23 @@ function App() {
                   >
                     ≤{health.payload.mcp.limits.maxSubmissionsPerUser} subs/user
                   </span>
+                  {health.payload.mcp.limits.maxHtmlBytes != null && (
+                    <>
+                      <span className="status-mcp-dot" aria-hidden="true">
+                        ·
+                      </span>
+                      <span
+                        className="status-mcp-seg"
+                        title="Max UTF-8 bytes for one generated HTML document"
+                      >
+                        HTML ≤
+                        {Math.round(
+                          health.payload.mcp.limits.maxHtmlBytes / 1024
+                        )}{' '}
+                        KiB
+                      </span>
+                    </>
+                  )}
                 </span>
               )}
             </span>
