@@ -581,6 +581,57 @@ function App() {
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('ai')
   const [userId, setUserId] = useState(() => readOrCreateUserId())
+  const [storedView, setStoredView] = useState({
+    phase: 'idle',
+    jsonText: '',
+    error: '',
+    fetchedAt: null,
+  })
+
+  const loadStoredData = useCallback(async () => {
+    setStoredView((v) => ({ ...v, phase: 'loading', error: '' }))
+    try {
+      const res = await fetch(
+        `/api/get-data/${encodeURIComponent(userId)}`
+      )
+      const body = await res.json().catch(() => ({}))
+      if (res.status === 404) {
+        setStoredView({
+          phase: 'empty',
+          jsonText: '',
+          error: '',
+          fetchedAt: new Date(),
+        })
+        return
+      }
+      if (!res.ok) {
+        throw new Error(body.error || `HTTP ${res.status}`)
+      }
+      setStoredView({
+        phase: 'ready',
+        jsonText: JSON.stringify(body.data, null, 2),
+        error: '',
+        fetchedAt: new Date(),
+      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Request failed'
+      setStoredView({
+        phase: 'error',
+        jsonText: '',
+        error: msg,
+        fetchedAt: new Date(),
+      })
+    }
+  }, [userId])
+
+  useEffect(() => {
+    setStoredView({
+      phase: 'idle',
+      jsonText: '',
+      error: '',
+      fetchedAt: null,
+    })
+  }, [userId])
 
   useEffect(() => {
     applyGlassCss(glass)
@@ -778,6 +829,7 @@ function App() {
           setTimeout(() => {
             setNotifications((prev) => prev.filter((n) => n.id !== newNotification.id))
           }, 5000)
+          void loadStoredData()
         } catch (err) {
           const msg =
             err instanceof Error ? err.message : 'Failed to store submission'
@@ -844,6 +896,61 @@ function App() {
             New session
           </button>
         </p>
+        <section
+          className="stored-data-panel"
+          aria-labelledby="stored-data-heading"
+        >
+          <div className="stored-data-panel__head">
+            <h2 id="stored-data-heading" className="stored-data-panel__title">
+              Stored data (server)
+            </h2>
+            <button
+              type="button"
+              className="btn btn-outline stored-data-panel__refresh"
+              onClick={() => void loadStoredData()}
+              disabled={storedView.phase === 'loading'}
+            >
+              {storedView.phase === 'loading' ? 'Loading…' : 'Refresh'}
+            </button>
+          </div>
+          <p className="stored-data-panel__hint">
+            In-memory for this demo; last write per user id wins. Matches{' '}
+            <code className="stored-data-panel__code">GET /api/get-data/:userId</code>.
+          </p>
+          {storedView.fetchedAt && (
+            <p className="stored-data-panel__meta">
+              {storedView.phase === 'error' ? 'Attempted' : 'Fetched'}{' '}
+              {storedView.fetchedAt.toLocaleString()}
+            </p>
+          )}
+          <div
+            className="stored-data-panel__body"
+            role="region"
+            aria-live="polite"
+            aria-label="Payload returned from get-data"
+          >
+            {storedView.phase === 'idle' && (
+              <p className="stored-data-panel__placeholder">
+                Tap Refresh to load what the server holds for this session id.
+              </p>
+            )}
+            {storedView.phase === 'loading' && (
+              <p className="stored-data-panel__placeholder">Loading…</p>
+            )}
+            {storedView.phase === 'empty' && (
+              <p className="stored-data-panel__placeholder">
+                No data yet for this id (submit a generated form in Data preview
+                first).
+              </p>
+            )}
+            {storedView.phase === 'ready' && (
+              <pre className="stored-data-panel__pre">{storedView.jsonText}</pre>
+            )}
+            {storedView.phase === 'error' && (
+              <p className="stored-data-panel__err">{storedView.error}</p>
+            )}
+          </div>
+        </section>
         <div
           className={`server-status ${
             health.state === 'ok'

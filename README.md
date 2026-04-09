@@ -90,7 +90,7 @@ mcp-ui-poc/
 ### Data Management
 - `POST /api/store-data` - Store user data (JSON body: `userId`, `data`)
 - `GET /api/get-data/:userId` - Retrieve user data
-- **Browser session**: The React app persists a **demo user id** in `localStorage` (same idea as Glass settings) so refresh keeps one server-side namespace. **New session** clears that id and allocates another. Structured preview **form submit** calls `store-data` with the current demo user id.
+- **Browser session**: The React app persists a **demo user id** in `localStorage` (same idea as Glass settings) so refresh keeps one server-side namespace. **New session** clears that id and allocates another. Structured preview **form submit** calls `store-data` with the current demo user id. The header includes **Stored data (server)** with **Refresh** to call `get-data` for the current id (and it refreshes after a successful structured form save).
 - `GET /api/component-info/:componentId` - Get component information
 
 ## Builder reference
