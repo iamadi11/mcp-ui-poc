@@ -207,7 +207,7 @@ The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn sh
 ### Development Tools
 - **Nodemon**: Automatic server restart on file changes
 - **ES6 Modules**: Modern JavaScript module system
-- **ESLint** (optional): `client/package.json` defines `npm run lint`; add an ESLint config under `client/` (e.g. `eslint.config.js`) before expecting the CLI to succeed—until then, use editor diagnostics and `npm run build`
+- **ESLint**: `client/.eslintrc.cjs` configures recommended + React + hooks + react-refresh; run **`npm run lint`** from **`client/`** after JSX/JS changes (CI-friendly with `--max-warnings 0`)
 
 ## Scripts
 
@@ -222,7 +222,7 @@ The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn sh
 - `npm run install-server` - Install only backend dependencies
 
 ### Quality
-- `npm run lint` — Run from **`client/`** after adding an ESLint configuration file there (see **Technologies** above)
+- `npm run lint` — Run from **`client/`** (requires dependencies installed in `client/`)
 
 ## Usage
 
@@ -298,7 +298,6 @@ The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn sh
 
 ### Technical
 - **Persistent storage** and optional **auth** for real multi-tenant use
-- **ESLint config** in `client/` so `npm run lint` runs in CI
 - **Automated tests** when a runner is adopted
 - **Performance**: lazy routes, compression for large JSON where appropriate
 

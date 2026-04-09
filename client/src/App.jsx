@@ -756,7 +756,7 @@ function AIGenerator({ onGenerateAI, userId }) {
     }
   };
 
-  const useTemplate = (template) => {
+  const applyTemplate = (template) => {
     setDescription(template.description);
     setSubmitError(null);
   };
@@ -790,7 +790,7 @@ function AIGenerator({ onGenerateAI, userId }) {
             {templates.map((template, index) => (
               <button
                 key={index}
-                onClick={() => useTemplate(template)}
+                onClick={() => applyTemplate(template)}
                 className="btn btn-outline template-btn"
               >
                 {template.type}
@@ -822,7 +822,6 @@ function App() {
   const [health, setHealth] = useState({ state: 'checking' })
   const [mcpUIResource, setMcpUIResource] = useState(null)
   const [notifications, setNotifications] = useState([])
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('ai')
   const [userId, setUserId] = useState(() => readOrCreateUserId())
@@ -984,7 +983,6 @@ function App() {
 
   // Generate Form UI
   const generateForm = async (formConfig) => {
-    setLoading(true)
     setError(null)
     
     try {
@@ -1005,14 +1003,11 @@ function App() {
     } catch (error) {
       console.error('Error generating form:', error);
       setError(error.message);
-    } finally {
-      setLoading(false);
     }
   };
 
   // Generate Dashboard UI
   const generateDashboard = async (dashboardConfig) => {
-    setLoading(true)
     setError(null)
     
     try {
@@ -1033,14 +1028,11 @@ function App() {
     } catch (error) {
       console.error('Error generating dashboard:', error);
       setError(error.message);
-    } finally {
-      setLoading(false);
     }
   };
 
   // Generate Chart UI
   const generateChart = async (chartConfig) => {
-    setLoading(true)
     setError(null)
     
     try {
@@ -1061,8 +1053,6 @@ function App() {
     } catch (error) {
       console.error('Error generating chart:', error);
       setError(error.message);
-    } finally {
-      setLoading(false);
     }
   };
 

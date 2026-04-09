@@ -200,7 +200,10 @@ function StructDashboard({ id, config, onAction }) {
 
 function StructChart({ id, config, onAction }) {
   const { title, type, data: rawData } = config
-  const data = rawData ?? { values: [], labels: [] }
+  const data = useMemo(
+    () => rawData ?? { values: [], labels: [] },
+    [rawData]
+  )
   const maxValue = useMemo(
     () => Math.max(1, ...(data.values?.length ? data.values : [0])),
     [data]
