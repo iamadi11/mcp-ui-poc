@@ -421,7 +421,16 @@ function FormBuilder({ onGenerateForm }) {
   )
 }
 
-// Dashboard Builder Component
+function dashboardDefaultDataForType(type) {
+  if (type === 'metric') return { value: '0', label: 'No data' }
+  if (type === 'list') return { items: ['Item 1', 'Item 2', 'Item 3'] }
+  return {
+    values: [100, 150, 200],
+    labels: ['Jan', 'Feb', 'Mar'],
+  }
+}
+
+// Dashboard Builder Component (shadcn/ui + Tailwind)
 function DashboardBuilder({ onGenerateDashboard }) {
   const [dashboardConfig, setDashboardConfig] = useState({
     title: 'Analytics Dashboard',
@@ -429,115 +438,162 @@ function DashboardBuilder({ onGenerateDashboard }) {
       {
         type: 'metric',
         title: 'Total Users',
-        data: { value: '1,234', label: 'Active users' }
+        data: { value: '1,234', label: 'Active users' },
       },
       {
         type: 'list',
         title: 'Recent Activities',
-        data: { items: ['User login', 'Data update', 'Report generated'] }
+        data: { items: ['User login', 'Data update', 'Report generated'] },
       },
       {
         type: 'chart',
         title: 'Sales Chart',
-        data: { 
+        data: {
           values: [100, 150, 200, 175],
-          labels: ['Q1', 'Q2', 'Q3', 'Q4']
-        }
-      }
-    ]
-  });
+          labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+        },
+      },
+    ],
+  })
 
   const addWidget = () => {
-    setDashboardConfig(prev => ({
+    setDashboardConfig((prev) => ({
       ...prev,
-      widgets: [...prev.widgets, {
-        type: 'metric',
-        title: 'New Widget',
-        data: { value: '0', label: 'No data' }
-      }]
-    }));
-  };
+      widgets: [
+        ...prev.widgets,
+        {
+          type: 'metric',
+          title: 'New Widget',
+          data: { value: '0', label: 'No data' },
+        },
+      ],
+    }))
+  }
 
   const updateWidget = (index, widget) => {
-    setDashboardConfig(prev => ({
+    setDashboardConfig((prev) => ({
       ...prev,
-      widgets: prev.widgets.map((w, i) => i === index ? widget : w)
-    }));
-  };
+      widgets: prev.widgets.map((w, i) => (i === index ? widget : w)),
+    }))
+  }
 
   const removeWidget = (index) => {
-    setDashboardConfig(prev => ({
+    setDashboardConfig((prev) => ({
       ...prev,
-      widgets: prev.widgets.filter((_, i) => i !== index)
-    }));
-  };
+      widgets: prev.widgets.filter((_, i) => i !== index),
+    }))
+  }
 
   const handleSubmit = () => {
-    onGenerateDashboard(dashboardConfig);
-  };
+    onGenerateDashboard(dashboardConfig)
+  }
 
   return (
-    <div className="dashboard-builder">
-      <h3>Dashboard Builder</h3>
-      
-      <div className="form-group">
-        <label>Dashboard Title:</label>
-        <input
-          type="text"
-          className="form-control"
-          value={dashboardConfig.title}
-          onChange={(e) => setDashboardConfig(prev => ({ ...prev, title: e.target.value }))}
-        />
-      </div>
+    <Card className="dashboard-builder-card border-border/50 bg-card/50 text-card-foreground shadow-sm backdrop-blur-sm">
+      <CardHeader>
+        <CardTitle className="text-lg">Dashboard Builder</CardTitle>
+        <CardDescription>
+          Widget list maps to{' '}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">
+            POST /api/generate-dashboard
+          </code>
+          . Switching type resets sample data for that widget shape.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="dashboard-title">Dashboard title</Label>
+          <Input
+            id="dashboard-title"
+            value={dashboardConfig.title}
+            onChange={(e) =>
+              setDashboardConfig((prev) => ({
+                ...prev,
+                title: e.target.value,
+              }))
+            }
+          />
+        </div>
 
-      <div className="widgets-section">
-        <h4>Widgets</h4>
-        {dashboardConfig.widgets.map((widget, index) => (
-          <div key={index} className="widget-editor">
-            <div className="widget-row">
-              <select
-                className="form-control"
-                value={widget.type}
-                onChange={(e) => {
-                  const newType = e.target.value;
-                  let newData = widget.data;
-                  
-                  // Update data structure based on widget type
-                  if (newType === 'metric') {
-                    newData = { value: '0', label: 'No data' };
-                  } else if (newType === 'list') {
-                    newData = { items: ['Item 1', 'Item 2', 'Item 3'] };
-                  } else if (newType === 'chart') {
-                    newData = { 
-                      values: [100, 150, 200], 
-                      labels: ['Jan', 'Feb', 'Mar'] 
-                    };
-                  }
-                  
-                  updateWidget(index, { ...widget, type: newType, data: newData });
-                }}
-              >
-                <option value="metric">Metric</option>
-                <option value="list">List</option>
-                <option value="chart">Chart</option>
-              </select>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Widget title"
-                value={widget.title}
-                onChange={(e) => updateWidget(index, { ...widget, title: e.target.value })}
-              />
-              <button onClick={() => removeWidget(index)} className="btn btn-danger remove-btn">Remove</button>
-            </div>
+        <Separator />
+
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-sm font-semibold tracking-tight">Widgets</h4>
+            <Button type="button" variant="outline" size="sm" onClick={addWidget}>
+              Add widget
+            </Button>
           </div>
-        ))}
-        <button onClick={addWidget} className="btn btn-success add-btn">Add Widget</button>
-      </div>
 
-      <button onClick={handleSubmit} className="btn btn-success generate-btn">Generate Dashboard</button>
-    </div>
-  );
+          {dashboardConfig.widgets.map((widget, index) => (
+            <Card
+              key={index}
+              className="border-border/40 bg-muted/15 py-0 shadow-none"
+            >
+              <CardContent className="space-y-4 px-4 py-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor={`widget-${index}-type`}>Type</Label>
+                    <Select
+                      value={widget.type}
+                      onValueChange={(newType) => {
+                        updateWidget(index, {
+                          ...widget,
+                          type: newType,
+                          data: dashboardDefaultDataForType(newType),
+                        })
+                      }}
+                    >
+                      <SelectTrigger
+                        id={`widget-${index}-type`}
+                        className="w-full min-w-0"
+                      >
+                        <SelectValue placeholder="Widget type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="metric">Metric</SelectItem>
+                        <SelectItem value="list">List</SelectItem>
+                        <SelectItem value="chart">Chart</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`widget-${index}-title`}>Title</Label>
+                    <Input
+                      id={`widget-${index}-title`}
+                      placeholder="Widget title"
+                      value={widget.title}
+                      onChange={(e) =>
+                        updateWidget(index, {
+                          ...widget,
+                          title: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end border-t border-border/40 pt-3">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => removeWidget(index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </CardContent>
+      <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
+        <Button type="button" onClick={handleSubmit}>
+          Generate dashboard
+        </Button>
+      </CardFooter>
+    </Card>
+  )
 }
 
 // Chart Builder Component

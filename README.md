@@ -186,7 +186,7 @@ npx shadcn@latest add dropdown-menu
 
 Imports use the **`@/`** alias (e.g. `import { Button } from '@/components/ui/button'`). New primitives should respect existing glass surfaces—prefer `className` + `cn()` to blend with `App.css` panels rather than replacing the mesh shell.
 
-The **Form Builder** tab is the reference implementation: **`Card`**, **`Button`**, **`Input`**, **`Label`**, **`Select`**, **`Checkbox`**, and **`Separator`** wired to the same `formConfig` shape as before.
+The **Form Builder** and **Dashboard Builder** tabs use the same shell pattern: **`Card`**, **`Button`**, **`Input`**, **`Label`**, **`Select`**, **`Checkbox`** (forms only), and **`Separator`**, preserving the existing config payloads sent to **`generate-form`** / **`generate-dashboard`**.
 
 ## Technologies
 
