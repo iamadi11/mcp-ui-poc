@@ -8,9 +8,10 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 - **Dynamic UI generation**: Forms, dashboards, and charts from configuration
 - **Structured + HTML**: Generate endpoints return an MCP `resource` (HTML for iframe hosts) plus a **`structured`** JSON envelope (`schemaVersion`, `kind`, `id`, `config`) so this app can render the same UI in React without an iframe; the preview defaults to **Data (React)** with an optional **HTML (iframe)** toggle. Stored **form-submit** payloads include **`preview`: `structured` \| `html`** so the server timeline can show which mode produced each row.
 - **PostMessage**: Parent page and generated iframe stay in sync for tools and events when using HTML preview
-- **Toasts**: Short-lived notifications for submissions and actions
+- **Toasts**: Short-lived notifications for form saves, dashboard refresh, chart export, and **iframe tool** callbacks (e.g. theme/settings)—not blocking `alert()` dialogs
 
 ### Builders
+- **AI Generator** (default tab): Natural-language descriptions produce the same MCP resources as the typed builders (`POST /api/ai/generate`); inline errors for validation and API failures (no modal alerts)
 - **Form builder**: Text, email, number, select, textarea; required flags and labels
 - **Dashboard builder**: Metrics, lists, and chart widgets
 - **Chart builder**: Bar and pie charts from comma-separated values and labels
@@ -24,27 +25,41 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 ### Interface
 - **Typography**: DM Sans, restrained scale
 - **Theme**: CSS variables; light and dark follow OS preference
-- **Glassmorphism**: Frosted panels, mesh backdrop, and tunable blur—use the **Glass** control (bottom-right) to adjust blur, frost, edge light, saturation, mesh strength, and corner roundness in real time (saved in `localStorage`)
+- **Glassmorphism**: Frosted panels, mesh backdrop, and tunable blur—use the **Glass** control (bottom-right) to adjust blur, frost, edge light, saturation, mesh strength, and corner roundness in real time (saved in `localStorage` under `mcp-ui-glass-settings-v1`)
 - **Layout**: Narrow content width; animated mesh layer respects reduced motion
+- **Errors**: Failed generate/store/get requests surface JSON `error` strings from the API; **429** (rate limit) includes a **`Retry-After`** hint in the message when present; **413** (`HTML_TOO_LARGE`) includes byte limits. Builder failures use an inline error banner; the AI tab uses the same pattern.
 
 ## Project structure
 
 ```
 mcp-ui-poc/
-├── client/                 # React frontend
+├── client/                      # React + Vite frontend
 │   ├── src/
-│   │   ├── App.jsx        # Main React component with UI builders
-│   │   ├── App.css        # Theme tokens and layout
-│   │   ├── index.css      # Base reset
-│   │   └── main.jsx       # React entry point
-│   ├── package.json       # Frontend dependencies
-│   └── vite.config.js     # Vite configuration
-├── server/                 # Node.js backend
-│   ├── index.js           # Express server with API endpoints
-│   ├── mcp-server.js      # MCP server for dynamic UI generation
-│   └── mcp-ui-example.js  # Static MCP UI example
-├── package.json           # Backend dependencies
-└── README.md             # Project documentation
+│   │   ├── App.jsx              # Tabs, builders, health, stored-data panel, notifications
+│   │   ├── App.css              # Theme tokens and layout
+│   │   ├── StructuredUIPreview.jsx  # Structured + iframe preview router
+│   │   ├── apiError.js          # Fetch error helper (JSON body, 429 / 413 hints)
+│   │   ├── userSession.js       # Demo user id (`mcp-ui-user-id-v1` in localStorage)
+│   │   ├── glassAppearance.js   # Glass CSS variables + persistence
+│   │   ├── index.css            # Base reset
+│   │   └── main.jsx             # React entry
+│   ├── package.json
+│   └── vite.config.js           # Dev server port 3000; proxies /api → backend
+├── server/                      # Express API + MCP generation
+│   ├── index.js                 # Routes, rate limits, JSON body limit, Vercel trust proxy
+│   ├── mcp-server.js            # generate-* UI, store/get user data, stats
+│   ├── dynamic-ui-html.js       # Full-document HTML for forms, dashboards, charts
+│   ├── generated-html-skin.js   # Shared shell styles for generated pages
+│   ├── generated-html-limit.js  # MCP_MAX_HTML_BYTES guard + 413 helpers
+│   ├── mcp-structured-ui.js     # Structured JSON envelope for React preview
+│   ├── rate-limits.js           # Per-IP limits (express-rate-limit)
+│   ├── ai-generator.js          # /api/ai/generate implementation
+│   └── mcp-ui-example.js        # Static MCP UI example resource
+├── docs/
+│   └── AI_WORKFLOW.md           # Contributor workflow (canonical)
+├── package.json                 # Root scripts + server deps
+├── CLAUDE.md                    # Short pointer for Claude Code
+└── README.md
 ```
 
 ## Installation
@@ -74,6 +89,8 @@ mcp-ui-poc/
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:3001
 
+**Local dev networking:** The Vite dev server (**`npm run client`**) serves the UI on port **3000** and **proxies** requests to `/api/*` to **http://localhost:3001**. The browser only talks to `:3000`, so CORS is not an issue during development. Production static files can be served by Express from `client/dist` when not on Vercel (see `server/index.js`).
+
 ## API endpoints
 
 ### Health Check
@@ -93,6 +110,15 @@ mcp-ui-poc/
 
 Set in `.env` or the host dashboard (e.g. Vercel). Data is still **ephemeral** on serverless cold starts—limits only bound RAM within a warm instance. On Vercel, **`trust proxy`** is enabled so the limiter sees the real client IP. Each serverless instance keeps its own in-memory counters (limits still curb abuse per warm instance). When a limit is hit, responses are **429** with JSON `{ "error": "...", "code": "RATE_LIMIT" }` and a **`Retry-After`** header (seconds); the React app shows the server `error` text (and retry hint when present) for generate, AI generate, store-data, and get-data failures.
 
+### Error responses (summary)
+
+| HTTP | When | JSON shape (typical) |
+|------|------|------------------------|
+| **400** | Missing or invalid body fields | `{ "error": "..." }` |
+| **413** | Generated HTML exceeds `MCP_MAX_HTML_BYTES` | `{ "error", "code": "HTML_TOO_LARGE", "limitBytes", "bytes" }` |
+| **429** | Rate limit exceeded | `{ "error", "code": "RATE_LIMIT" }` + `Retry-After` header |
+| **500** | Unexpected server failure | `{ "error": "..." }` (generic message; avoid leaking stack traces in production hardening) |
+
 ### MCP UI Components
 - `GET /api/mcp-ui-example` - Get the static MCP UI demo component
 
@@ -100,6 +126,11 @@ Set in `.env` or the host dashboard (e.g. Vercel). Data is still **ephemeral** o
 - `POST /api/generate-form` - Generate a custom form UI (response includes `resource` + `structured`)
 - `POST /api/generate-dashboard` - Generate a dashboard UI (response includes `resource` + `structured`)
 - `POST /api/generate-chart` - Generate a chart UI (response includes `resource` + `structured`)
+
+### AI
+- `POST /api/ai/generate` - Generate from natural language (`userId`, `description`); same resource shape as builders
+- `POST /api/ai/suggest` - Lightweight suggestion list from `description`
+- `GET /api/ai/templates` - Template metadata for the AI tab
 
 ### Data Management
 - `POST /api/store-data` - Store user data (JSON body: `userId`, `data`). If `data.kind` is `form-submit`, the server **appends** to a per-user list (default max **`MCP_MAX_SUBMISSIONS_PER_USER`**); other shapes **replace** the stored blob for that user.
@@ -150,26 +181,37 @@ The UI is **token-driven** (`client/src/App.css` plus runtime CSS variables from
 ### Backend
 - **Node.js**: JavaScript runtime
 - **Express.js**: Web framework for API endpoints
+- **express-rate-limit**: Per-IP rolling windows on hot `POST` routes
 - **CORS**: Cross-origin resource sharing
-- **@mcp-ui/server**: MCP UI server SDK
+- **@mcp-ui/server**: MCP UI server SDK (`createUIResource`)
 
 ### Development Tools
 - **Nodemon**: Automatic server restart on file changes
 - **ES6 Modules**: Modern JavaScript module system
+- **ESLint** (optional): `client/package.json` defines `npm run lint`; add an ESLint config under `client/` (e.g. `eslint.config.js`) before expecting the CLI to succeed—until then, use editor diagnostics and `npm run build`
 
 ## Scripts
 
 ### Development
-- `npm run dev` - Start backend server with nodemon
-- `npm run client` - Start frontend development server
-- `npm run build` - Build frontend for production
+- `npm run dev` - Start backend server with nodemon (port **3001** by default)
+- `npm run client` - Start Vite dev server (port **3000**, proxies `/api` to the backend)
+- `npm run build` - Build frontend for production (`client/dist`)
 
 ### Installation
 - `npm run install-all` - Install both frontend and backend dependencies
 - `npm run install-client` - Install only frontend dependencies
 - `npm run install-server` - Install only backend dependencies
 
+### Quality
+- `npm run lint` — Run from **`client/`** after adding an ESLint configuration file there (see **Technologies** above)
+
 ## Usage
+
+### AI Generator
+1. Open the **AI Generator** tab (default)
+2. Describe the UI you want (forms, dashboards, or charts—keywords in the description steer `parseDescription` in `server/ai-generator.js`)
+3. Click **Generate Component**; errors appear inline under the form
+4. The preview below uses the same **Data (React)** / **HTML (iframe)** pipeline as the builders
 
 ### Creating a Custom Form
 1. Navigate to the "Form Builder" tab
@@ -215,40 +257,31 @@ The UI is **token-driven** (`client/src/App.css` plus runtime CSS variables from
 
 ## Security and practices
 
-### Data Handling
-- User data is stored securely on the server
-- Form submissions are validated and sanitized
-- API endpoints include proper error handling
+### Data handling (demo scope)
+- **In-memory storage only** in this repo: user buckets and component metadata are **not** durable across cold starts or multi-instance deploys unless you add external storage.
+- **No authentication**: `userId` is a client-supplied demo key (persisted in the browser as `mcp-ui-user-id-v1`). Treat this as a **namespace label**, not a security boundary.
+- **Request limits**: JSON bodies are capped (**512kb**); generated HTML is capped (**`MCP_MAX_HTML_BYTES`**); rate limits apply per IP on expensive routes.
 
-### Component Isolation
-- Generated components run in isolated iframes
-- PostMessage API ensures secure communication
-- No cross-site scripting vulnerabilities
+### Component isolation
+- HTML preview uses **sandboxed iframes** where configured; parent/child communication uses **`postMessage`** with a fixed action shape—still validate and avoid trusting arbitrary HTML from untrusted users in a real product.
 
 ### Accessibility
 - **Focus**: Visible `:focus-visible` styles on interactive controls
 - **Reduced motion**: Honors `prefers-reduced-motion` for animations
-- **Status**: API health uses a live region where applicable
+- **Status**: API connection state is exposed in the header; notification toasts are visual (not a full live-region audit)
 
 ## Future enhancements
 
-### Planned Features
-- **More Chart Types**: Line charts, scatter plots, area charts
-- **Advanced Form Validation**: Custom validation rules and error messages
-- **Component Templates**: Pre-built templates for common use cases
-- **Real-time Collaboration**: Multi-user editing and sharing
-- **Export Options**: PDF, image, and code export capabilities
+### Product
+- **More chart types**: Line, area, scatter
+- **Stronger validation** on builder payloads and stored JSON
+- **Explicit theme toggle** (optional override of system light/dark)
 
-### Technical Improvements
-- **Database Integration**: Persistent storage for user data
-- **Authentication**: User accounts and session management
-- **Component Library**: Reusable UI component system
-- **Performance Optimization**: Lazy loading and code splitting
-
-### Design enhancements
-- **Explicit theme toggle**: Optional in-app override of system light/dark
-- **Additional chart types**: Line, area, scatter
-- **Export**: PDF or image export for previews
+### Technical
+- **Persistent storage** and optional **auth** for real multi-tenant use
+- **ESLint config** in `client/` so `npm run lint` runs in CI
+- **Automated tests** when a runner is adopted
+- **Performance**: lazy routes, compression for large JSON where appropriate
 
 ## Contributing
 
@@ -264,4 +297,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-Stack: React, Vite, Node.js, Express, `@mcp-ui/server`. 
+**Stack:** React, Vite, Node.js, Express, `express-rate-limit`, `@mcp-ui/server`.

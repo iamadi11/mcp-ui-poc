@@ -22,7 +22,7 @@ Use these **first** (see `docs/AI_WORKFLOW.md` for order):
 
 - **Do** keep API and static generation logic in `server/`; UI in `client/src/`.
 - **Do** use `process.env` for configuration; rely on `.env` locally (never commit secrets).
-- **Do** run `npm run lint` from `client/` after changing JSX/JS in the client.
+- **Do** run `npm run lint` from `client/` after changing JSX/JS once **`client/` has an ESLint config**; until then use editor checks and `npm run build` (see `README.md` — Testing / quality).
 - **Don’t** commit `.env`, API keys, or machine-specific absolute paths in project config meant for everyone.
 - **Don’t** add secrets to prompts, logs, or generated MCP UI payloads.
 

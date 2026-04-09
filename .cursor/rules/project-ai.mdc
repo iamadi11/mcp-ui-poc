@@ -17,7 +17,7 @@ Follow **`docs/AI_WORKFLOW.md`** for the mandatory sequence (research â†’ plan â
 
 ## Mandatory checks
 
-- After changing **`client/`** JS/JSX: run **`npm run lint`** from **`client/`**.
+- After changing **`client/`** JS/JSX: run **`npm run lint`** from **`client/`** when **ESLint is configured** there (see **`docs/AI_WORKFLOW.md`**). Otherwise use editor diagnostics and **`npm run build`**.
 - Validate changed flows manually (see **`README.md`** for dev servers and ports).
 
 ## Architecture

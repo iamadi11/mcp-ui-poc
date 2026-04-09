@@ -21,7 +21,7 @@ Skips require a one-line rationale (e.g. “docs-only: no code change”).
 
 | Area | Policy |
 |------|--------|
-| **Client (`client/`)** | Run `npm run lint` in `client/` after JSX/JS changes. Fix new lint issues. |
+| **Client (`client/`)** | Run `npm run lint` in `client/` after JSX/JS changes **once ESLint is configured** in `client/` (e.g. `eslint.config.js`). Until a config exists, rely on editor diagnostics and `npm run build` for a compile check. |
 | **Server (`server/`)** | Manually exercise changed API routes or flows; add automated tests when a test runner is introduced. |
 | **End-to-end** | No E2E suite in-repo yet; use structured manual validation (see Validate step). |
 | **Coverage** | No global coverage target until a test framework is adopted; prefer small, focused tests once added. |
