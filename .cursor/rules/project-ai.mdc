@@ -1,0 +1,37 @@
+---
+description: Project AI rules — workflow, stack, security, exploration (mirrors CLAUDE.md; always apply).
+alwaysApply: true
+---
+
+# Cursor — project rules
+
+## Canonical workflow
+
+Follow **`docs/AI_WORKFLOW.md`** for the mandatory sequence (research → plan → test definition → implement → tests → validate → document → instrument), testing expectations, architecture boundaries, security, and code exploration order. Do not contradict it; one-line exceptions with rationale only.
+
+## Stack & layout
+
+- **Stack**: Node.js (ES modules), Express in **`server/`**, React 18 + Vite in **`client/`**.
+- **Monorepo**: Root **`package.json`** (server + scripts); **`client/package.json`** (frontend). Install: `npm install` at root; `npm run install-all` for both trees.
+
+## Mandatory checks
+
+- After changing **`client/`** JS/JSX: run **`npm run lint`** from **`client/`**.
+- Validate changed flows manually (see **`README.md`** for dev servers and ports).
+
+## Architecture
+
+- Keep API and MCP server logic in **`server/`**; UI only in **`client/src/`**.
+- Avoid circular **`server/`** imports; prefer clear module boundaries per **`docs/AI_WORKFLOW.md`**.
+
+## Security
+
+- Secrets only via environment variables / secret managers; use **`.env`** locally (gitignored). Never commit secrets or put them in prompts, logs, or agent output.
+
+## Exploration policy
+
+Structured navigation first: **`README.md`**, **`docs/AI_WORKFLOW.md`**, **`CLAUDE.md`**, then scoped search in **`server/`** or **`client/`** before whole-repo grep. MCP (when enabled): **cursor-ide-browser** for UI verification; **user-ai-agent-committee** if configured — read tool schemas before calling.
+
+## Claude Code parity
+
+Project instructions for Claude Code live in **`CLAUDE.md`**; skills live under **`.claude/skills/`**. Keep these aligned with **`docs/AI_WORKFLOW.md`**.
