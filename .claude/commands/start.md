@@ -25,14 +25,26 @@ Run this **before** writing implementation code.
 2. **README + project docs** — Read **`README.md`** for feature list, API summary, ports, and install/run steps; skim **`CLAUDE.md`** and **`docs/AI_WORKFLOW.md`** for workflow and boundaries.
 3. **Synthesize** — In your working notes, write a short **“what this project does”** paragraph grounded in **code + README** (not generic stack guesses). This is the lens for every later step.
 
-### A2 — Harvest candidates and choose one feature
+### A2 — Harvest candidates and choose one feature (include a PM lens)
+
+Treat feature selection like a **product manager** who is constrained by this repo: propose what to build **for users and outcomes**, not only what the code complains about.
 
 1. **Harvest** (still code-led): `TODO`, `FIXME`, `HACK`, `XXX` in `server/` and `client/`; gaps you observed while mapping (validation, errors, a11y, UX, undocumented behavior).
 2. **Optional external signals** (only if available in-session): issue trackers, product notes, team MCP — never invent tickets.
-3. **Choose exactly one** item to ship in this run:
-   - Prefer **small, high-impact** scope with clear acceptance criteria that **fits existing patterns** you already saw in the codebase.
+
+3. **Product manager pass (mandatory before picking)** — Ground every answer in **A1** (code + README); do not invent personas or markets the product does not serve.
+   - **Who uses this?** Infer the primary user and job-to-be-done from the app’s actual flows and README positioning.
+   - **Problem → outcome** — For each candidate, state the **user problem** and the **measurable or demo-able outcome** (e.g. fewer steps, clearer errors, faster feedback), not just an engineering task.
+   - **Why now?** — Link to product goals implied by the project (e.g. MCP UI demos, builder UX, reliability). Deprioritize pure refactors unless they unblock a user-visible outcome.
+   - **Value vs effort** — Prefer **small slices** that deliver visible value; flag dependencies and cut scope with explicit **out of scope for this run**.
+   - **Risks & assumptions** — One line each: what could be wrong about user need or feasibility; how you’ll validate after ship (see Phase D/E).
+   - **Hypothesis (one sentence)** — *We believe [change] will help [user] achieve [outcome] because [reason tied to this codebase].*
+
+4. **Choose exactly one** item to ship in this run:
+   - Prefer **small, high-impact** scope with clear acceptance criteria that **fits existing patterns** you already saw in the codebase **and** passes the PM pass above.
    - Reject vague multi-week epics; narrow until one vertical slice is feasible now.
-4. **Record**: chosen feature, why it wins over alternatives, and **definition of done** (observable behavior).
+
+5. **Record**: chosen feature, **user/outcome framing**, why it wins over alternatives, **out of scope** for this run, and **definition of done** (observable user or operator behavior).
 
 ---
 
@@ -41,7 +53,7 @@ Run this **before** writing implementation code.
 Research **builds on** the project context from Phase A1; do not “research in a vacuum.”
 
 1. **`research-first`** (`.claude/skills/research-first/SKILL.md`) — Re-check **`README.md`** and **relevant files** under **`server/`** / **`client/`** for the chosen feature; confirm feasibility, constraints, and alternatives against **actual** imports and patterns. Security: no secrets in code or logs.
-2. **`plan-task`** (`.claude/skills/plan-task/SKILL.md`) — Atomic tasks, concrete files/modules to touch, API/UX impact — aligned with how similar work is already done in this repo.
+2. **`plan-task`** (`.claude/skills/plan-task/SKILL.md`) — Atomic tasks, concrete files/modules to touch, API/UX impact — aligned with how similar work is already done in this repo. Tie tasks to the **hypothesis and definition of done** from A2 (user-visible outcomes, not only internal refactors).
 3. State **how you will prove** correctness: `client/` lint, `npm run build`, and **manual browser steps** for any UI change.
 
 ---
