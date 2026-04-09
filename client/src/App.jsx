@@ -17,7 +17,6 @@ import {
   normalizeMcpPreviewResponse,
 } from './StructuredUIPreview'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
 import {
   Card,
   CardContent,
@@ -1594,8 +1593,6 @@ function App() {
           <section className="mcp-ui-section">
             <div className="section-header kit-badges">
               <span className="kit-badges__label">Shell UI</span>
-              <Badge variant="secondary">Tailwind 4</Badge>
-              <Badge variant="outline">shadcn/ui</Badge>
             </div>
 
             <TabsContent value="ai" className="mt-0 outline-none">

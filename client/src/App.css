@@ -809,6 +809,11 @@ body {
   border-bottom: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
   padding-bottom: calc(var(--spacing-sm) + 2px);
   margin-bottom: var(--spacing-md);
+  column-gap: var(--spacing-md);
+}
+
+.builder-section-header [data-slot="button"] {
+  margin-left: auto;
 }
 
 .builder-item-card {
@@ -843,11 +848,13 @@ body {
   border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
   padding-top: var(--spacing-md);
   margin-top: var(--spacing-sm);
+  gap: var(--spacing-sm);
 }
 
 .builder-remove-btn {
   min-width: 6.25rem;
   border-radius: calc(var(--radius-sm) * var(--glass-radius-scale));
+  padding-inline: calc(var(--spacing-md) + 2px);
 }
 
 .builder-inline-error {
@@ -873,9 +880,16 @@ body {
 }
 
 .builder-main-content label {
+  display: inline-block;
   font-size: 0.78rem;
   letter-spacing: 0.02em;
   color: color-mix(in srgb, var(--text-secondary) 92%, var(--text));
+  margin-bottom: 0.25rem;
+  line-height: 1.35;
+}
+
+.form-builder-field-actions label {
+  margin-bottom: 0;
 }
 
 .builder-item-card:hover {
@@ -932,6 +946,7 @@ body {
 
   .builder-remove-btn {
     width: 100%;
+    margin-top: var(--spacing-xs);
   }
 }
 
