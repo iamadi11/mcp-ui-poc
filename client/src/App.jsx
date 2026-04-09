@@ -436,6 +436,10 @@ function dashboardDefaultDataForType(type) {
   }
 }
 
+function hasMismatchedChartData(values = [], labels = []) {
+  return values.length !== labels.length
+}
+
 // Dashboard Builder Component (shadcn/ui + Tailwind)
 function DashboardBuilder({ onGenerateDashboard, generating }) {
   const [dashboardConfig, setDashboardConfig] = useState({
@@ -491,8 +495,14 @@ function DashboardBuilder({ onGenerateDashboard, generating }) {
   }
 
   const handleSubmit = () => {
+    if (dashboardHasChartDataMismatch) return
     onGenerateDashboard(dashboardConfig)
   }
+
+  const dashboardHasChartDataMismatch = dashboardConfig.widgets.some((widget) => {
+    if (widget.type !== 'chart') return false
+    return hasMismatchedChartData(widget.data?.values ?? [], widget.data?.labels ?? [])
+  })
 
   return (
     <Card className="dashboard-builder-card border-border/50 bg-card/50 text-card-foreground shadow-sm backdrop-blur-sm">
@@ -674,10 +684,15 @@ function DashboardBuilder({ onGenerateDashboard, generating }) {
         </div>
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
+        {dashboardHasChartDataMismatch && (
+          <p className="builder-inline-error" role="alert">
+            Chart widgets need the same number of values and labels.
+          </p>
+        )}
         <Button
           type="button"
           onClick={handleSubmit}
-          disabled={generating}
+          disabled={generating || dashboardHasChartDataMismatch}
           aria-busy={generating}
         >
           {generating ? 'Generating…' : 'Generate dashboard'}
@@ -699,8 +714,14 @@ function ChartBuilder({ onGenerateChart, generating }) {
   })
 
   const handleSubmit = () => {
+    if (hasMismatch) return
     onGenerateChart(chartConfig)
   }
+
+  const hasMismatch = hasMismatchedChartData(
+    chartConfig.data.values,
+    chartConfig.data.labels
+  )
 
   return (
     <Card className="chart-builder-card border-border/50 bg-card/50 text-card-foreground shadow-sm backdrop-blur-sm">
@@ -788,10 +809,15 @@ function ChartBuilder({ onGenerateChart, generating }) {
         </div>
       </CardContent>
       <CardFooter className="flex flex-col items-stretch gap-2 border-t border-border/40 pt-6 sm:flex-row sm:justify-end">
+        {hasMismatch && (
+          <p className="builder-inline-error" role="alert">
+            Chart needs the same number of values and labels.
+          </p>
+        )}
         <Button
           type="button"
           onClick={handleSubmit}
-          disabled={generating}
+          disabled={generating || hasMismatch}
           aria-busy={generating}
         >
           {generating ? 'Generating…' : 'Generate chart'}

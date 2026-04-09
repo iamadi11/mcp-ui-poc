@@ -15,6 +15,7 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 - **Form builder**: Text, email, number, select, textarea; required flags and labels
 - **Dashboard builder**: Metrics, lists, and chart widgets
 - **Chart builder**: Bar, pie, and line charts from comma-separated values and labels
+- **Chart validation**: Chart and dashboard chart widgets require equal counts for values and labels before generation (inline warning + disabled generate button)
 - **Preview**: Generated HTML renders inline after each build
 
 ### Server
