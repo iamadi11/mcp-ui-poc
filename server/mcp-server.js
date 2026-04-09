@@ -79,10 +79,7 @@ export class MCPServer {
     };
   }
 
-  /**
-   * Store user data. Payloads with `kind: 'form-submit'` append to a capped list
-   * so repeated demo submits are visible; other shapes replace the bucket (demo API).
-   */
+  // form-submit: append to capped list; other JSON: replace per-user bucket
   storeUserData(userId, incoming) {
     if (incoming == null || typeof incoming !== 'object') {
       this.userData.set(userId, incoming);
