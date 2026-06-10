@@ -202,9 +202,15 @@ const uiSpecSchema = {
   properties: {
     title: { type: 'string' },
     summary: { type: 'string', description: 'One-sentence description of what the data shows' },
+    presentation: {
+      type: 'string',
+      enum: ['page', 'modal'],
+      description:
+        'Layout container. "page": full-width dashboard layout (default). "modal": a single centered dialog/popup card over a dimmed backdrop — use when the user instructions ask for a popup, modal, dialog, or overlay.',
+    },
     components: { type: 'array', items: componentSchema },
   },
-  required: ['title', 'summary', 'components'],
+  required: ['title', 'summary', 'presentation', 'components'],
   additionalProperties: false,
 }
 
@@ -232,7 +238,7 @@ function hydrateSpec(spec, data, maxRows = 50) {
 export async function planUI({ data, sourceUrl, instructions, designSystem, apiKey }) {
   const anthropic = getClient(apiKey)
   if (!anthropic) {
-    return { spec: heuristicPlan(data, sourceUrl), planner: 'heuristic' }
+    return { spec: heuristicPlan(data, sourceUrl, instructions), planner: 'heuristic' }
   }
 
   const catalog = designSystem.components
@@ -244,14 +250,16 @@ export async function planUI({ data, sourceUrl, instructions, designSystem, apiK
     max_tokens: 16000,
     thinking: { type: 'adaptive' },
     system: [
-      'You are a UI architect inside an MCP UI server. You receive data fetched from an API endpoint and design a dashboard for it.',
+      'You are a UI architect inside an MCP UI server. You receive data fetched from an API endpoint and design a UI for it.',
       `You may ONLY use components from the "${designSystem.name}" design system catalog:`,
       catalog,
       'Rules:',
+      '- User instructions are the highest priority. If they conflict with a default below, follow the instructions.',
+      '- Decide "presentation": use "modal" when the instructions ask for a popup, modal, dialog, overlay, or a single focused widget shown over the page. Use "page" (default) for a full dashboard.',
       '- Pick the components that best communicate this specific data: metrics first when aggregates exist, table or list for record sets, chart when there is a meaningful numeric dimension, key-value for a single object.',
+      '- Match the number of components to the request: a focused/popup ask gets 1 component; a general "show me this data" or dashboard ask gets 2-5 components covering different angles.',
       '- For "table" components do NOT copy row data: provide column definitions plus rowsPath (dot-path to the row array in the data; "" if the root is the array). The server hydrates rows from the original payload.',
       '- For charts, extract real values/labels from the data sample. Never invent data.',
-      '- Keep it focused: 2-5 components.',
     ].join('\n'),
     messages: [
       {
@@ -281,7 +289,10 @@ export async function planUI({ data, sourceUrl, instructions, designSystem, apiK
 }
 
 /** No-key fallback: deterministic spec from data shape. */
-export function heuristicPlan(data, sourceUrl) {
+export function heuristicPlan(data, sourceUrl, instructions) {
+  const presentation = /\b(popup|modal|dialog|overlay)\b/i.test(instructions || '')
+    ? 'modal'
+    : 'page'
   const components = []
   const arr = Array.isArray(data)
     ? data
@@ -336,6 +347,7 @@ export function heuristicPlan(data, sourceUrl) {
   return {
     title: 'Data overview',
     summary: `Heuristic view of ${sourceUrl} (set ANTHROPIC_API_KEY for AI-designed layouts)`,
+    presentation,
     components,
   }
 }

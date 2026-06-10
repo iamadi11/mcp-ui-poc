@@ -196,6 +196,9 @@ svg.line{width:100%;height:160px}
 .muted{opacity:.6;font-size:.85rem}
 h1{font-size:1.35rem;margin-bottom:4px}
 .page-sub{font-size:.83rem;opacity:.65;margin-bottom:22px}
+.modal-backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.45)}
+.modal-dialog{width:100%;max-width:480px;max-height:90vh;overflow:auto}
+body.modal{padding:0;max-width:none}
 `
 
 export function renderSpecHtml(spec, theme) {
@@ -205,6 +208,11 @@ export function renderSpecHtml(spec, theme) {
         `<section class="section card">${c.title ? `<div class="section-title">${esc(c.title)}</div>` : ''}${renderComponent(c, theme)}</section>`,
     )
     .join('\n')
+  const header = `<header><h1>${esc(spec.title || 'Generated UI')}</h1>${spec.summary ? `<p class="page-sub">${esc(spec.summary)}</p>` : ''}</header>`
+  const isModal = spec.presentation === 'modal'
+  const body = isModal
+    ? `<div class="modal-backdrop"><div class="modal-dialog">${header}${sections}</div></div>`
+    : `${header}\n${sections}`
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -213,9 +221,8 @@ export function renderSpecHtml(spec, theme) {
 ${theme.head || ''}
 <style>${BASE_CSS}${theme.css}</style>
 </head>
-<body>
-<header><h1>${esc(spec.title || 'Generated UI')}</h1>${spec.summary ? `<p class="page-sub">${esc(spec.summary)}</p>` : ''}</header>
-${sections}
+<body${isModal ? ' class="modal"' : ''}>
+${body}
 </body>
 </html>`
 }

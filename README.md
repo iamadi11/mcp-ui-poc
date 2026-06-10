@@ -29,6 +29,10 @@ endpoint URL ──▶ data fetch (SSRF-guarded, size/time capped)
   column definitions + `rowsPath`; the server hydrates rows from the original payload
   so the model never copies bulk data. Without a key, a deterministic heuristic
   planner keeps the flow working.
+- **Presentation**: the spec includes `presentation: "page" | "modal"`. User
+  instructions drive this — e.g. "show this in a popup" produces a single centered
+  dialog (`presentation: "modal"`) instead of a full dashboard. The heuristic planner
+  detects "popup"/"modal"/"dialog"/"overlay" in instructions as a fallback.
 - **Data of any type**: JSON (arrays, objects), or plain text; payload sampled and
   truncated before it reaches the model.
 - **Safety**: private/loopback endpoints rejected (override with
