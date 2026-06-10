@@ -1,11 +1,11 @@
 {
-  "name": "react-node-app",
+  "name": "mcp-ui-poc",
   "version": "1.0.0",
-  "description": "React and Node.js application",
+  "description": "Endpoint to AI-designed UI via MCP UI",
   "main": "server/index.js",
   "type": "module",
   "scripts": {
-    "start": "node server/index.js && cd client && npm run dev",
+    "start": "node server/index.js",
     "dev": "nodemon server/index.js",
     "client": "cd client && npm run dev",
     "build": "cd client && npm run build",

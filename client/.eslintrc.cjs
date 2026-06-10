@@ -31,11 +31,5 @@ module.exports = {
         "react-refresh/only-export-components": "off",
       },
     },
-    {
-      files: ["src/StructuredUIPreview.jsx"],
-      rules: {
-        "react-refresh/only-export-components": "off",
-      },
-    },
   ],
 };
