@@ -32,6 +32,16 @@ export const COMPONENT_CATALOG = [
   },
   { type: 'text', description: 'Narrative summary paragraph. props: { content }' },
   { type: 'badge-row', description: 'Row of tags/statuses. props: { items: [string] }' },
+  {
+    type: 'alert',
+    description:
+      'Status banner. props: { severity: "info"|"success"|"warning"|"error", message }',
+  },
+  {
+    type: 'action-row',
+    description:
+      'Row of buttons that send an action back to the host. props: { actions: [{ label, action: "link"|"notify", url? (for link), message? (for notify) }] }',
+  },
 ]
 
 const esc = (v) =>
@@ -151,6 +161,24 @@ function renderComponent(component, theme) {
       const items = (props.items || []).map((b) => `<span class="badge">${esc(b)}</span>`).join('')
       return `<div class="badge-row">${items}</div>`
     }
+    case 'alert': {
+      const severity = ['info', 'success', 'warning', 'error'].includes(props.severity)
+        ? props.severity
+        : 'info'
+      return `<div class="alert alert--${severity}">${esc(props.message)}</div>`
+    }
+    case 'action-row': {
+      const buttons = (props.actions || [])
+        .map((a) => {
+          const action =
+            a.action === 'notify'
+              ? { type: 'notify', payload: { message: a.message ?? a.label } }
+              : { type: 'link', payload: { url: a.url ?? '#' } }
+          return `<button type="button" class="action-btn" data-action="${esc(JSON.stringify(action))}">${esc(a.label)}</button>`
+        })
+        .join('')
+      return `<div class="action-row">${buttons}</div>`
+    }
     default:
       return `<p class="muted">Unsupported component: ${esc(component.type)}</p>`
   }
@@ -199,6 +227,20 @@ h1{font-size:1.35rem;margin-bottom:4px}
 .modal-backdrop{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.45)}
 .modal-dialog{width:100%;max-width:480px;max-height:90vh;overflow:auto}
 body.modal{padding:0;max-width:none}
+.alert{border-radius:8px;padding:10px 14px;font-size:.85rem;border:1px solid transparent}
+.alert--info{background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a}
+.alert--success{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
+.alert--warning{background:#fffbeb;border-color:#fde68a;color:#78350f}
+.alert--error{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}
+@media (prefers-color-scheme: dark){
+  .alert--info{background:#1e293b;border-color:#1e3a8a;color:#bfdbfe}
+  .alert--success{background:#052e16;border-color:#14532d;color:#bbf7d0}
+  .alert--warning{background:#3a2a05;border-color:#78350f;color:#fde68a}
+  .alert--error{background:#3f1212;border-color:#7f1d1d;color:#fecaca}
+}
+.action-row{display:flex;flex-wrap:wrap;gap:8px}
+.action-btn{cursor:pointer;border:1px solid currentColor;border-radius:6px;padding:6px 14px;font-size:.82rem;font-weight:500;background:transparent;color:inherit;font-family:inherit}
+.action-btn:hover{opacity:.8}
 `
 
 export function renderSpecHtml(spec, theme) {
@@ -223,6 +265,15 @@ ${theme.head || ''}
 </head>
 <body${isModal ? ' class="modal"' : ''}>
 ${body}
+<script>
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('.action-btn')
+  if (!btn) return
+  try {
+    window.parent.postMessage(JSON.parse(btn.dataset.action), '*')
+  } catch {}
+})
+</script>
 </body>
 </html>`
 }

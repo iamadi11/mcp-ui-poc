@@ -194,6 +194,54 @@ const componentSchema = {
       required: ['type', 'props'],
       additionalProperties: false,
     },
+    {
+      type: 'object',
+      properties: {
+        type: { const: 'alert' },
+        title: { type: 'string' },
+        props: {
+          type: 'object',
+          properties: {
+            severity: { type: 'string', enum: ['info', 'success', 'warning', 'error'] },
+            message: { type: 'string' },
+          },
+          required: ['severity', 'message'],
+          additionalProperties: false,
+        },
+      },
+      required: ['type', 'props'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: {
+        type: { const: 'action-row' },
+        title: { type: 'string' },
+        props: {
+          type: 'object',
+          properties: {
+            actions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  label: { type: 'string' },
+                  action: { type: 'string', enum: ['link', 'notify'] },
+                  url: { type: 'string', description: 'Required when action is "link"' },
+                  message: { type: 'string', description: 'Required when action is "notify"' },
+                },
+                required: ['label', 'action'],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ['actions'],
+          additionalProperties: false,
+        },
+      },
+      required: ['type', 'props'],
+      additionalProperties: false,
+    },
   ],
 }
 
@@ -258,8 +306,17 @@ export async function planUI({ data, sourceUrl, instructions, designSystem, apiK
       '- Decide "presentation": use "modal" when the instructions ask for a popup, modal, dialog, overlay, or a single focused widget shown over the page. Use "page" (default) for a full dashboard.',
       '- Pick the components that best communicate this specific data: metrics first when aggregates exist, table or list for record sets, chart when there is a meaningful numeric dimension, key-value for a single object.',
       '- Match the number of components to the request: a focused/popup ask gets 1 component; a general "show me this data" or dashboard ask gets 2-5 components covering different angles.',
+      '- If instructions name specific fields/metrics (e.g. "just show temperature and humidity"), build components from only those fields — ignore the rest of the data.',
+      '- If instructions name a specific component (e.g. "as a chart", "as a table", "as a list"), use that component type even if another type would normally fit better.',
+      '- Use "alert" for status/warning callouts the instructions ask to highlight (e.g. "warn if stock is low").',
+      '- Use "action-row" only when instructions ask for buttons/links/actions (e.g. "add a button to open the source"). action: "link" needs a real url from the data or sourceUrl; action: "notify" shows an in-app message.',
       '- For "table" components do NOT copy row data: provide column definitions plus rowsPath (dot-path to the row array in the data; "" if the root is the array). The server hydrates rows from the original payload.',
       '- For charts, extract real values/labels from the data sample. Never invent data.',
+      'Examples of instruction → decision:',
+      '- "show this in a popup" → presentation: "modal", 1 component.',
+      '- "just show me the temperature" → presentation: "modal", 1 stat-grid with only that value.',
+      '- "show as a bar chart" → 1 chart component, chartType: "bar", even if a table would otherwise be picked.',
+      '- "add a link to view the raw data" → include an action-row with a "link" action pointing at sourceUrl.',
     ].join('\n'),
     messages: [
       {

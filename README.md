@@ -22,8 +22,9 @@ endpoint URL ──▶ data fetch (SSRF-guarded, size/time capped)
   registered at setup. Built-ins: `shadcn`, `material`, `plain` (a template for your
   own). Select via `MCP_DESIGN_SYSTEM` env or `POST /api/design-systems/active`.
 - **Component catalog**: each system exposes `stat-grid`, `table`, `list`,
-  `key-value`, `chart` (bar/line/pie), `text`, `badge-row`; the AI may only pick from
-  this catalog (enforced by a JSON schema on the model output).
+  `key-value`, `chart` (bar/line/pie), `text`, `badge-row`, `alert`, and `action-row`
+  (buttons that send `link`/`notify` actions back to the host); the AI may only pick
+  from this catalog (enforced by a JSON schema on the model output).
 - **AI layer** (`server/ui-planner.js`): `ANTHROPIC_API_KEY` + Claude
   (`claude-opus-4-8` by default, override with `ANTHROPIC_MODEL`). Tables are sent as
   column definitions + `rowsPath`; the server hydrates rows from the original payload
@@ -33,6 +34,10 @@ endpoint URL ──▶ data fetch (SSRF-guarded, size/time capped)
   instructions drive this — e.g. "show this in a popup" produces a single centered
   dialog (`presentation: "modal"`) instead of a full dashboard. The heuristic planner
   detects "popup"/"modal"/"dialog"/"overlay" in instructions as a fallback.
+- **Instruction-driven design**: the AI follows free-form instructions for field
+  selection ("just show temperature and humidity"), component choice ("as a bar
+  chart"), status callouts (`alert`), and actions (`action-row` — buttons that emit
+  `link`/`notify` to the host app).
 - **Data of any type**: JSON (arrays, objects), or plain text; payload sampled and
   truncated before it reaches the model.
 - **Safety**: private/loopback endpoints rejected (override with
