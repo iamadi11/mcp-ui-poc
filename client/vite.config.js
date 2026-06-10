@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+/* eslint-env node */
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],

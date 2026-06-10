@@ -27,27 +27,3 @@ export function createGenerateLimiter() {
     handler: json429('Too many generate requests; slow down and try again shortly.'),
   });
 }
-
-/** Form submissions / store-data (can be frequent in demos) */
-export function createStoreLimiter() {
-  const max = readPositiveInt('MCP_RATE_LIMIT_STORE_PER_MIN', 180);
-  return rateLimit({
-    windowMs,
-    max,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: json429('Too many store requests; slow down and try again shortly.'),
-  });
-}
-
-/** Lightweight AI suggest */
-export function createSuggestLimiter() {
-  const max = readPositiveInt('MCP_RATE_LIMIT_SUGGEST_PER_MIN', 60);
-  return rateLimit({
-    windowMs,
-    max,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: json429('Too many suggestion requests; slow down and try again shortly.'),
-  });
-}
