@@ -16,6 +16,7 @@ import {
   McpPreviewRouter,
   normalizeMcpPreviewResponse,
 } from './StructuredUIPreview'
+import { EndpointToUI } from './EndpointToUI'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Card,
@@ -952,7 +953,7 @@ function App() {
   const [notifications, setNotifications] = useState([])
   const [error, setError] = useState(null)
   const [builderGenerating, setBuilderGenerating] = useState(false)
-  const [activeTab, setActiveTab] = useState('ai')
+  const [activeTab, setActiveTab] = useState('endpoint')
   const [userId, setUserId] = useState(() => readOrCreateUserId())
   const [storedView, setStoredView] = useState({
     phase: 'idle',
@@ -1576,6 +1577,9 @@ function App() {
           className="w-full"
         >
           <TabsList className="tab-navigation">
+            <TabsTrigger value="endpoint" className="tab-btn">
+              API → UI
+            </TabsTrigger>
             <TabsTrigger value="ai" className="tab-btn">
               AI Generator
             </TabsTrigger>
@@ -1594,6 +1598,13 @@ function App() {
             <div className="section-header kit-badges">
               <span className="kit-badges__label">Shell UI</span>
             </div>
+
+            <TabsContent value="endpoint" className="mt-0 outline-none">
+              <div className="section-header">
+                <h2>Endpoint → Design-System UI</h2>
+              </div>
+              <EndpointToUI onUIAction={handleUIAction} />
+            </TabsContent>
 
             <TabsContent value="ai" className="mt-0 outline-none">
               <div className="section-header">

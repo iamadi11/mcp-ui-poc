@@ -96,3 +96,9 @@ jspm_packages/
 # TernJS port file
 .tern-port 
 .vercel
+
+# local Claude Code tooling
+.claude/skills/ui-ux-pro-max/
+.claude/launch.json
+__pycache__/
+.env

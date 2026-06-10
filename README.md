@@ -4,6 +4,42 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 
 ## Features
 
+### Endpoint → Design-System UI (core flow)
+
+Provide any API endpoint; the server fetches the data (any shape), the **AI layer
+(Anthropic Claude)** analyses it and decides which components to use from the
+**registered design system** (shadcn/ui, Material UI, or your own), and the result is
+returned as an **MCP UI resource** ([mcpui.dev](https://mcpui.dev/)) rendered in the
+client with `@mcp-ui/client`'s `UIResourceRenderer`.
+
+```
+endpoint URL ──▶ data fetch (SSRF-guarded, size/time capped)
+            ──▶ AI planner (@anthropic-ai/sdk, structured output → UI spec)
+            ──▶ design-system renderer (registered at setup)
+            ──▶ @mcp-ui/server createUIResource ──▶ UIResourceRenderer (client)
+```
+
+- **Design-system registry** (`server/design-systems/registry.js`): systems are
+  registered at setup. Built-ins: `shadcn`, `material`, `plain` (a template for your
+  own). Select via `MCP_DESIGN_SYSTEM` env or `POST /api/design-systems/active`.
+- **Component catalog**: each system exposes `stat-grid`, `table`, `list`,
+  `key-value`, `chart` (bar/line/pie), `text`, `badge-row`; the AI may only pick from
+  this catalog (enforced by a JSON schema on the model output).
+- **AI layer** (`server/ui-planner.js`): `ANTHROPIC_API_KEY` + Claude
+  (`claude-opus-4-8` by default, override with `ANTHROPIC_MODEL`). Tables are sent as
+  column definitions + `rowsPath`; the server hydrates rows from the original payload
+  so the model never copies bulk data. Without a key, a deterministic heuristic
+  planner keeps the flow working.
+- **Data of any type**: JSON (arrays, objects), or plain text; payload sampled and
+  truncated before it reaches the model.
+- **Safety**: private/loopback endpoints rejected (override with
+  `MCP_ALLOW_PRIVATE_ENDPOINTS=1`), 2 MiB response cap, 15 s timeout.
+
+Endpoints: `POST /api/render-endpoint` (`{ url, method?, headers?, body?,
+instructions?, designSystem? }`), `GET /api/design-systems`,
+`POST /api/design-systems/active`. Setup: copy `.env.example` → `.env` and set
+`ANTHROPIC_API_KEY`.
+
 ### Core MCP UI
 - **Dynamic UI generation**: Forms, dashboards, and charts from configuration
 - **Structured + HTML**: Generate endpoints return an MCP `resource` (HTML for iframe hosts) plus a **`structured`** JSON envelope (`schemaVersion`, `kind`, `id`, `config`) so this app can render the same UI in React without an iframe; the preview defaults to **Data (React)** with an optional **HTML (iframe)** toggle. Stored **form-submit** payloads include **`preview`: `structured` \| `html`** so the server timeline can show which mode produced each row.

@@ -1077,6 +1077,14 @@ body {
   background: var(--glass-input-fill);
 }
 
+.endpoint-preview-frame {
+  margin-bottom: var(--spacing-md);
+}
+
+.endpoint-preview-frame iframe {
+  min-height: 520px;
+}
+
 /* Notifications */
 .notifications {
   position: fixed;
