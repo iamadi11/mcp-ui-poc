@@ -29,6 +29,19 @@ if (isVercel) {
   app.set('trust proxy', 1);
 }
 
+/** Anthropic SDK errors carry the raw API JSON in `.message`; surface just its message text. */
+function anthropicErrorMessage(error) {
+  const raw = error?.message || 'Failed to render endpoint UI';
+  const jsonStart = raw.indexOf('{');
+  if (jsonStart === -1) return raw;
+  try {
+    const parsed = JSON.parse(raw.slice(jsonStart));
+    return parsed?.error?.message || raw;
+  } catch {
+    return raw;
+  }
+}
+
 const generateLimiter = createGenerateLimiter();
 const PORT = process.env.PORT || 3001;
 
@@ -106,7 +119,7 @@ app.post('/api/render-endpoint', generateLimiter, async (req, res) => {
     }
     const status = error.status || 500;
     if (status >= 500) console.error('Error rendering endpoint UI:', error);
-    res.status(status).json({ error: error.message || 'Failed to render endpoint UI' });
+    res.status(status).json({ error: anthropicErrorMessage(error) });
   }
 });
 

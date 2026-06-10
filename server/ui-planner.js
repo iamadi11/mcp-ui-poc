@@ -44,205 +44,148 @@ const statItem = {
   additionalProperties: false,
 }
 
-const componentSchema = {
+const propsSchema = {
   anyOf: [
     {
       type: 'object',
-      properties: {
-        type: { const: 'stat-grid' },
-        title: { type: 'string' },
-        props: {
-          type: 'object',
-          properties: { items: { type: 'array', items: statItem } },
-          required: ['items'],
-          additionalProperties: false,
-        },
-      },
-      required: ['type', 'props'],
+      properties: { items: { type: 'array', items: statItem } },
+      required: ['items'],
       additionalProperties: false,
     },
     {
       type: 'object',
       properties: {
-        type: { const: 'table' },
-        title: { type: 'string' },
-        props: {
-          type: 'object',
-          properties: {
-            columns: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: { key: { type: 'string' }, label: { type: 'string' } },
-                required: ['key', 'label'],
-                additionalProperties: false,
-              },
+        columns: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { key: { type: 'string' }, label: { type: 'string' } },
+            required: ['key', 'label'],
+            additionalProperties: false,
+          },
+        },
+        rowsPath: {
+          type: 'string',
+          description:
+            'Dot-path into the fetched data pointing at the array of row objects, e.g. "results" or "" when the root is the array',
+        },
+      },
+      required: ['columns', 'rowsPath'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              title: { type: 'string' },
+              subtitle: { type: 'string' },
+              meta: { type: 'string' },
             },
-            rowsPath: {
-              type: 'string',
-              description:
-                'Dot-path into the fetched data pointing at the array of row objects, e.g. "results" or "" when the root is the array',
+            required: ['title'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['items'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: {
+        pairs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { key: { type: 'string' }, value: { type: 'string' } },
+            required: ['key', 'value'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['pairs'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: {
+        chartType: { type: 'string', enum: ['bar', 'line', 'pie'] },
+        values: { type: 'array', items: { type: 'number' } },
+        labels: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['chartType', 'values', 'labels'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: { content: { type: 'string' } },
+      required: ['content'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: { items: { type: 'array', items: { type: 'string' } } },
+      required: ['items'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: {
+        severity: { type: 'string', enum: ['info', 'success', 'warning', 'error'] },
+        message: { type: 'string' },
+      },
+      required: ['severity', 'message'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: {
+        actions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              label: { type: 'string' },
+              action: { type: 'string', enum: ['link', 'notify'] },
+              url: { type: 'string', description: 'Required when action is "link"' },
+              message: { type: 'string', description: 'Required when action is "notify"' },
             },
+            required: ['label', 'action'],
+            additionalProperties: false,
           },
-          required: ['columns', 'rowsPath'],
-          additionalProperties: false,
         },
       },
-      required: ['type', 'props'],
-      additionalProperties: false,
-    },
-    {
-      type: 'object',
-      properties: {
-        type: { const: 'list' },
-        title: { type: 'string' },
-        props: {
-          type: 'object',
-          properties: {
-            items: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  title: { type: 'string' },
-                  subtitle: { type: 'string' },
-                  meta: { type: 'string' },
-                },
-                required: ['title'],
-                additionalProperties: false,
-              },
-            },
-          },
-          required: ['items'],
-          additionalProperties: false,
-        },
-      },
-      required: ['type', 'props'],
-      additionalProperties: false,
-    },
-    {
-      type: 'object',
-      properties: {
-        type: { const: 'key-value' },
-        title: { type: 'string' },
-        props: {
-          type: 'object',
-          properties: {
-            pairs: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: { key: { type: 'string' }, value: { type: 'string' } },
-                required: ['key', 'value'],
-                additionalProperties: false,
-              },
-            },
-          },
-          required: ['pairs'],
-          additionalProperties: false,
-        },
-      },
-      required: ['type', 'props'],
-      additionalProperties: false,
-    },
-    {
-      type: 'object',
-      properties: {
-        type: { const: 'chart' },
-        title: { type: 'string' },
-        props: {
-          type: 'object',
-          properties: {
-            chartType: { type: 'string', enum: ['bar', 'line', 'pie'] },
-            values: { type: 'array', items: { type: 'number' } },
-            labels: { type: 'array', items: { type: 'string' } },
-          },
-          required: ['chartType', 'values', 'labels'],
-          additionalProperties: false,
-        },
-      },
-      required: ['type', 'props'],
-      additionalProperties: false,
-    },
-    {
-      type: 'object',
-      properties: {
-        type: { const: 'text' },
-        title: { type: 'string' },
-        props: {
-          type: 'object',
-          properties: { content: { type: 'string' } },
-          required: ['content'],
-          additionalProperties: false,
-        },
-      },
-      required: ['type', 'props'],
-      additionalProperties: false,
-    },
-    {
-      type: 'object',
-      properties: {
-        type: { const: 'badge-row' },
-        title: { type: 'string' },
-        props: {
-          type: 'object',
-          properties: { items: { type: 'array', items: { type: 'string' } } },
-          required: ['items'],
-          additionalProperties: false,
-        },
-      },
-      required: ['type', 'props'],
-      additionalProperties: false,
-    },
-    {
-      type: 'object',
-      properties: {
-        type: { const: 'alert' },
-        title: { type: 'string' },
-        props: {
-          type: 'object',
-          properties: {
-            severity: { type: 'string', enum: ['info', 'success', 'warning', 'error'] },
-            message: { type: 'string' },
-          },
-          required: ['severity', 'message'],
-          additionalProperties: false,
-        },
-      },
-      required: ['type', 'props'],
-      additionalProperties: false,
-    },
-    {
-      type: 'object',
-      properties: {
-        type: { const: 'action-row' },
-        title: { type: 'string' },
-        props: {
-          type: 'object',
-          properties: {
-            actions: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  label: { type: 'string' },
-                  action: { type: 'string', enum: ['link', 'notify'] },
-                  url: { type: 'string', description: 'Required when action is "link"' },
-                  message: { type: 'string', description: 'Required when action is "notify"' },
-                },
-                required: ['label', 'action'],
-                additionalProperties: false,
-              },
-            },
-          },
-          required: ['actions'],
-          additionalProperties: false,
-        },
-      },
-      required: ['type', 'props'],
+      required: ['actions'],
       additionalProperties: false,
     },
   ],
+}
+
+const componentSchema = {
+  type: 'object',
+  properties: {
+    type: {
+      type: 'string',
+      enum: [
+        'stat-grid',
+        'table',
+        'list',
+        'key-value',
+        'chart',
+        'text',
+        'badge-row',
+        'alert',
+        'action-row',
+      ],
+    },
+    title: { type: 'string' },
+    props: propsSchema,
+  },
+  required: ['type', 'props'],
+  additionalProperties: false,
 }
 
 const uiSpecSchema = {
