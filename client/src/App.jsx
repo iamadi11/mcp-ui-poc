@@ -7,6 +7,7 @@ import {
 } from './glassAppearance.js'
 import { GlassControls } from './GlassControls.jsx'
 import { EndpointToUI } from './EndpointToUI.jsx'
+import { SettingsPanel } from './SettingsPanel.jsx'
 
 function App() {
   const [glass, setGlass] = useState(() => readStoredGlass())
@@ -92,6 +93,7 @@ function App() {
       )}
 
       <header className="app-header hero">
+        <SettingsPanel />
         <p className="hero-kicker">MCP UI · mcpui.dev</p>
         <h1>
           Any endpoint, <span className="hero-accent">rendered</span>.

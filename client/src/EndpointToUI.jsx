@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { errorFromResponse } from './apiError'
+import { readApiKey, readSavedEndpoints, writeSavedEndpoints } from './storage.js'
 
 const SAMPLE_ENDPOINTS = [
   { label: 'Users', url: 'https://jsonplaceholder.typicode.com/users' },
@@ -42,6 +43,46 @@ function Spinner() {
     >
       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="4" />
       <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function BoltIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+      <path
+        d="M13 2 4 13h6l-1 9 9-11h-6l1-9Z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
+function SaveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+      <path
+        d="M5 4h11l3 3v13H5V4Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M8 4v5h7V4" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M8 14h8v6H8z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+      <path
+        d="M5 7h14M9 7V5h6v2m-8 0 1 13h8l1-13"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -74,6 +115,9 @@ export function EndpointToUI({ onUIAction }) {
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   const [showSpec, setShowSpec] = useState(false)
+  const [savedEndpoints, setSavedEndpoints] = useState(() => readSavedEndpoints())
+  const [saveName, setSaveName] = useState('')
+  const [activeEndpointId, setActiveEndpointId] = useState(null)
 
   useEffect(() => {
     fetch('/api/design-systems')
@@ -102,9 +146,13 @@ export function EndpointToUI({ onUIAction }) {
     setResult(null)
     setShowSpec(false)
     try {
+      const apiKey = readApiKey()
       const res = await fetch('/api/render-endpoint', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiKey ? { 'x-anthropic-api-key': apiKey } : {}),
+        },
         body: JSON.stringify({
           url,
           method,
@@ -123,166 +171,267 @@ export function EndpointToUI({ onUIAction }) {
     }
   }, [url, method, headersText, instructions, designSystem])
 
+  const handleSaveEndpoint = useCallback(() => {
+    const name = saveName.trim() || url
+    const entry = {
+      id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+      name,
+      url,
+      method,
+      headersText,
+      instructions,
+      designSystem,
+    }
+    setSavedEndpoints((prev) => {
+      const next = [entry, ...prev.filter((e) => e.url !== url || e.method !== method)].slice(
+        0,
+        12
+      )
+      writeSavedEndpoints(next)
+      return next
+    })
+    setActiveEndpointId(entry.id)
+    setSaveName('')
+  }, [saveName, url, method, headersText, instructions, designSystem])
+
+  const handleLoadEndpoint = useCallback((entry) => {
+    setUrl(entry.url)
+    setMethod(entry.method || 'GET')
+    setHeadersText(entry.headersText || '')
+    setInstructions(entry.instructions || '')
+    if (entry.designSystem) setDesignSystem(entry.designSystem)
+    setActiveEndpointId(entry.id)
+    setError(null)
+  }, [])
+
+  const handleDeleteEndpoint = useCallback((id) => {
+    setSavedEndpoints((prev) => {
+      const next = prev.filter((e) => e.id !== id)
+      writeSavedEndpoints(next)
+      return next
+    })
+    setActiveEndpointId((current) => (current === id ? null : current))
+  }, [])
+
   const selectedSystem = designSystems.find((s) => s.id === designSystem)
 
   return (
-    <div className="space-y-6">
-      <Card className="builder-card">
-        <CardHeader>
-          <CardTitle>Endpoint → UI</CardTitle>
-          <CardDescription>
-            Fetch · analyse · compose. The AI layer picks components from the registered design
-            system and returns an MCP UI resource.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-[120px_1fr]">
-            <div className="space-y-2">
-              <Label>Method</Label>
-              <Select value={method} onValueChange={setMethod}>
-                <SelectTrigger aria-label="HTTP method">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {['GET', 'POST', 'PUT'].map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endpoint-url">Endpoint URL</Label>
-              <Input
-                id="endpoint-url"
-                className="font-mono text-[13px]"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !loading && url) handleGenerate()
-                }}
-                placeholder="https://api.example.com/v1/orders"
-                inputMode="url"
-                spellCheck={false}
-              />
-            </div>
-          </div>
-
-          <div className="sample-chips" role="group" aria-label="Sample endpoints">
-            <span className="sample-chips__label">Try:</span>
-            {SAMPLE_ENDPOINTS.map((s) => (
-              <button
-                key={s.url}
-                type="button"
-                className={`sample-chip ${url === s.url ? 'sample-chip--active' : ''}`}
-                onClick={() => setUrl(s.url)}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Design system</Label>
-              <Select value={designSystem} onValueChange={setDesignSystem}>
-                <SelectTrigger aria-label="Design system">
-                  <SelectValue placeholder="Registered design systems" />
-                </SelectTrigger>
-                <SelectContent>
-                  {designSystems.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedSystem && (
-                <p className="field-hint">{selectedSystem.description}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endpoint-headers">Headers (JSON, optional)</Label>
-              <Input
-                id="endpoint-headers"
-                className="font-mono text-[13px]"
-                value={headersText}
-                onChange={(e) => setHeadersText(e.target.value)}
-                placeholder='{"Authorization": "Bearer …"}'
-                spellCheck={false}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="endpoint-instructions">Instructions for the AI layer (optional)</Label>
-            <Input
-              id="endpoint-instructions"
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder="e.g. focus on geographic distribution, chart by company"
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col items-stretch gap-3 border-t border-border/40 pt-6 sm:flex-row sm:items-center sm:justify-end">
-          {error && (
-            <p className="builder-inline-error" role="alert">
-              {error}
-            </p>
-          )}
-          <Button
-            type="button"
-            className="generate-btn"
-            onClick={handleGenerate}
-            disabled={loading || !url}
-          >
-            {loading ? (
-              <>
-                <Spinner /> Fetching + analysing…
-              </>
-            ) : (
-              'Generate UI'
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {loading && <PreviewSkeleton />}
-
-      {!loading && result?.resource && (
-        <div className="generated-ui">
-          <div className="generated-ui__head">
-            <h3>Generated UI</h3>
-            <div className="meta-chips" aria-label="Generation metadata">
-              <span className="meta-chip" title="Design system used">
-                {result.meta?.designSystem}
-              </span>
-              <span className="meta-chip" title="Planner that designed the layout">
-                {result.meta?.planner}
-              </span>
-              <span className="meta-chip" title="Bytes fetched from the endpoint">
-                {result.meta?.source?.bytes ?? '?'} B
-              </span>
-            </div>
-          </div>
-          <div className="endpoint-preview-frame">
-            <UIResourceRenderer
-              resource={result.resource}
-              onUIAction={onUIAction}
-              htmlProps={{ style: { width: '100%', minHeight: 520, border: 'none' } }}
-            />
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={() => setShowSpec((v) => !v)}>
-            {showSpec ? 'Hide UI spec' : 'Show UI spec (AI output)'}
-          </Button>
-          {showSpec && (
-            <pre className="spec-json" aria-label="UI spec JSON">
-              {JSON.stringify(result.spec, null, 2)}
-            </pre>
-          )}
+    <div className="builder-layout">
+      <aside className="endpoint-library" aria-label="Saved endpoints">
+        <div className="endpoint-library__head">
+          <span className="endpoint-library__title">Endpoints</span>
+          <span className="endpoint-library__count">{savedEndpoints.length}</span>
         </div>
-      )}
+
+        {savedEndpoints.length === 0 ? (
+          <p className="endpoint-library__empty">
+            Save endpoint configs (URL, method, headers, instructions) to switch between them
+            instantly.
+          </p>
+        ) : (
+          <ul className="endpoint-library__list">
+            {savedEndpoints.map((entry) => (
+              <li key={entry.id}>
+                <button
+                  type="button"
+                  className={`endpoint-library__item ${
+                    activeEndpointId === entry.id ? 'endpoint-library__item--active' : ''
+                  }`}
+                  onClick={() => handleLoadEndpoint(entry)}
+                >
+                  <span className="endpoint-library__item-name">{entry.name}</span>
+                  <span className="endpoint-library__item-meta">
+                    <span className="endpoint-library__item-method">{entry.method}</span>
+                    {entry.url}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="endpoint-library__delete"
+                  aria-label={`Delete ${entry.name}`}
+                  onClick={() => handleDeleteEndpoint(entry.id)}
+                >
+                  <TrashIcon />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="endpoint-library__save">
+          <Input
+            className="text-[13px]"
+            value={saveName}
+            onChange={(e) => setSaveName(e.target.value)}
+            placeholder="Name this config…"
+            spellCheck={false}
+          />
+          <Button type="button" variant="outline" size="sm" onClick={handleSaveEndpoint} disabled={!url}>
+            <SaveIcon /> Save current
+          </Button>
+        </div>
+      </aside>
+
+      <div className="builder-main space-y-6">
+        <Card className="builder-card">
+          <CardHeader>
+            <CardTitle>Endpoint → UI</CardTitle>
+            <CardDescription>
+              Fetch · analyse · compose. The AI layer picks components from the registered design
+              system and returns an MCP UI resource.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-[120px_1fr]">
+              <div className="space-y-2">
+                <Label>Method</Label>
+                <Select value={method} onValueChange={setMethod}>
+                  <SelectTrigger aria-label="HTTP method">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {['GET', 'POST', 'PUT'].map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endpoint-url">Endpoint URL</Label>
+                <Input
+                  id="endpoint-url"
+                  className="font-mono text-[13px]"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !loading && url) handleGenerate()
+                  }}
+                  placeholder="https://api.example.com/v1/orders"
+                  inputMode="url"
+                  spellCheck={false}
+                />
+              </div>
+            </div>
+
+            <div className="sample-chips" role="group" aria-label="Sample endpoints">
+              <span className="sample-chips__label">Try:</span>
+              {SAMPLE_ENDPOINTS.map((s) => (
+                <button
+                  key={s.url}
+                  type="button"
+                  className={`sample-chip ${url === s.url ? 'sample-chip--active' : ''}`}
+                  onClick={() => setUrl(s.url)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Design system</Label>
+                <Select value={designSystem} onValueChange={setDesignSystem}>
+                  <SelectTrigger aria-label="Design system">
+                    <SelectValue placeholder="Registered design systems" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {designSystems.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedSystem && (
+                  <p className="field-hint">{selectedSystem.description}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endpoint-headers">Headers (JSON, optional)</Label>
+                <Input
+                  id="endpoint-headers"
+                  className="font-mono text-[13px]"
+                  value={headersText}
+                  onChange={(e) => setHeadersText(e.target.value)}
+                  placeholder='{"Authorization": "Bearer …"}'
+                  spellCheck={false}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="endpoint-instructions">Instructions for the AI layer (optional)</Label>
+              <Input
+                id="endpoint-instructions"
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder="e.g. focus on geographic distribution, chart by company"
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col items-stretch gap-3 border-t border-border/40 pt-6 sm:flex-row sm:items-center sm:justify-end">
+            {error && (
+              <p className="builder-inline-error" role="alert">
+                {error}
+              </p>
+            )}
+            <Button
+              type="button"
+              className="generate-btn"
+              onClick={handleGenerate}
+              disabled={loading || !url}
+            >
+              {loading ? (
+                <>
+                  <Spinner /> Fetching + analysing…
+                </>
+              ) : (
+                <>
+                  <BoltIcon /> Generate UI
+                </>
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+
+        {loading && <PreviewSkeleton />}
+
+        {!loading && result?.resource && (
+          <div className="generated-ui">
+            <div className="generated-ui__head">
+              <h3>Generated UI</h3>
+              <div className="meta-chips" aria-label="Generation metadata">
+                <span className="meta-chip" title="Design system used">
+                  {result.meta?.designSystem}
+                </span>
+                <span className="meta-chip" title="Planner that designed the layout">
+                  {result.meta?.planner}
+                </span>
+                <span className="meta-chip" title="Bytes fetched from the endpoint">
+                  {result.meta?.source?.bytes ?? '?'} B
+                </span>
+              </div>
+            </div>
+            <div className="endpoint-preview-frame">
+              <UIResourceRenderer
+                resource={result.resource}
+                onUIAction={onUIAction}
+                htmlProps={{ style: { width: '100%', minHeight: 520, border: 'none' } }}
+              />
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => setShowSpec((v) => !v)}>
+              {showSpec ? 'Hide UI spec' : 'Show UI spec (AI output)'}
+            </Button>
+            {showSpec && (
+              <pre className="spec-json" aria-label="UI spec JSON">
+                {JSON.stringify(result.spec, null, 2)}
+              </pre>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

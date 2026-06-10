@@ -69,9 +69,10 @@ app.post('/api/render-endpoint', generateLimiter, async (req, res) => {
     const { url, method, headers, body, instructions, designSystem: dsId } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
 
+    const apiKey = req.get('x-anthropic-api-key') || undefined;
     const designSystem = getDesignSystem(dsId);
     const { data, contentType, bytes } = await fetchEndpointData({ url, method, headers, body });
-    const { spec, planner } = await planUI({ data, sourceUrl: url, instructions, designSystem });
+    const { spec, planner } = await planUI({ data, sourceUrl: url, instructions, designSystem, apiKey });
 
     const html = designSystem.render(spec);
     assertGeneratedHtmlWithinLimit(html);

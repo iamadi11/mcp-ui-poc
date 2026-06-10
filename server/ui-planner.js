@@ -11,7 +11,8 @@ import { sampleData } from './data-source.js'
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-8'
 
 let client = null
-function getClient() {
+function getClient(apiKey) {
+  if (apiKey) return new Anthropic({ apiKey })
   if (!process.env.ANTHROPIC_API_KEY) return null
   if (!client) client = new Anthropic()
   return client
@@ -217,8 +218,8 @@ function hydrateSpec(spec, data, maxRows = 50) {
   return { ...spec, components }
 }
 
-export async function planUI({ data, sourceUrl, instructions, designSystem }) {
-  const anthropic = getClient()
+export async function planUI({ data, sourceUrl, instructions, designSystem, apiKey }) {
+  const anthropic = getClient(apiKey)
   if (!anthropic) {
     return { spec: heuristicPlan(data, sourceUrl), planner: 'heuristic' }
   }
