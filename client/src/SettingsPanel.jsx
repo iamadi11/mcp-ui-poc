@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { readApiKey, writeApiKey } from './storage.js'
 
 function KeyIcon() {
@@ -16,20 +16,53 @@ function KeyIcon() {
   )
 }
 
+const STATUS_LABEL = {
+  none: 'AI key',
+  checking: 'Checking key…',
+  connected: 'Connected to Claude',
+  invalid: 'Key invalid',
+  error: 'Could not verify',
+}
+
 export function SettingsPanel() {
   const [open, setOpen] = useState(false)
   const [key, setKey] = useState(() => readApiKey())
-  const [saved, setSaved] = useState(false)
+  const [status, setStatus] = useState(() => (readApiKey() ? 'checking' : 'none'))
+
+  const verify = useCallback(async (apiKey) => {
+    if (!apiKey) {
+      setStatus('none')
+      return
+    }
+    setStatus('checking')
+    try {
+      const res = await fetch('/api/verify-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-anthropic-api-key': apiKey },
+        body: '{}',
+      })
+      const body = await res.json().catch(() => ({}))
+      setStatus(body.valid ? 'connected' : 'invalid')
+    } catch {
+      setStatus('error')
+    }
+  }, [])
+
+  useEffect(() => {
+    const stored = readApiKey()
+    if (stored) verify(stored)
+  }, [verify])
 
   const handleSave = () => {
-    writeApiKey(key.trim())
-    setSaved(true)
-    setTimeout(() => setSaved(false), 1600)
+    const trimmed = key.trim()
+    writeApiKey(trimmed)
+    verify(trimmed)
   }
 
   const handleClear = () => {
     writeApiKey('')
     setKey('')
+    setStatus('none')
   }
 
   return (
@@ -43,7 +76,11 @@ export function SettingsPanel() {
         id="settings-panel-trigger"
       >
         <KeyIcon />
-        <span>{readApiKey() ? 'AI key set' : 'AI key'}</span>
+        <span
+          className={`settings-panel__dot settings-panel__dot--${status}`}
+          aria-hidden="true"
+        />
+        <span>{STATUS_LABEL[status]}</span>
       </button>
       {open && (
         <div
@@ -68,12 +105,23 @@ export function SettingsPanel() {
             spellCheck={false}
             autoComplete="off"
           />
+          <p
+            className={`settings-panel__status settings-panel__status--${status}`}
+            role="status"
+            aria-live="polite"
+          >
+            {status === 'none' && 'No key saved — requests use the server default (if configured).'}
+            {status === 'checking' && 'Checking connection…'}
+            {status === 'connected' && 'Connected — your key will be used for AI planning.'}
+            {status === 'invalid' && 'Anthropic rejected this key. Check it and try again.'}
+            {status === 'error' && 'Could not reach the server to verify this key.'}
+          </p>
           <div className="settings-panel__actions">
             <button type="button" className="settings-panel__clear" onClick={handleClear}>
               Clear
             </button>
             <button type="button" className="settings-panel__save" onClick={handleSave}>
-              {saved ? 'Saved' : 'Save'}
+              Save &amp; verify
             </button>
           </div>
         </div>

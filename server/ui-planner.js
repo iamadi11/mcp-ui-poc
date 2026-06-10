@@ -22,6 +22,17 @@ export function aiAvailable() {
   return Boolean(process.env.ANTHROPIC_API_KEY)
 }
 
+/** Lightweight auth check for a client-supplied key — no completion tokens spent. */
+export async function verifyApiKey(apiKey) {
+  if (!apiKey) return { valid: false, error: 'No API key provided' }
+  try {
+    await new Anthropic({ apiKey }).models.list({ limit: 1 })
+    return { valid: true, model: MODEL }
+  } catch (error) {
+    return { valid: false, error: error?.status === 401 ? 'Invalid API key' : error.message }
+  }
+}
+
 const statItem = {
   type: 'object',
   properties: {

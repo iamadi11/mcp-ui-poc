@@ -11,7 +11,7 @@ import {
   setActiveDesignSystem,
 } from './design-systems/registry.js';
 import { fetchEndpointData } from './data-source.js';
-import { planUI, aiAvailable } from './ui-planner.js';
+import { planUI, aiAvailable, verifyApiKey } from './ui-planner.js';
 import { createGenerateLimiter } from './rate-limits.js';
 import {
   assertGeneratedHtmlWithinLimit,
@@ -61,6 +61,12 @@ app.post('/api/design-systems/active', (req, res) => {
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
+});
+
+// Validates a client-supplied Anthropic key without spending completion tokens
+app.post('/api/verify-key', generateLimiter, async (req, res) => {
+  const apiKey = req.get('x-anthropic-api-key') || req.body?.apiKey;
+  res.json(await verifyApiKey(apiKey));
 });
 
 // Endpoint → data → AI analysis → design-system components → MCP UI resource
