@@ -1,41 +1,51 @@
-# Dynamic MCP UI Generator
+# MCP UI: Endpoint → Design-System UI
 
-Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, and charts in the browser, backed by a Node server that returns MCP UI resources. The client is intentionally **minimal**—neutral surfaces, a single accent color, and **light/dark styling from the system** (`prefers-color-scheme`), not decorative gradients or heavy effects.
+Point at any API endpoint. The server fetches the data, an AI layer (Anthropic Claude)
+analyses it and decides which components to use from a **registered design system**
+(shadcn/ui, Material UI, or your own), and the result comes back as an
+**MCP UI resource** ([mcpui.dev](https://mcpui.dev/)) rendered in the client with
+`@mcp-ui/client`'s `UIResourceRenderer`.
 
-## Features
+The client is intentionally focused: one core flow (Endpoint → UI) plus a
+**glassmorphism appearance panel** for tuning the shell's frosted-glass look.
 
-### Core MCP UI
-- **Dynamic UI generation**: Forms, dashboards, and charts from configuration
-- **Structured + HTML**: Generate endpoints return an MCP `resource` (HTML for iframe hosts) plus a **`structured`** JSON envelope (`schemaVersion`, `kind`, `id`, `config`) so this app can render the same UI in React without an iframe; the preview defaults to **Data (React)** with an optional **HTML (iframe)** toggle. Stored **form-submit** payloads include **`preview`: `structured` \| `html`** so the server timeline can show which mode produced each row.
-- **PostMessage**: Parent page and generated iframe stay in sync for tools and events when using HTML preview
-- **Toasts**: Short-lived notifications for form saves, dashboard refresh, chart export, and **iframe tool** callbacks (e.g. theme/settings)—not blocking `alert()` dialogs
+## Core flow
 
-### Builders
-- **AI Generator** (default tab): Natural-language descriptions produce the same MCP resources as the typed builders (`POST /api/ai/generate`); inline errors for validation and API failures (no modal alerts)
-- **Form builder**: Text, email, number, select, textarea; required flags and labels
-- **Dashboard builder**: Metrics, lists, and chart widgets
-- **Chart builder**: Bar, pie, and line charts from comma-separated values and labels
-- **Chart validation**: Chart and dashboard chart widgets require equal counts for values and labels before generation (inline warning + disabled generate button)
-- **Preview**: Generated HTML renders inline after each build
+```
+endpoint URL ──▶ data fetch (SSRF-guarded, size/time capped)
+            ──▶ AI planner (@anthropic-ai/sdk, structured output → UI spec)
+            ──▶ design-system renderer (registered at setup)
+            ──▶ @mcp-ui/server createUIResource ──▶ UIResourceRenderer (client)
+```
 
-### Server
-- **Components & storage**: Track generated components and optional user-scoped data. In-memory maps are **bounded** so the MCP core does not grow without limit: oldest UI component metadata is evicted after **`MCP_MAX_UI_COMPONENTS`** (default 2000); oldest user buckets after **`MCP_MAX_USER_DATA_KEYS`** (default 500); form-submit history per user is capped by **`MCP_MAX_SUBMISSIONS_PER_USER`** (default 50). See **Scaling** below. Request bodies are limited to **512kb** JSON. Each **generated HTML document** (builders, AI paths, static example) is rejected with **413** if its UTF-8 size exceeds **`MCP_MAX_HTML_BYTES`** (default 768 KiB), keeping responses and RAM predictable. Dynamic and AI-generated component ids use **UUID** suffixes so burst traffic does not collide on millisecond timestamps. **Per-IP rate limits** (rolling 1-minute windows) protect expensive `POST` routes: shared cap for generate-form, generate-dashboard, generate-chart, and `ai/generate`; a higher cap for `store-data`; a separate cap for `ai/suggest`—see **Scaling**.
-- **HTML generation**: Form, dashboard, and chart responses are **full HTML documents** (`server/generated-html-skin.js` + `server/dynamic-ui-html.js`) so iframe previews use the same glass mesh, DM Sans, and accent styling as the shell—not legacy purple-gradient fragments
-- **Layout**: Generated embeds are responsive
+- **Design-system registry** (`server/design-systems/registry.js`): systems are
+  registered at setup. Built-ins: `shadcn`, `material`, `plain` (a template for your
+  own). Select via `MCP_DESIGN_SYSTEM` env or `POST /api/design-systems/active`.
+- **Component catalog**: each system exposes `stat-grid`, `table`, `list`,
+  `key-value`, `chart` (bar/line/pie), `text`, `badge-row`; the AI may only pick from
+  this catalog (enforced by a JSON schema on the model output).
+- **AI layer** (`server/ui-planner.js`): `ANTHROPIC_API_KEY` + Claude
+  (`claude-opus-4-8` by default, override with `ANTHROPIC_MODEL`). Tables are sent as
+  column definitions + `rowsPath`; the server hydrates rows from the original payload
+  so the model never copies bulk data. Without a key, a deterministic heuristic
+  planner keeps the flow working.
+- **Data of any type**: JSON (arrays, objects), or plain text; payload sampled and
+  truncated before it reaches the model.
+- **Safety**: private/loopback endpoints rejected (override with
+  `MCP_ALLOW_PRIVATE_ENDPOINTS=1`), 2 MiB response cap, 15 s timeout.
 
-### Interface
-- **Generate feedback**: Form, Dashboard, and Chart builders disable their primary **Generate** control and show **Generating…** while the corresponding `POST /api/generate-*` request is in flight (same idea as the AI tab’s loading state).
-- **Form Builder polish**: Field editor cards use the glass palette/borders from the shell and keep a cleaner responsive grid (`2` columns on medium widths, `4` on extra-wide screens) to avoid cramped controls.
-- **Builder spacing polish**: Form, Dashboard, and Chart now share section headers, nested card spacing, and action-row rhythm for a more consistent editing flow across tabs.
-- **Builder control alignment**: Editor rows use shared field-grid spacing and stable remove-button sizing so controls no longer crowd/clip on medium and narrow widths.
-- **Responsive spacing tune**: Builder density is now tuned by breakpoint (cleaner, tighter desktop rhythm; roomier mobile touch spacing).
-- **Header simplification**: The shell header now shows only a subtle **Shell UI** label (Tailwind/shadcn tech pills removed).
-- **Button padding pass**: Legacy shell buttons (`.btn`, retry/storage actions, glass settings FAB) use larger tap-friendly padding to match builder controls.
-- **Typography**: DM Sans, restrained scale
-- **Theme**: CSS variables; light and dark follow OS preference
-- **Glassmorphism**: Frosted panels, mesh backdrop, and tunable blur—use the **Glass** control (bottom-right) to adjust blur, frost, edge light, saturation, mesh strength, and corner roundness in real time (saved in `localStorage` under `mcp-ui-glass-settings-v1`)
-- **Layout**: Narrow content width; animated mesh layer respects reduced motion
-- **Errors**: Failed generate/store/get requests surface JSON `error` strings from the API; **429** (rate limit) includes a **`Retry-After`** hint in the message when present; **413** (`HTML_TOO_LARGE`) includes byte limits. Builder failures use an inline error banner; the AI tab uses the same pattern.
+Endpoints: `POST /api/render-endpoint` (`{ url, method?, headers?, body?,
+instructions?, designSystem? }`), `GET /api/design-systems`,
+`POST /api/design-systems/active`, `GET /api/health`. Setup: copy `.env.example` →
+`.env` and set `ANTHROPIC_API_KEY`.
+
+## Glassmorphism controls
+
+The **Glass** panel (bottom-right floating button) tunes the shell's frosted-glass
+appearance in real time: blur, frost, edge light, color saturation, backdrop mesh
+strength, and corner roundness. Values persist to `localStorage` under
+`mcp-ui-glass-settings-v1` and respect `prefers-color-scheme` and
+`prefers-reduced-motion`.
 
 ## Project structure
 
@@ -43,32 +53,27 @@ Full-stack demo for MCP (Model Context Protocol) UI: build forms, dashboards, an
 mcp-ui-poc/
 ├── client/                      # React + Vite frontend
 │   ├── src/
-│   │   ├── App.jsx              # Tabs, builders, health, stored-data panel, notifications
-│   │   ├── App.css              # Theme tokens and layout
-│   │   ├── StructuredUIPreview.jsx  # Structured + iframe preview router
+│   │   ├── App.jsx              # Hero, health check, endpoint UI section, glass controls
+│   │   ├── App.css              # Theme tokens, glass styles, layout
+│   │   ├── EndpointToUI.jsx     # Endpoint → UI form, sample chips, result + spec viewer
+│   │   ├── GlassControls.jsx    # Glass appearance panel (FAB + sliders)
 │   │   ├── apiError.js          # Fetch error helper (JSON body, 429 / 413 hints)
-│   │   ├── userSession.js       # Demo user id (`mcp-ui-user-id-v1` in localStorage)
 │   │   ├── glassAppearance.js   # Glass CSS variables + persistence
 │   │   ├── index.css            # Tailwind v4 + shadcn semantic tokens (`@theme inline`)
 │   │   ├── main.jsx             # React entry
-│   │   ├── components/ui/       # shadcn/ui primitives (Button, Card, Tabs, Select, …)
+│   │   ├── components/ui/       # shadcn/ui primitives (Button, Card, Input, Label, Select)
 │   │   └── lib/utils.js         # `cn()` helper (clsx + tailwind-merge)
 │   ├── components.json          # shadcn/ui config (`tsx: false` → `.jsx` output)
 │   ├── jsconfig.json            # `@/*` → `src/*` for imports
 │   ├── package.json
 │   └── vite.config.js           # Tailwind Vite plugin, `@` alias, `/api` proxy
-├── server/                      # Express API + MCP generation
-│   ├── index.js                 # Routes, rate limits, JSON body limit, Vercel trust proxy
-│   ├── mcp-server.js            # generate-* UI, store/get user data, stats
-│   ├── dynamic-ui-html.js       # Full-document HTML for forms, dashboards, charts
-│   ├── generated-html-skin.js   # Shared shell styles for generated pages
+├── server/                      # Express API
+│   ├── index.js                 # Routes: health, design-systems, render-endpoint
+│   ├── design-systems/          # registry.js, shadcn.js, material.js, plain.js, spec-html.js
+│   ├── data-source.js           # SSRF-guarded fetch, size/time caps
+│   ├── ui-planner.js            # AI + heuristic planner, JSON schemas, table hydration
 │   ├── generated-html-limit.js  # MCP_MAX_HTML_BYTES guard + 413 helpers
-│   ├── mcp-structured-ui.js     # Structured JSON envelope for React preview
-│   ├── rate-limits.js           # Per-IP limits (express-rate-limit)
-│   ├── ai-generator.js          # /api/ai/generate implementation
-│   └── mcp-ui-example.js        # Static MCP UI example resource
-├── docs/
-│   └── AI_WORKFLOW.md           # Contributor workflow (canonical)
+│   ├── rate-limits.js           # Per-IP limit on /api/render-endpoint
 ├── package.json                 # Root scripts + server deps
 ├── CLAUDE.md                    # Short pointer for Claude Code
 └── README.md
@@ -92,7 +97,7 @@ mcp-ui-poc/
    ```bash
    # Terminal 1: Start backend server
    npm run dev
-   
+
    # Terminal 2: Start frontend development server
    npm run client
    ```
@@ -101,26 +106,28 @@ mcp-ui-poc/
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:3001
 
-**Local dev networking:** The Vite dev server (**`npm run client`**) serves the UI on port **3000** and **proxies** requests to `/api/*` to **http://localhost:3001**. The browser only talks to `:3000`, so CORS is not an issue during development. Production static files can be served by Express from `client/dist` when not on Vercel (see `server/index.js`).
+**Local dev networking:** The Vite dev server (**`npm run client`**) serves the UI on
+port **3000** and **proxies** requests to `/api/*` to **http://localhost:3001**
+(override with `API_PROXY_TARGET`). The browser only talks to `:3000`, so CORS is not
+an issue during development. Production static files can be served by Express from
+`client/dist` when not on Vercel (see `server/index.js`).
 
 ## API endpoints
 
 ### Health Check
-- `GET /api/health` - Server status and health information. Response includes **`mcp`**: current in-memory counts and configured limits (`maxUiComponents`, `maxUserDataKeys`, `maxSubmissionsPerUser`, `maxHtmlBytes`) for operators. The app header shows these values when the API is reachable (no extra request beyond the existing health poll).
+- `GET /api/health` - Server status, AI planner availability/model, and registered
+  design systems with their active state.
 
-### Scaling (in-memory MCP demo)
+### Design systems
+- `GET /api/design-systems` - List registered design systems (`id`, `name`,
+  `description`, `components`, `active`).
+- `POST /api/design-systems/active` - Set the active design system (`{ id }`).
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `MCP_MAX_UI_COMPONENTS` | `2000` | Max tracked generated component ids (FIFO eviction of oldest). |
-| `MCP_MAX_USER_DATA_KEYS` | `500` | Max distinct `userId` buckets in `store-data` (FIFO eviction of oldest keys). |
-| `MCP_MAX_SUBMISSIONS_PER_USER` | `50` | Max appended `form-submit` rows per user. |
-| `MCP_RATE_LIMIT_GENERATE_PER_MIN` | `45` | Max requests per client IP per minute for `POST` `/api/generate-form`, `/api/generate-dashboard`, `/api/generate-chart`, `/api/ai/generate` (shared counter). |
-| `MCP_RATE_LIMIT_STORE_PER_MIN` | `180` | Max `POST` `/api/store-data` requests per IP per minute. |
-| `MCP_RATE_LIMIT_SUGGEST_PER_MIN` | `60` | Max `POST` `/api/ai/suggest` requests per IP per minute. |
-| `MCP_MAX_HTML_BYTES` | `786432` (768 KiB) | Max UTF-8 bytes for one generated HTML document; over-limit returns **413** with `{ "code": "HTML_TOO_LARGE", "limitBytes", "bytes" }`. Tunable between **1024** and **10000000**. |
-
-Set in `.env` or the host dashboard (e.g. Vercel). Data is still **ephemeral** on serverless cold starts—limits only bound RAM within a warm instance. On Vercel, **`trust proxy`** is enabled so the limiter sees the real client IP. Each serverless instance keeps its own in-memory counters (limits still curb abuse per warm instance). When a limit is hit, responses are **429** with JSON `{ "error": "...", "code": "RATE_LIMIT" }` and a **`Retry-After`** header (seconds); the React app shows the server `error` text (and retry hint when present) for generate, AI generate, store-data, and get-data failures.
+### Endpoint → UI
+- `POST /api/render-endpoint` - `{ url, method?, headers?, body?, instructions?,
+  designSystem? }`. Fetches the endpoint, runs the AI/heuristic planner, renders with
+  the chosen (or active) design system, and returns `{ ...mcpUiResource, componentId,
+  spec, meta: { planner, designSystem, source: { url, contentType, bytes } } }`.
 
 ### Error responses (summary)
 
@@ -129,61 +136,39 @@ Set in `.env` or the host dashboard (e.g. Vercel). Data is still **ephemeral** o
 | **400** | Missing or invalid body fields | `{ "error": "..." }` |
 | **413** | Generated HTML exceeds `MCP_MAX_HTML_BYTES` | `{ "error", "code": "HTML_TOO_LARGE", "limitBytes", "bytes" }` |
 | **429** | Rate limit exceeded | `{ "error", "code": "RATE_LIMIT" }` + `Retry-After` header |
-| **500** | Unexpected server failure | `{ "error": "..." }` (generic message; avoid leaking stack traces in production hardening) |
+| **500** | Unexpected server failure | `{ "error": "..." }` (generic message) |
 
-### MCP UI Components
-- `GET /api/mcp-ui-example` - Get the static MCP UI demo component
+### Scaling
 
-### Dynamic UI Generation
-- `POST /api/generate-form` - Generate a custom form UI (response includes `resource` + `structured`)
-- `POST /api/generate-dashboard` - Generate a dashboard UI (response includes `resource` + `structured`)
-- `POST /api/generate-chart` - Generate a chart UI (response includes `resource` + `structured`)
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `MCP_RATE_LIMIT_GENERATE_PER_MIN` | `45` | Max `POST /api/render-endpoint` requests per client IP per minute. |
+| `MCP_MAX_HTML_BYTES` | `786432` (768 KiB) | Max UTF-8 bytes for the generated HTML document; over-limit returns **413** with `{ "code": "HTML_TOO_LARGE", "limitBytes", "bytes" }`. Tunable between **1024** and **10000000**. |
+| `MCP_ALLOW_PRIVATE_ENDPOINTS` | unset | Set to `1` to allow fetching private/loopback endpoints (local dev only). |
+| `ANTHROPIC_API_KEY` | unset | Enables the AI planner; without it, a heuristic planner is used. |
+| `ANTHROPIC_MODEL` | `claude-opus-4-8` | Override the Claude model used by the AI planner. |
+| `MCP_DESIGN_SYSTEM` | `shadcn` | Default active design system at startup. |
 
-### AI
-- `POST /api/ai/generate` - Generate from natural language (`userId`, `description`); same resource shape as builders
-- `POST /api/ai/suggest` - Lightweight suggestion list from `description`
-- `GET /api/ai/templates` - Template metadata for the AI tab
-
-### Data Management
-- `POST /api/store-data` - Store user data (JSON body: `userId`, `data`). If `data.kind` is `form-submit`, the server **appends** to a per-user list (default max **`MCP_MAX_SUBMISSIONS_PER_USER`**); other shapes **replace** the stored blob for that user.
-- `GET /api/get-data/:userId` - Retrieve user data
-- **Browser session**: The React app persists a **demo user id** in `localStorage` (same idea as Glass settings) so refresh keeps one server-side namespace. **New session** clears that id and allocates another. Structured preview **form submit** calls `store-data` with the current demo user id. The header includes **Stored data (server)** with **Refresh** to call `get-data` for the current id (and it refreshes after a successful structured form save). When the payload includes **form-submit** history, the panel shows a **recent submits** list plus collapsible raw JSON; **HTML (iframe)** form posts use the same `postMessage` shape and no longer use a blocking `alert`.
-- `GET /api/component-info/:componentId` - Get component information
-
-## Builder reference
-
-### Form Builder
-Create dynamic forms with:
-- **Field Types**: Text, email, number, select dropdown, textarea
-- **Validation**: Required field support
-- **Customization**: Placeholder text, labels, submit button text
-- **Real-time Preview**: See form changes immediately
-
-### Dashboard Builder
-Generate analytics dashboards with:
-- **Metric Widgets**: Display key performance indicators
-- **List Widgets**: Show activity feeds and data lists
-- **Chart Widgets**: Embedded visualizations with selectable bar/pie/line style plus comma-separated values/labels editors
-- **Responsive Layout**: Auto-adjusting grid system
-
-### Chart Builder
-Create data visualizations:
-- **Bar Charts**: Horizontal bar charts with custom data
-- **Pie Charts**: Circular charts with color-coded segments
-- **Line Charts**: SVG polyline over time-series–style labels (same comma-separated values/labels as bar/pie)
-- **Custom Data**: Input values and labels via comma-separated format
-- **Export Functionality**: Chart export capabilities
+Set in `.env` or the host dashboard (e.g. Vercel). On Vercel, **`trust proxy`** is
+enabled so the limiter sees the real client IP.
 
 ## Design system
 
-The shell uses two layers: **glass + DM Sans** from `client/src/App.css` and `glassAppearance.js`, and **Tailwind CSS v4** + **[shadcn/ui](https://ui.shadcn.com/)** (Radix primitives) for composable controls. Semantic tokens (`--background`, `--primary`, `--muted`, …) live in `client/src/index.css` and map into Tailwind via `@theme inline`, aligned with the existing blue accent in light/dark (system `prefers-color-scheme`).
+The shell uses two layers: **glass + Fira Sans/Fira Code** from `client/src/App.css`
+and `glassAppearance.js`, and **Tailwind CSS v4** + **[shadcn/ui](https://ui.shadcn.com/)**
+(Radix primitives) for composable controls. Semantic tokens (`--background`,
+`--primary`, `--muted`, …) live in `client/src/index.css` and map into Tailwind via
+`@theme inline`.
 
-- **Backdrop**: Soft page gradient plus an animated color mesh (disabled when `prefers-reduced-motion` is set)
-- **Surfaces**: Frosted glass (`backdrop-filter` blur + saturation) on header, main card, tabs, inputs, and notifications
-- **Accent**: Primary blue for actions and the active tab (shared between CSS variables and shadcn `--primary`)
-- **Type**: DM Sans; hero title uses a subtle gradient clip
-- **Persistence**: Glass slider values are stored in `localStorage` under `mcp-ui-glass-settings-v1`
-- **UI labeling**: The section header uses product-facing copy; framework labels are intentionally hidden in the runtime UI.
+- **Backdrop**: Soft page gradient plus an animated color mesh (disabled when
+  `prefers-reduced-motion` is set)
+- **Surfaces**: Frosted glass (`backdrop-filter` blur + saturation) on header, main
+  card, inputs, and notifications
+- **Accent**: Green CTA accent for the primary action; existing dark glass theme for
+  the rest
+- **Type**: Fira Code for headings/mono, Fira Sans for body text
+- **Persistence**: Glass slider values are stored in `localStorage` under
+  `mcp-ui-glass-settings-v1`
 
 ### Adding shell components
 
@@ -194,30 +179,33 @@ npx shadcn@latest add dialog
 npx shadcn@latest add dropdown-menu
 ```
 
-Imports use the **`@/`** alias (e.g. `import { Button } from '@/components/ui/button'`). New primitives should respect existing glass surfaces—prefer `className` + `cn()` to blend with `App.css` panels rather than replacing the mesh shell.
-
-The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn shell: **`Card`**, **`Button`**, **`Input`**, **`Label`**, **`Select`**, **`Checkbox`** (forms only), and **`Separator`**, preserving the existing payloads for **`generate-form`**, **`generate-dashboard`**, and **`generate-chart`**. The **AI Generator** tab now follows the same shell language (`Card`, `Button`, `Label`) with a styled textarea input for natural-language prompts.
+Imports use the **`@/`** alias (e.g. `import { Button } from '@/components/ui/button'`).
+New primitives should respect existing glass surfaces—prefer `className` + `cn()` to
+blend with `App.css` panels rather than replacing the mesh shell.
 
 ## Technologies
 
 ### Frontend
 - **React 18**: Hooks and functional components
 - **Vite**: Dev server and production build
-- **Tailwind CSS v4** (`@tailwindcss/vite`): utility styling; dark mode follows system preference by default
-- **shadcn/ui** + **radix-ui**: accessible Button, Card, Tabs, Badge, Input, Label, Separator, etc. under `client/src/components/ui/`
+- **Tailwind CSS v4** (`@tailwindcss/vite`): utility styling; dark mode follows system
+  preference by default
+- **shadcn/ui** + **radix-ui**: accessible Button, Card, Input, Label, Select under
+  `client/src/components/ui/`
 - **CSS**: App-wide glass tokens in `App.css`; shadcn semantic tokens in `index.css`
 
 ### Backend
 - **Node.js**: JavaScript runtime
 - **Express.js**: Web framework for API endpoints
-- **express-rate-limit**: Per-IP rolling windows on hot `POST` routes
+- **express-rate-limit**: Per-IP rolling window on `/api/render-endpoint`
 - **CORS**: Cross-origin resource sharing
+- **@anthropic-ai/sdk**: AI planner (structured output → UI spec)
 - **@mcp-ui/server**: MCP UI server SDK (`createUIResource`)
 
 ### Development Tools
 - **Nodemon**: Automatic server restart on file changes
 - **ES6 Modules**: Modern JavaScript module system
-- **ESLint**: `client/.eslintrc.cjs` configures recommended + React + hooks + react-refresh; run **`npm run lint`** from **`client/`** after JSX/JS changes (CI-friendly with `--max-warnings 0`)
+- **ESLint**: run **`npm run lint`** from **`client/`** after JSX/JS changes
 
 ## Scripts
 
@@ -236,100 +224,36 @@ The **Form**, **Dashboard**, and **Chart** builder tabs share the same shadcn sh
 
 ## Usage
 
-### AI Generator
-1. Open the **AI Generator** tab (default)
-2. Describe the UI you want (forms, dashboards, or charts—keywords in the description steer `parseDescription` in `server/ai-generator.js`; chart prompts mentioning `line`, `trend`, `time series`, `over time`, or `timeline` select the line chart type)
-3. Click **Generate Component**; errors appear inline under the form
-4. The preview below uses the same **Data (React)** / **HTML (iframe)** pipeline as the builders
-
-### Creating a Custom Form
-1. Navigate to the "Form Builder" tab
-2. Set the form title and submit button text
-3. Add fields with desired types and validation
-4. Click "Generate Form" to create the UI component
-5. The generated form will appear below with full functionality
-
-### Building a Dashboard
-1. Go to the "Dashboard Builder" tab
-2. Configure the dashboard title
-3. Add widgets (metrics, lists, charts)
-4. For chart widgets, choose chart style and edit values/labels (comma-separated)
-5. Ensure each chart widget has the same number of values and labels (otherwise an inline warning appears and **Generate dashboard** stays disabled)
-6. Generate the dashboard to see the interactive component
-
-### Creating Charts
-1. Select the "Chart Builder" tab
-2. Choose chart type (bar, pie, or line)
-3. Enter data values and labels
-4. Keep values and labels counts equal (otherwise an inline warning appears and **Generate chart** stays disabled)
-5. Generate the chart for visualization
-
-## Real-time behavior
-
-### Form Submission
-- Forms automatically send data to the parent application
-- Real-time notifications show submission results
-- Data can be stored and retrieved via API
-
-### Dashboard Interactions
-- Refresh buttons update dashboard data
-- Widget interactions trigger notifications
-- Component state is managed by the MCP server
-
-### Chart Export
-- Export functionality for generated charts
-- Notification system for export events
-- Customizable chart appearance and data
-
-## Styling and layout
-
-- **Tokens**: Shared variables for color, radius, and spacing
-- **Responsive**: Builders collapse to a single column on small screens; toasts move to the bottom on narrow viewports
-- **Feedback**: Focus rings on keyboard focus; selection and scrollbars stay low-contrast
-
-### Tailwind troubleshooting
-
-If utility classes appear missing (for example `text-lg`, `space-y-6`, or responsive `sm:*` styles), run this quick checklist:
-
-1. Confirm `client/src/main.jsx` imports `./index.css`.
-2. Confirm `client/vite.config.js` includes `@tailwindcss/vite` in `plugins`.
-3. Confirm `client/src/index.css` starts with:
-   ```css
-   @import 'tailwindcss';
-   @source "./**/*.{js,jsx}";
-   ```
-4. Rebuild from repo root:
-   ```bash
-   npm run build
-   ```
-5. Verify generated CSS in `client/dist/assets/*.css` includes utility selectors such as `.text-lg` and `.space-y-6`.
+1. Open the app. The hero shows the API connection status and which planner
+   (AI or heuristic) is active.
+2. Enter an endpoint URL (or pick one of the sample chips), choose a design system,
+   optionally add headers (JSON) and instructions for the AI layer.
+3. Click **Generate UI**. A skeleton shows while the endpoint is fetched and the UI
+   is composed.
+4. The result renders inside an MCP UI resource (`UIResourceRenderer`), with meta
+   chips for the design system, planner, and bytes fetched. Toggle **Show UI spec**
+   to inspect the AI's component spec JSON.
+5. Use the **Glass** button (bottom-right) to tune the frosted-glass appearance.
 
 ## Security and practices
 
-### Data handling (demo scope)
-- **In-memory storage only** in this repo: user buckets and component metadata are **not** durable across cold starts or multi-instance deploys unless you add external storage.
-- **No authentication**: `userId` is a client-supplied demo key (persisted in the browser as `mcp-ui-user-id-v1`). Treat this as a **namespace label**, not a security boundary.
-- **Request limits**: JSON bodies are capped (**512kb**); generated HTML is capped (**`MCP_MAX_HTML_BYTES`**); rate limits apply per IP on expensive routes.
+### Data handling
+- **No persistent storage**: each `/api/render-endpoint` call is stateless.
+- **SSRF guard**: `server/data-source.js` resolves and rejects requests to
+  private/loopback addresses unless `MCP_ALLOW_PRIVATE_ENDPOINTS=1` is set.
+- **Request limits**: JSON bodies are capped (**512kb**); generated HTML is capped
+  (**`MCP_MAX_HTML_BYTES`**); rate limits apply per IP on `/api/render-endpoint`.
 
 ### Component isolation
-- HTML preview uses **sandboxed iframes** where configured; parent/child communication uses **`postMessage`** with a fixed action shape—still validate and avoid trusting arbitrary HTML from untrusted users in a real product.
+- The MCP UI resource is rendered via `UIResourceRenderer` in a **sandboxed iframe**;
+  parent/child communication uses `postMessage` with a fixed action shape (`notify`,
+  `link`).
 
 ### Accessibility
 - **Focus**: Visible `:focus-visible` styles on interactive controls
-- **Reduced motion**: Honors `prefers-reduced-motion` for animations
-- **Status**: API connection state is exposed in the header; notification toasts are visual (not a full live-region audit)
-
-## Future enhancements
-
-### Product
-- **More chart types**: Area, scatter (line charts are supported in builders, HTML preview, structured preview, and AI when the description mentions line/trend/over time)
-- **Stronger validation** on builder payloads and stored JSON
-- **Explicit theme toggle** (optional override of system light/dark)
-
-### Technical
-- **Persistent storage** and optional **auth** for real multi-tenant use
-- **Automated tests** when a runner is adopted
-- **Performance**: lazy routes, compression for large JSON where appropriate
+- **Reduced motion**: Honors `prefers-reduced-motion` for animations and skeleton
+  pulses
+- **Status**: API connection state and planner availability are exposed in the hero
 
 ## Contributing
 
@@ -345,4 +269,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Stack:** React, Vite, Tailwind CSS v4, shadcn/ui, Node.js, Express, `express-rate-limit`, `@mcp-ui/server`.
+**Stack:** React, Vite, Tailwind CSS v4, shadcn/ui, Node.js, Express,
+`express-rate-limit`, `@anthropic-ai/sdk`, `@mcp-ui/server`, `@mcp-ui/client`.
