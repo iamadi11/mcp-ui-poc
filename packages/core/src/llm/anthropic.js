@@ -3,6 +3,8 @@
  * `output_config: {format:{type:'json_schema', schema}}`).
  */
 
+import { verifyApiKeyError } from './shared.js'
+
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
 
 let client = null
@@ -25,7 +27,7 @@ async function verifyApiKey(apiKey) {
     await new Anthropic({ apiKey }).models.list({ limit: 1 })
     return { valid: true, model: MODEL }
   } catch (error) {
-    return { valid: false, error: error?.status === 401 ? 'Invalid API key' : error.message }
+    return verifyApiKeyError(error)
   }
 }
 

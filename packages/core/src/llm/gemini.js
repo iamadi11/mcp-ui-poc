@@ -7,6 +7,8 @@
  * `sanitizeSchemaForGemini` strips/flattens those recursively before sending.
  */
 
+import { userContentToText, verifyApiKeyError } from './shared.js'
+
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
 
 /** Strip JSON-Schema keywords Gemini's OpenAPI-subset schema doesn't support. */
@@ -54,7 +56,7 @@ async function verifyApiKey(apiKey) {
     await ai.models.list()
     return { valid: true, model: MODEL }
   } catch (error) {
-    return { valid: false, error: error?.status === 401 ? 'Invalid API key' : error.message }
+    return verifyApiKeyError(error)
   }
 }
 
@@ -62,9 +64,7 @@ async function generateStructured({ apiKey, system, userContent, schema, maxToke
   const ai = await getClient(apiKey)
   if (!ai) throw new Error('Gemini adapter unavailable: no API key configured')
 
-  const userText = Array.isArray(userContent)
-    ? userContent.map((c) => (typeof c === 'string' ? c : c.text || '')).join('\n')
-    : userContent
+  const userText = userContentToText(userContent)
 
   const response = await ai.models.generateContent({
     model: MODEL,

@@ -3,6 +3,8 @@
  * `response_format: {type:'json_schema', json_schema:{name, schema, strict:true}}`.
  */
 
+import { userContentToText, verifyApiKeyError } from './shared.js'
+
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4o'
 
 let client = null
@@ -25,7 +27,7 @@ async function verifyApiKey(apiKey) {
     await new OpenAI({ apiKey }).models.list()
     return { valid: true, model: MODEL }
   } catch (error) {
-    return { valid: false, error: error?.status === 401 ? 'Invalid API key' : error.message }
+    return verifyApiKeyError(error)
   }
 }
 
@@ -33,9 +35,7 @@ async function generateStructured({ apiKey, system, userContent, schema, maxToke
   const openai = await getClient(apiKey)
   if (!openai) throw new Error('OpenAI adapter unavailable: no API key configured')
 
-  const userText = Array.isArray(userContent)
-    ? userContent.map((c) => (typeof c === 'string' ? c : c.text || '')).join('\n')
-    : userContent
+  const userText = userContentToText(userContent)
 
   const response = await openai.chat.completions.create({
     model: MODEL,
