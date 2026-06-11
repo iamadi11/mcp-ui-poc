@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Loader2, Save, Trash2, Zap } from 'lucide-react'
 import { UIResourceRenderer } from '@mcp-ui/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,62 +31,6 @@ const SAMPLE_ENDPOINTS = [
     url: 'https://api.open-meteo.com/v1/forecast?latitude=28.6&longitude=77.2&hourly=temperature_2m',
   },
 ]
-
-function Spinner() {
-  return (
-    <svg
-      className="btn-spinner"
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="4" />
-      <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
-    </svg>
-  )
-}
-
-function BoltIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
-      <path
-        d="M13 2 4 13h6l-1 9 9-11h-6l1-9Z"
-        fill="currentColor"
-      />
-    </svg>
-  )
-}
-
-function SaveIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
-      <path
-        d="M5 4h11l3 3v13H5V4Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path d="M8 4v5h7V4" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M8 14h8v6H8z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
-      <path
-        d="M5 7h14M9 7V5h6v2m-8 0 1 13h8l1-13"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
 
 function PreviewSkeleton() {
   return (
@@ -264,7 +209,7 @@ export function EndpointToUI({ onUIAction }) {
                   aria-label={`Delete ${entry.name}`}
                   onClick={() => handleDeleteEndpoint(entry.id)}
                 >
-                  <TrashIcon />
+                  <Trash2 size={14} />
                 </button>
               </li>
             ))}
@@ -280,7 +225,7 @@ export function EndpointToUI({ onUIAction }) {
             spellCheck={false}
           />
           <Button type="button" variant="outline" size="sm" onClick={handleSaveEndpoint} disabled={!url}>
-            <SaveIcon /> Save current
+            <Save size={14} /> Save current
           </Button>
         </div>
       </aside>
@@ -417,11 +362,11 @@ export function EndpointToUI({ onUIAction }) {
             >
               {loading ? (
                 <>
-                  <Spinner /> Fetching + analysing…
+                  <Loader2 size={16} className="animate-spin" /> Fetching + analysing…
                 </>
               ) : (
                 <>
-                  <BoltIcon /> Generate UI
+                  <Zap size={16} /> Generate UI
                 </>
               )}
             </Button>

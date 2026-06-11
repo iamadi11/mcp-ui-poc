@@ -906,21 +906,6 @@ button:focus-visible,
   opacity: 0.65;
 }
 
-.btn-spinner {
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .btn-spinner {
-    animation-duration: 2.5s;
-  }
-}
-
 /* ─── Skeleton ─── */
 .preview-skeleton {
   display: flex;

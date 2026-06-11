@@ -3,7 +3,7 @@
  * `output_config: {format:{type:'json_schema', schema}}`).
  */
 
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-8'
+const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
 
 let client = null
 async function getClient(apiKey) {
@@ -36,7 +36,7 @@ async function generateStructured({ apiKey, system, userContent, schema, maxToke
   const response = await anthropic.messages.parse({
     model: MODEL,
     max_tokens: maxTokens,
-    thinking: { type: 'adaptive' },
+    thinking: { type: 'enabled', budget_tokens: 4096 },
     system,
     messages: [{ role: 'user', content: userContent }],
     output_config: { format: { type: 'json_schema', schema } },

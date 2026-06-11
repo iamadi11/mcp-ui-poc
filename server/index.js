@@ -13,6 +13,7 @@ import {
   planUI,
   aiAvailable,
   verifyApiKey,
+  anthropicAdapter,
 } from 'ui-compose-kit';
 import { fetchEndpointData } from './data-source.js';
 import { createGenerateLimiter } from './rate-limits.js';
@@ -58,7 +59,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    ai: { available: aiAvailable(), model: process.env.ANTHROPIC_MODEL || 'claude-opus-4-8' },
+    ai: { available: aiAvailable(), model: anthropicAdapter.model },
     designSystems: listDesignSystems().map(({ id, active }) => ({ id, active })),
     llmProviders: listLLMAdapters(),
   });

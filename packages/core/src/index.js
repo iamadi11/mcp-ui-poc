@@ -10,6 +10,7 @@ export {
 } from './design-systems/registry.js'
 
 export { registerLLMAdapter, getLLMAdapter, listLLMAdapters } from './llm/registry.js'
+export { anthropicAdapter } from './llm/anthropic.js'
 
 import { registerLLMAdapter } from './llm/registry.js'
 import { anthropicAdapter } from './llm/anthropic.js'

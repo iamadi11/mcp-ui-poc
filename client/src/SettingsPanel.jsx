@@ -96,7 +96,11 @@ export function SettingsPanel() {
             Used client-side only. Sent with each generate request as a header so the AI
             planner runs with your own key — never stored on the server.
           </p>
+          <label htmlFor="anthropic-api-key" className="sr-only">
+            Anthropic API key
+          </label>
           <input
+            id="anthropic-api-key"
             type="password"
             className="settings-panel__input"
             value={key}
