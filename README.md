@@ -1,5 +1,7 @@
 # MCP UI: Endpoint → Design-System UI
 
+**Live demo:** [mcp-ui-poc.vercel.app](https://mcp-ui-poc.vercel.app/)
+
 Point at any API endpoint. The server fetches the data, an AI layer (Anthropic Claude)
 analyses it and decides which components to use from a **registered design system**
 (shadcn/ui, Material UI, or your own), and the result comes back as an
