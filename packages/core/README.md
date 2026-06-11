@@ -43,7 +43,7 @@ installing `ui-compose-kit` doesn't force-install all three.
 
 | Var | Purpose |
 | --- | --- |
-| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | Anthropic adapter (default model `claude-opus-4-8`) |
+| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | Anthropic adapter (default model `claude-haiku-4-5-20251001`) |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | OpenAI adapter (default model `gpt-4o`) |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Gemini adapter (default model `gemini-2.0-flash`) |
 | `LLM_PROVIDER` | Default provider id (`anthropic` \| `openai` \| `gemini`) |

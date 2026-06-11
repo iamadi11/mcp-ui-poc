@@ -18,22 +18,26 @@ endpoint URL ──▶ data fetch (SSRF-guarded, size/time capped)
             ──▶ @mcp-ui/server createUIResource ──▶ UIResourceRenderer (client)
 ```
 
-- **Design-system registry** (`server/design-systems/registry.js`): systems are
-  registered at setup. Built-ins: `shadcn`, `material`, `plain` (a template for your
-  own). Select via `MCP_DESIGN_SYSTEM` env or `POST /api/design-systems/active`.
+- **Design-system registry** (`packages/core/src/design-systems/registry.js`,
+  exported via the `ui-compose-kit` workspace package): systems are registered at
+  setup. Built-ins: `glass` (default), `shadcn`, `material`, `plain` (a template for
+  your own). Select via `MCP_DESIGN_SYSTEM` env or `POST /api/design-systems/active`.
 - **Component catalog**: each system exposes `stat-grid`, `table`, `list`,
   `key-value`, `chart` (bar/line/pie), `text`, `badge-row`, `alert`, and `action-row`
   (buttons that send `link`/`notify` actions back to the host); the AI may only pick
   from this catalog (enforced by a JSON schema on the model output).
-- **AI layer** (`server/ui-planner.js`): `ANTHROPIC_API_KEY` + Claude
-  (`claude-opus-4-8` by default, override with `ANTHROPIC_MODEL`). Tables are sent as
-  column definitions + `rowsPath`; the server hydrates rows from the original payload
-  so the model never copies bulk data. Without a key, a deterministic heuristic
-  planner keeps the flow working.
-- **Presentation**: the spec includes `presentation: "page" | "modal"`. User
-  instructions drive this — e.g. "show this in a popup" produces a single centered
-  dialog (`presentation: "modal"`) instead of a full dashboard. The heuristic planner
-  detects "popup"/"modal"/"dialog"/"overlay" in instructions as a fallback.
+- **AI layer** (`packages/core/src/planner.js` + `packages/core/src/llm/`):
+  multi-provider — Anthropic (`claude-haiku-4-5-20251001` by default, override with
+  `ANTHROPIC_MODEL`), OpenAI (`OPENAI_API_KEY`/`OPENAI_MODEL`), and Gemini
+  (`GEMINI_API_KEY`/`GEMINI_MODEL`). Pick a default with `LLM_PROVIDER`, or override
+  per-request with `llmProvider`. Tables are sent as column definitions + `rowsPath`;
+  the server hydrates rows from the original payload so the model never copies bulk
+  data. Without a key, a deterministic heuristic planner keeps the flow working.
+- **Presentation**: the spec includes `presentation: "page" | "modal" | "component"`.
+  User instructions drive this — e.g. "show this in a popup" produces a single
+  centered dialog (`presentation: "modal"`), and "component" renders a single bare
+  component with no page chrome for inline embedding. The heuristic planner detects
+  "popup"/"modal"/"dialog"/"overlay" in instructions as a fallback.
 - **Instruction-driven design**: the AI follows free-form instructions for field
   selection ("just show temperature and humidity"), component choice ("as a bar
   chart"), status callouts (`alert`), and actions (`action-row` — buttons that emit
@@ -77,12 +81,17 @@ mcp-ui-poc/
 │   ├── package.json
 │   └── vite.config.js           # Tailwind Vite plugin, `@` alias, `/api` proxy
 ├── server/                      # Express API
-│   ├── index.js                 # Routes: health, design-systems, render-endpoint
-│   ├── design-systems/          # registry.js, shadcn.js, material.js, plain.js, spec-html.js
+│   ├── index.js                 # Routes: health, design-systems, verify-key, render-endpoint
 │   ├── data-source.js           # SSRF-guarded fetch, size/time caps
-│   ├── ui-planner.js            # AI + heuristic planner, JSON schemas, table hydration
 │   ├── generated-html-limit.js  # MCP_MAX_HTML_BYTES guard + 413 helpers
 │   ├── rate-limits.js           # Per-IP limit on /api/render-endpoint
+├── packages/core/                # `ui-compose-kit` workspace package
+│   ├── src/
+│   │   ├── planner.js           # AI + heuristic planner, JSON schemas, table hydration
+│   │   ├── schema.js            # uiSpecSchema (component catalog, presentation modes)
+│   │   ├── llm/                 # Adapter registry + anthropic/openai/gemini adapters
+│   │   └── design-systems/      # registry.js, glass.js, shadcn.js, material.js, plain.js, spec-html.js
+│   └── README.md                # ui-compose-kit usage, adapter/design-system authoring
 ├── package.json                 # Root scripts + server deps
 ├── CLAUDE.md                    # Short pointer for Claude Code
 └── README.md
@@ -124,18 +133,25 @@ an issue during development. Production static files can be served by Express fr
 ## API endpoints
 
 ### Health Check
-- `GET /api/health` - Server status, AI planner availability/model, and registered
-  design systems with their active state.
+- `GET /api/health` - Server status, AI planner availability/model, registered
+  design systems with their active state, and registered LLM providers
+  (`llmProviders: [{ id, name, available }]`).
 
 ### Design systems
 - `GET /api/design-systems` - List registered design systems (`id`, `name`,
   `description`, `components`, `active`).
 - `POST /api/design-systems/active` - Set the active design system (`{ id }`).
 
+### API key verification
+- `POST /api/verify-key` - Validate a client-supplied LLM API key without spending
+  completion tokens. Pass the key via `x-anthropic-api-key` header or `{ apiKey }`
+  body. Returns `{ valid, model?, error? }`.
+
 ### Endpoint → UI
 - `POST /api/render-endpoint` - `{ url, method?, headers?, body?, instructions?,
-  designSystem? }`. Fetches the endpoint, runs the AI/heuristic planner, renders with
-  the chosen (or active) design system, and returns `{ ...mcpUiResource, componentId,
+  designSystem?, llmProvider? }`. Fetches the endpoint, runs the AI/heuristic
+  planner (using `llmProvider` or the default `LLM_PROVIDER`), renders with the
+  chosen (or active) design system, and returns `{ ...mcpUiResource, componentId,
   spec, meta: { planner, designSystem, source: { url, contentType, bytes } } }`.
 
 ### Error responses (summary)
@@ -154,9 +170,12 @@ an issue during development. Production static files can be served by Express fr
 | `MCP_RATE_LIMIT_GENERATE_PER_MIN` | `45` | Max `POST /api/render-endpoint` requests per client IP per minute. |
 | `MCP_MAX_HTML_BYTES` | `786432` (768 KiB) | Max UTF-8 bytes for the generated HTML document; over-limit returns **413** with `{ "code": "HTML_TOO_LARGE", "limitBytes", "bytes" }`. Tunable between **1024** and **10000000**. |
 | `MCP_ALLOW_PRIVATE_ENDPOINTS` | unset | Set to `1` to allow fetching private/loopback endpoints (local dev only). |
-| `ANTHROPIC_API_KEY` | unset | Enables the AI planner; without it, a heuristic planner is used. |
-| `ANTHROPIC_MODEL` | `claude-opus-4-8` | Override the Claude model used by the AI planner. |
-| `MCP_DESIGN_SYSTEM` | `shadcn` | Default active design system at startup. |
+| `ANTHROPIC_API_KEY` | unset | Enables the Anthropic adapter; without any provider key, a heuristic planner is used. |
+| `ANTHROPIC_MODEL` | `claude-haiku-4-5-20251001` | Override the Claude model used by the AI planner. |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | unset / `gpt-4o` | Enables the OpenAI adapter. |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | unset / `gemini-2.0-flash` | Enables the Gemini adapter. |
+| `LLM_PROVIDER` | `anthropic` | Default LLM provider id (`anthropic` \| `openai` \| `gemini`); override per-request with `llmProvider`. |
+| `MCP_DESIGN_SYSTEM` | `glass` | Default active design system at startup (`glass` \| `shadcn` \| `material` \| `plain`). |
 
 Set in `.env` or the host dashboard (e.g. Vercel). On Vercel, **`trust proxy`** is
 enabled so the limiter sees the real client IP.
