@@ -4,7 +4,7 @@
  * catalog the AI planner targets.
  *
  * Component types: stat-grid, table, list, key-value, chart (bar|line|pie),
- * text, badge-row.
+ * text, badge-row, alert, action-row.
  */
 
 export const COMPONENT_CATALOG = [
@@ -243,7 +243,45 @@ body.modal{padding:0;max-width:none}
 .action-btn:hover{opacity:.8}
 `
 
+const ACTION_SCRIPT = `
+document.addEventListener('click', function (e) {
+  var btn = e.target.closest('.action-btn')
+  if (!btn) return
+  try {
+    window.parent.postMessage(JSON.parse(btn.dataset.action), '*')
+  } catch {}
+})
+`
+
+/** "component" mode: a single bare component, no page chrome — for inline embedding. */
+function renderComponentOnly(spec, theme) {
+  const first = (spec.components || [])[0]
+  const body = first
+    ? `<section class="section card">${first.title ? `<div class="section-title">${esc(first.title)}</div>` : ''}${renderComponent(first, theme)}</section>`
+    : '<p class="muted">No component to render.</p>'
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${esc(spec.title || 'Component')}</title>
+${theme.head || ''}
+<style>
+*{box-sizing:border-box;margin:0}
+body{padding:0;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif}
+${BASE_CSS.split('\n').filter((rule) => !/^body\{|^\.modal|^body\.modal/.test(rule)).join('\n')}
+${theme.css}
+</style>
+</head>
+<body>
+${body}
+<script>${ACTION_SCRIPT}</script>
+</body>
+</html>`
+}
+
 export function renderSpecHtml(spec, theme) {
+  if (spec.presentation === 'component') return renderComponentOnly(spec, theme)
+
   const sections = (spec.components || [])
     .map(
       (c) =>
@@ -265,15 +303,7 @@ ${theme.head || ''}
 </head>
 <body${isModal ? ' class="modal"' : ''}>
 ${body}
-<script>
-document.addEventListener('click', function (e) {
-  var btn = e.target.closest('.action-btn')
-  if (!btn) return
-  try {
-    window.parent.postMessage(JSON.parse(btn.dataset.action), '*')
-  } catch {}
-})
-</script>
+<script>${ACTION_SCRIPT}</script>
 </body>
 </html>`
 }

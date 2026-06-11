@@ -22,5 +22,6 @@ export const plainSystem = {
   name: 'Plain (template)',
   description: 'Minimal serif baseline — copy this file to register a custom design system',
   components: COMPONENT_CATALOG,
+  theme,
   render: (spec) => renderSpecHtml(spec, theme),
 }

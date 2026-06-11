@@ -31,5 +31,6 @@ export const shadcnSystem = {
   name: 'shadcn/ui',
   description: 'Neutral zinc palette, bordered cards, shadcn semantic styling',
   components: COMPONENT_CATALOG,
+  theme,
   render: (spec) => renderSpecHtml(spec, theme),
 }

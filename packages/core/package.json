@@ -1,0 +1,46 @@
+{
+  "name": "ui-compose-kit",
+  "version": "0.1.0",
+  "description": "Fetch data, let an LLM design a UI from it, and render it via pluggable design systems — adapter-based, multi-provider, framework-agnostic.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./llm/anthropic": "./src/llm/anthropic.js",
+    "./llm/openai": "./src/llm/openai.js",
+    "./llm/gemini": "./src/llm/gemini.js",
+    "./design-systems/registry": "./src/design-systems/registry.js",
+    "./design-systems/spec-html": "./src/design-systems/spec-html.js",
+    "./design-systems/shadcn": "./src/design-systems/shadcn.js",
+    "./design-systems/material": "./src/design-systems/material.js",
+    "./design-systems/plain": "./src/design-systems/plain.js",
+    "./design-systems/glass": "./src/design-systems/glass.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
+    "openai": "^4.0.0",
+    "@google/genai": "^0.3.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
+  "keywords": [
+    "llm",
+    "ai",
+    "ui-generation",
+    "mcp-ui",
+    "design-system",
+    "adapter"
+  ]
+}

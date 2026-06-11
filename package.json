@@ -4,6 +4,10 @@
   "description": "Endpoint to AI-designed UI via MCP UI",
   "main": "server/index.js",
   "type": "module",
+  "workspaces": [
+    "packages/*",
+    "client"
+  ],
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
@@ -19,7 +23,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "express-rate-limit": "^7.5.1"
+    "express-rate-limit": "^7.5.1",
+    "ui-compose-kit": "*"
   },
   "engines": {
     "node": "22.x"

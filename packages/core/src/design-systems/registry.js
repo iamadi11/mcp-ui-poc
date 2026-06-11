@@ -3,10 +3,12 @@
  *
  * A design system is registered at setup time and provides:
  *  - `components`: the catalog the AI planner may choose from (name + prop hints)
- *  - `render(spec)`: turns a UI spec (see ui-planner.js) into a full HTML document
+ *  - `theme`: { head, css, chartColors } passed to the shared spec-html renderer
+ *  - `render(spec)`: turns a UI spec into a full HTML document
  *
- * The active system is selected via MCP_DESIGN_SYSTEM (env) or POST /api/design-systems/active.
+ * The active system is selected via MCP_DESIGN_SYSTEM (env) or setActiveDesignSystem().
  */
+import { glassSystem } from './glass.js'
 import { shadcnSystem } from './shadcn.js'
 import { materialSystem } from './material.js'
 import { plainSystem } from './plain.js'
@@ -48,6 +50,8 @@ export function listDesignSystems() {
 
 // Built-in setup registration. Add custom systems here or call registerDesignSystem()
 // from your own setup module before the server starts handling requests.
+// "glass" registers first so it's the default active system.
+registerDesignSystem(glassSystem)
 registerDesignSystem(shadcnSystem)
 registerDesignSystem(materialSystem)
 registerDesignSystem(plainSystem)

@@ -1181,6 +1181,15 @@ button:focus-visible,
   }
 }
 
+.builder-card {
+  background: var(--shell-fill);
+  backdrop-filter: blur(var(--shell-blur)) saturate(var(--shell-sat));
+  -webkit-backdrop-filter: blur(var(--shell-blur)) saturate(var(--shell-sat));
+  border: 1px solid var(--shell-border);
+  border-radius: calc(var(--radius-lg) * var(--shell-radius-scale));
+  box-shadow: var(--shell-shadow);
+}
+
 @media (max-width: 768px) {
   .settings-panel {
     position: static;

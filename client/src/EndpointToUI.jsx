@@ -107,6 +107,8 @@ function PreviewSkeleton() {
 export function EndpointToUI({ onUIAction }) {
   const [designSystems, setDesignSystems] = useState([])
   const [designSystem, setDesignSystem] = useState('')
+  const [llmProviders, setLlmProviders] = useState([])
+  const [llmProvider, setLlmProvider] = useState('')
   const [url, setUrl] = useState(SAMPLE_ENDPOINTS[0].url)
   const [method, setMethod] = useState('GET')
   const [headersText, setHeadersText] = useState('')
@@ -127,6 +129,16 @@ export function EndpointToUI({ onUIAction }) {
         setDesignSystems(list)
         const active = list.find((s) => s.active)
         if (active) setDesignSystem(active.id)
+      })
+      .catch(() => {})
+
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((body) => {
+        const providers = body.llmProviders || []
+        setLlmProviders(providers)
+        const available = providers.find((p) => p.available)
+        setLlmProvider((available || providers[0])?.id || '')
       })
       .catch(() => {})
   }, [])
@@ -159,6 +171,7 @@ export function EndpointToUI({ onUIAction }) {
           headers,
           instructions: instructions.trim() || undefined,
           designSystem: designSystem || undefined,
+          llmProvider: llmProvider || undefined,
         }),
       })
       const body = await res.json().catch(() => ({}))
@@ -169,7 +182,7 @@ export function EndpointToUI({ onUIAction }) {
     } finally {
       setLoading(false)
     }
-  }, [url, method, headersText, instructions, designSystem])
+  }, [url, method, headersText, instructions, designSystem, llmProvider])
 
   const handleSaveEndpoint = useCallback(() => {
     const name = saveName.trim() || url
@@ -348,6 +361,25 @@ export function EndpointToUI({ onUIAction }) {
                   <p className="field-hint">{selectedSystem.description}</p>
                 )}
               </div>
+              <div className="space-y-2">
+                <Label>LLM provider</Label>
+                <Select value={llmProvider} onValueChange={setLlmProvider}>
+                  <SelectTrigger aria-label="LLM provider">
+                    <SelectValue placeholder="LLM provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {llmProviders.map((p) => (
+                      <SelectItem key={p.id} value={p.id} disabled={!p.available}>
+                        {p.name}
+                        {!p.available ? ' (no key configured)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="endpoint-headers">Headers (JSON, optional)</Label>
                 <Input

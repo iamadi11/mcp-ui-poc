@@ -9,9 +9,12 @@ import {
   getDesignSystem,
   listDesignSystems,
   setActiveDesignSystem,
-} from './design-systems/registry.js';
+  listLLMAdapters,
+  planUI,
+  aiAvailable,
+  verifyApiKey,
+} from 'ui-compose-kit';
 import { fetchEndpointData } from './data-source.js';
-import { planUI, aiAvailable, verifyApiKey } from './ui-planner.js';
 import { createGenerateLimiter } from './rate-limits.js';
 import {
   assertGeneratedHtmlWithinLimit,
@@ -57,6 +60,7 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     ai: { available: aiAvailable(), model: process.env.ANTHROPIC_MODEL || 'claude-opus-4-8' },
     designSystems: listDesignSystems().map(({ id, active }) => ({ id, active })),
+    llmProviders: listLLMAdapters(),
   });
 });
 
@@ -85,13 +89,20 @@ app.post('/api/verify-key', generateLimiter, async (req, res) => {
 // Endpoint → data → AI analysis → design-system components → MCP UI resource
 app.post('/api/render-endpoint', generateLimiter, async (req, res) => {
   try {
-    const { url, method, headers, body, instructions, designSystem: dsId } = req.body;
+    const { url, method, headers, body, instructions, designSystem: dsId, llmProvider } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
 
     const apiKey = req.get('x-anthropic-api-key') || undefined;
     const designSystem = getDesignSystem(dsId);
     const { data, contentType, bytes } = await fetchEndpointData({ url, method, headers, body });
-    const { spec, planner } = await planUI({ data, sourceUrl: url, instructions, designSystem, apiKey });
+    const { spec, planner } = await planUI({
+      data,
+      sourceUrl: url,
+      instructions,
+      designSystem,
+      apiKey,
+      llmProvider,
+    });
 
     const html = designSystem.render(spec);
     assertGeneratedHtmlWithinLimit(html);

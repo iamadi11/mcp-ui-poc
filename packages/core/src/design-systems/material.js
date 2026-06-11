@@ -26,5 +26,6 @@ export const materialSystem = {
   name: 'Material UI',
   description: 'Material Design 3: Roboto, tonal surfaces, elevation, M3 palette',
   components: COMPONENT_CATALOG,
+  theme,
   render: (spec) => renderSpecHtml(spec, theme),
 }
