@@ -5,28 +5,24 @@ const MAX_BODY_BYTES = Number(process.env.MCP_MAX_FETCH_BYTES || 2 * 1024 * 1024
 const FETCH_TIMEOUT_MS = Number(process.env.MCP_FETCH_TIMEOUT_MS || 15000)
 const ALLOW_PRIVATE = process.env.MCP_ALLOW_PRIVATE_ENDPOINTS === '1'
 
-function isPrivateAddress(addr) {
-  if (addr.includes(':')) {
-    const a = addr.toLowerCase()
-    return (
-      a === '::1' ||
-      a.startsWith('fe80') ||
-      a.startsWith('fc') ||
-      a.startsWith('fd') ||
-      a.startsWith('::ffff:127.') ||
-      a.startsWith('::ffff:10.') ||
-      a.startsWith('::ffff:192.168.')
-    )
-  }
+const PRIVATE_IPV6_PREFIXES = ['fe80', 'fc', 'fd', '::ffff:127.', '::ffff:10.', '::ffff:192.168.']
+
+function isPrivateIPv6(addr) {
+  const a = addr.toLowerCase()
+  return a === '::1' || PRIVATE_IPV6_PREFIXES.some((prefix) => a.startsWith(prefix))
+}
+
+function isPrivateIPv4(addr) {
   const [a, b] = addr.split('.').map(Number)
-  return (
-    a === 127 ||
-    a === 10 ||
-    a === 0 ||
-    (a === 192 && b === 168) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 169 && b === 254)
-  )
+  if (a === 127 || a === 10 || a === 0) return true
+  if (a === 192 && b === 168) return true
+  if (a === 172 && b >= 16 && b <= 31) return true
+  if (a === 169 && b === 254) return true
+  return false
+}
+
+function isPrivateAddress(addr) {
+  return addr.includes(':') ? isPrivateIPv6(addr) : isPrivateIPv4(addr)
 }
 
 /** Validate a user-supplied endpoint URL; rejects non-HTTP schemes and private/loopback hosts (SSRF guard). */
