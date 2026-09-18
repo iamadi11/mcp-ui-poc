@@ -1,0 +1,11 @@
+---
+description: Non-trivial work uses /ask-matt then the project workflow.
+alwaysApply: true
+---
+
+# Smart routing
+
+- Start with **`CONTEXT.md`**. Non-trivial work: `/ask-matt` (or Matt `research` / `grill-with-docs`), then **`docs/AI_WORKFLOW.md`**.
+- UI/JSX: read **`design-system/MCP-UI/MASTER.md`** before editing `client/`.
+- After clone: `npm run skills:install`, then `/setup-matt-pocock-skills` once.
+- Use project `implement-feature` with Matt `implement`/`tdd`. Do not run two TDD skills.

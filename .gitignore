@@ -102,3 +102,36 @@ jspm_packages/
 .claude/launch.json
 __pycache__/
 .env
+.env*
+
+# skills:install vendor copies (symlinks into .agents — git cannot add paths through them)
+.agents/
+.cursor/skills/
+.claude/skills/ask-matt
+.claude/skills/code-review
+.claude/skills/diagnosing-bugs
+.claude/skills/grill-with-docs
+.claude/skills/handoff
+.claude/skills/implement
+.claude/skills/prototype
+.claude/skills/research
+.claude/skills/setup-matt-pocock-skills
+.claude/skills/upstash-ratelimit-js
+.claude/skills/upstash-redis-js
+
+# UI UX Pro Max copies besides Cursor/Claude (install via npm run skills:install)
+.github/prompts/
+.windsurf/
+.roo/
+.qoder/
+.opencode/
+.kiro/
+.gemini/
+.trae/
+.continue/
+.codebuddy/
+.factory/
+.kilocode/
+.warp/
+.augment/
+.codewhale/

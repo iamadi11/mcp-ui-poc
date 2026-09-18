@@ -1,6 +1,21 @@
-export { planUI, heuristicPlan, aiAvailable, verifyApiKey } from './planner.js'
+export { planUI, heuristicPlan, aiAvailable, verifyApiKey, hydrateSpec } from './planner.js'
 export { sampleData } from './sample-data.js'
+export { demoPayload, payloadForDemoSource, emptySourceSpec, DEMO_CHECKOUT_SOURCE } from './demo-payload.js'
 export { uiSpecSchema, componentSchema, propsSchema } from './schema.js'
+export { inferShape, fingerprint, shapeHash, normalizeInstructions, findRows, getPath, zipSeriesObject } from './shape.js'
+export { applyPolicy, extractPolicy, isIdLikeKey, isTimeLikeKey, sampleRows, formatChartLabel } from './layout-policy.js'
+export { isIteratePrompt, applyInstructionUpgrades, mergeIteratePolicy, selectReplayPolicy } from './iterate.js'
+export { jevAvailable, jevModel, verifyJevKey, buildJevQuestions } from './jev/planner.js'
+export {
+  jevAdapter,
+  heuristicAdapter,
+  llmAdapter,
+  localAdapter,
+  shouldUseLlm,
+  motionToken,
+  ROUTING_QUESTION_IDS,
+  DECISION_IO,
+} from './decisions/index.js'
 
 export {
   registerDesignSystem,

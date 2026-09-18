@@ -88,5 +88,5 @@ export const glassSystem = {
   description: 'Glassmorphism: blurred translucent surfaces matching the host app shell',
   components: COMPONENT_CATALOG,
   theme,
-  render: (spec) => renderSpecHtml(spec, theme),
+  render: (spec, themeOverride) => renderSpecHtml(spec, themeOverride || theme),
 }

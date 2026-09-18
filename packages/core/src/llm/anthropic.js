@@ -31,14 +31,15 @@ async function verifyApiKey(apiKey) {
   }
 }
 
-async function generateStructured({ apiKey, system, userContent, schema, maxTokens = 16000 }) {
+async function generateStructured({ apiKey, system, userContent, schema, maxTokens = 4096 }) {
   const anthropic = await getClient(apiKey)
   if (!anthropic) throw new Error('Anthropic adapter unavailable: no API key configured')
 
+  const thinkingBudget = Math.min(1024, Math.max(0, Number(maxTokens) - 2048))
   const response = await anthropic.messages.parse({
     model: MODEL,
     max_tokens: maxTokens,
-    thinking: { type: 'enabled', budget_tokens: 4096 },
+    thinking: thinkingBudget >= 1024 ? { type: 'enabled', budget_tokens: thinkingBudget } : { type: 'disabled' },
     system,
     messages: [{ role: 'user', content: userContent }],
     output_config: { format: { type: 'json_schema', schema } },

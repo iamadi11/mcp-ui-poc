@@ -1,34 +1,27 @@
 import { useCallback, useEffect, useState } from 'react'
 import './App.css'
-import {
-  applyGlassCss,
-  readStoredGlass,
-  GLASS_STORAGE_KEY,
-} from './glassAppearance.js'
-import { GlassControls } from './GlassControls.jsx'
-import { EndpointToUI } from './EndpointToUI.jsx'
+import { Studio } from './studio/Studio.jsx'
+import { OwnerPage } from './studio/OwnerPage.jsx'
 import { SettingsPanel } from './SettingsPanel.jsx'
 
+function routeFromPath(pathname) {
+  const owner = pathname.match(/^\/w\/([^/]+)/)
+  if (owner) return { name: 'owner', publicId: owner[1] }
+  return { name: 'studio' }
+}
+
 function App() {
-  const [glass, setGlass] = useState(() => readStoredGlass())
   const [health, setHealth] = useState({ state: 'checking' })
   const [notifications, setNotifications] = useState([])
+  const [typesafeKey, setTypesafeKey] = useState('')
+  const [route, setRoute] = useState(() => routeFromPath(window.location.pathname))
+  const [auth, setAuth] = useState({ user: null, oauth: false })
 
   useEffect(() => {
-    applyGlassCss(glass)
-    try {
-      localStorage.setItem(GLASS_STORAGE_KEY, JSON.stringify(glass))
-    } catch {
-      /* ignore quota */
-    }
-  }, [glass])
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const sync = () => applyGlassCss(glass)
-    mq.addEventListener('change', sync)
-    return () => mq.removeEventListener('change', sync)
-  }, [glass])
+    const onPop = () => setRoute(routeFromPath(window.location.pathname))
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   const checkHealth = useCallback(async () => {
     setHealth({ state: 'checking' })
@@ -57,10 +50,15 @@ function App() {
     checkHealth()
   }, [checkHealth])
 
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then((r) => r.json())
+      .then(setAuth)
+      .catch(() => {})
+  }, [])
+
   const pushToast = useCallback((message, type = 'info', dismissMs = 5000) => {
-    const id =
-      globalThis.crypto?.randomUUID?.() ??
-      `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`
     setNotifications((prev) => [...prev, { id, message, type }])
     setTimeout(() => {
       setNotifications((prev) => prev.filter((n) => n.id !== id))
@@ -75,10 +73,28 @@ function App() {
         window.open(action.payload.url, '_blank', 'noopener,noreferrer')
       }
     },
-    [pushToast]
+    [pushToast],
   )
 
-  const ai = health.state === 'ok' ? health.payload?.ai : null
+  const payload = health.state === 'ok' ? health.payload : null
+  const ai = payload?.ai
+  const jev = payload?.jev
+  const store = payload?.store
+  const sessionJev = Boolean(typesafeKey.trim())
+  const isProd = import.meta.env.PROD
+
+  let healthMeta = ''
+  if (payload) {
+    const jevBit = jev?.available
+      ? `Jev: ${jev.model}`
+      : sessionJev
+        ? 'Jev: session key'
+        : 'Jev: paste a TypeSafe key'
+    const llmBit = ai?.available ? `LLM: ${ai.model}` : 'LLM: off'
+    healthMeta = [jevBit, llmBit, `store: ${store || 'unknown'}`, payload.mongo ? `mongo: ${payload.mongo}` : null]
+      .filter(Boolean)
+      .join(' · ')
+  }
 
   return (
     <div className="app">
@@ -92,64 +108,50 @@ function App() {
         </div>
       )}
 
-      <header className="app-header hero">
-        <SettingsPanel />
-        <p className="hero-kicker">MCP UI · mcpui.dev</p>
-        <h1>
-          Any endpoint, <span className="hero-accent">rendered</span>.
-        </h1>
-        <p className="hero-sub">
-          Point at an API. Claude analyses the data and composes a UI from your
-          registered design system — delivered as an MCP UI resource.
-        </p>
-
+      <header className="app-header">
+        <div className="brand">
+          <p className="kicker">MCP UI studio</p>
+          <h1>Chat a widget. Publish a URL.</h1>
+        </div>
         <div
           className={`server-status ${
-            health.state === 'ok'
-              ? 'status-ok'
-              : health.state === 'error'
-                ? 'status-error'
-                : 'status-checking'
+            health.state === 'ok' ? 'status-ok' : health.state === 'error' ? 'status-error' : 'status-checking'
           }`}
           role="status"
           aria-live="polite"
-          aria-busy={health.state === 'checking'}
         >
-          {health.state === 'checking' && (
-            <span className="status-label">Checking API connection…</span>
-          )}
+          {health.state === 'checking' && <span>Checking API…</span>}
           {health.state === 'ok' && (
-            <span className="status-label">
+            <span>
               API connected
-              {ai && (
-                <span className="status-meta">
-                  {' · '}
-                  {ai.available ? `AI planner: ${ai.model}` : 'heuristic planner (set ANTHROPIC_API_KEY)'}
-                </span>
-              )}
+              {healthMeta ? <span className="status-meta">{healthMeta}</span> : null}
             </span>
           )}
           {health.state === 'error' && (
-            <div className="status-error-body">
-              <span className="status-label">
-                Cannot reach API ({health.message}). Start the backend (
-                <code className="status-code">npm run dev</code> from the repo root).
-              </span>
-              <button type="button" className="btn status-retry" onClick={() => checkHealth()}>
+            <span>
+              {isProd ? `Cannot reach API (${health.message}).` : `Cannot reach API (${health.message}). Run npm run dev.`}
+              <button type="button" className="text-btn" onClick={() => checkHealth()}>
                 Retry
               </button>
-            </div>
+            </span>
           )}
         </div>
+        {auth.oauth && !auth.user ? (
+          <a className="text-btn" href="/api/auth/github">
+            Sign in with GitHub
+          </a>
+        ) : null}
+        {auth.user ? <span className="status-meta">@{auth.user.login}</span> : null}
+        <SettingsPanel typesafeKey={typesafeKey} onTypesafeKeyChange={setTypesafeKey} />
       </header>
 
       <main className="app-main">
-        <section className="mcp-ui-section">
-          <EndpointToUI onUIAction={handleUIAction} />
-        </section>
+        {route.name === 'owner' ? (
+          <OwnerPage publicId={route.publicId} typesafeKey={typesafeKey} />
+        ) : (
+          <Studio typesafeKey={typesafeKey} onUIAction={handleUIAction} decisionStore={store} />
+        )}
       </main>
-
-      <GlassControls glass={glass} setGlass={setGlass} />
     </div>
   )
 }

@@ -15,15 +15,24 @@
     "build": "cd client && npm run build",
     "install-client": "cd client && npm install",
     "install-server": "npm install",
-    "install-all": "npm run install-server && npm run install-client"
+    "install-all": "npm run install-server && npm run install-client",
+    "test": "npm test --workspace=ui-compose-kit",
+    "infra:start": "brew services start redis && brew services start mongodb-community@8.0",
+    "skills:install": "bash scripts/skills-install.sh",
+    "skills:update": "bash scripts/skills-update.sh",
+    "export:turns": "node scripts/export-turns.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
     "@mcp-ui/server": "^5.2.0",
+    "@typesafe-ai/sdk": "^0.6.0",
+    "@upstash/redis": "^1.34.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.5.1",
+    "mongodb": "^6.16.0",
+    "redis": "^6.2.1",
     "ui-compose-kit": "*"
   },
   "engines": {

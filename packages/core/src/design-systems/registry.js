@@ -48,11 +48,9 @@ export function listDesignSystems() {
   }))
 }
 
-// Built-in setup registration. Add custom systems here or call registerDesignSystem()
-// from your own setup module before the server starts handling requests.
-// "glass" registers first so it's the default active system.
-registerDesignSystem(glassSystem)
+// shadcn is the host ThemeAdapter default. Other systems stay swappable.
 registerDesignSystem(shadcnSystem)
+registerDesignSystem(glassSystem)
 registerDesignSystem(materialSystem)
 registerDesignSystem(plainSystem)
 

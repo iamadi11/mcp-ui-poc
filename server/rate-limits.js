@@ -27,3 +27,14 @@ export function createGenerateLimiter() {
     handler: json429('Too many generate requests; slow down and try again shortly.'),
   });
 }
+
+export function createFeedbackLimiter() {
+  const max = readPositiveInt('MCP_RATE_LIMIT_FEEDBACK_PER_MIN', 60);
+  return rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: json429('Too many feedback requests; slow down and try again shortly.'),
+  });
+}

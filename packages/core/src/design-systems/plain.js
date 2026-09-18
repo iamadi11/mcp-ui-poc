@@ -23,5 +23,5 @@ export const plainSystem = {
   description: 'Minimal serif baseline — copy this file to register a custom design system',
   components: COMPONENT_CATALOG,
   theme,
-  render: (spec) => renderSpecHtml(spec, theme),
+  render: (spec, themeOverride) => renderSpecHtml(spec, themeOverride || theme),
 }

@@ -27,7 +27,8 @@
   "optionalDependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
     "openai": "^4.0.0",
-    "@google/genai": "^0.3.0"
+    "@google/genai": "^0.3.0",
+    "@typesafe-ai/sdk": "^0.6.0"
   },
   "devDependencies": {
     "vitest": "^2.0.0"

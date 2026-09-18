@@ -1,27 +1,28 @@
-import 'dotenv/config';
+import './load-env.js';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { randomUUID } from 'node:crypto';
-import { createUIResource } from '@mcp-ui/server';
 import {
-  getDesignSystem,
   listDesignSystems,
   setActiveDesignSystem,
   listLLMAdapters,
-  planUI,
   aiAvailable,
   verifyApiKey,
   anthropicAdapter,
+  jevAvailable,
+  jevModel,
+  verifyJevKey,
 } from 'ui-compose-kit';
-import { fetchEndpointData } from './data-source.js';
-import { createGenerateLimiter } from './rate-limits.js';
-import {
-  assertGeneratedHtmlWithinLimit,
-  isHtmlPayloadError,
-  sendHtmlTooLarge,
-} from './generated-html-limit.js';
+import { createGenerateLimiter, createFeedbackLimiter } from './rate-limits.js';
+import { isHtmlPayloadError, sendHtmlTooLarge } from './generated-html-limit.js';
+import { applyFeedback, storeAvailable, storeStatus } from './store.js';
+import { mongoStatus, rateTurn } from './mongo.js';
+import { registerAuthRoutes, oauthConfigured } from './auth.js';
+import { registerChatRoutes } from './chat.js';
+import { registerWidgetRoutes } from './widgets.js';
+import { registerEmbedRoutes } from './embed.js';
+import { planTurn } from './plan-turn.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,25 +48,30 @@ function anthropicErrorMessage(error) {
 }
 
 const generateLimiter = createGenerateLimiter();
+const feedbackLimiter = createFeedbackLimiter();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '512kb' }));
 if (!isVercel) {
   app.use(express.static(path.join(__dirname, '../client/dist')));
 }
 
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+  const [store, mongo] = await Promise.all([storeStatus(), mongoStatus()])
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     ai: { available: aiAvailable(), model: anthropicAdapter.model },
+    jev: { available: jevAvailable(), model: jevModel() },
+    store,
+    mongo,
+    oauth: oauthConfigured(),
     designSystems: listDesignSystems().map(({ id, active }) => ({ id, active })),
     llmProviders: listLLMAdapters(),
   });
 });
 
-// Design-system registry (registered at setup; see server/design-systems/registry.js)
 app.get('/api/design-systems', (req, res) => {
   res.json({ designSystems: listDesignSystems() });
 });
@@ -81,50 +87,39 @@ app.post('/api/design-systems/active', (req, res) => {
   }
 });
 
-// Validates a client-supplied Anthropic key without spending completion tokens
 app.post('/api/verify-key', generateLimiter, async (req, res) => {
   const apiKey = req.get('x-anthropic-api-key') || req.body?.apiKey;
   res.json(await verifyApiKey(apiKey));
 });
 
-// Endpoint → data → AI analysis → design-system components → MCP UI resource
+app.post('/api/verify-jev-key', generateLimiter, async (req, res) => {
+  const apiKey = req.get('x-typesafe-api-key');
+  res.json(await verifyJevKey(apiKey));
+});
+
+registerAuthRoutes(app);
+registerChatRoutes(app, { generateLimiter });
+registerWidgetRoutes(app, { generateLimiter });
+registerEmbedRoutes(app);
+
 app.post('/api/render-endpoint', generateLimiter, async (req, res) => {
   try {
-    const { url, method, headers, body, instructions, designSystem: dsId, llmProvider } = req.body;
+    const { url, method, headers, body, instructions, designSystem, llmProvider, sessionId } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
-
-    const apiKey = req.get('x-anthropic-api-key') || undefined;
-    const designSystem = getDesignSystem(dsId);
-    const { data, contentType, bytes } = await fetchEndpointData({ url, method, headers, body });
-    const { spec, planner } = await planUI({
-      data,
-      sourceUrl: url,
+    const result = await planTurn({
+      url,
+      method,
+      headers,
+      body,
       instructions,
+      message: instructions,
       designSystem,
-      apiKey,
       llmProvider,
+      sessionId,
+      apiKey: req.get('x-anthropic-api-key') || undefined,
+      typesafeApiKey: req.get('x-typesafe-api-key') || undefined,
     });
-
-    const html = designSystem.render(spec);
-    assertGeneratedHtmlWithinLimit(html);
-
-    const componentId = `endpoint-${randomUUID()}`;
-    const resource = createUIResource({
-      uri: `ui://endpoint/${componentId}`,
-      content: { type: 'rawHtml', htmlString: html },
-      encoding: 'text',
-    });
-
-    res.json({
-      ...resource,
-      componentId,
-      spec,
-      meta: {
-        planner,
-        designSystem: designSystem.id,
-        source: { url, contentType, bytes },
-      },
-    });
+    res.json(result);
   } catch (error) {
     if (isHtmlPayloadError(error)) {
       return sendHtmlTooLarge(res, error);
@@ -135,10 +130,39 @@ app.post('/api/render-endpoint', generateLimiter, async (req, res) => {
   }
 });
 
-// Serve React app for non-API routes (local / traditional hosting; Vercel ignores express.static)
+app.post('/api/feedback', feedbackLimiter, async (req, res) => {
+  try {
+    const decisionId = req.body?.decisionId;
+    const rating = req.body?.rating;
+    const note = req.body?.note;
+    if (!decisionId) return res.status(400).json({ error: 'decisionId is required' });
+    if (rating !== 'up' && rating !== 'down') {
+      return res.status(400).json({ error: 'rating must be "up" or "down"' });
+    }
+    await rateTurn({ decisionId, rating, note });
+    if (!storeAvailable()) {
+      return res.json({
+        decisionId,
+        replayEligible: rating === 'up',
+        ratings: [{ rating, at: new Date().toISOString() }],
+      });
+    }
+    const record = await applyFeedback({ decisionId, rating, note });
+    res.json({
+      decisionId: record.id,
+      replayEligible: record.replayEligible,
+      ratings: record.ratings,
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    if (status >= 500) console.error('Error recording feedback:', error);
+    res.status(status).json({ error: error.message || 'Failed to record feedback' });
+  }
+});
+
 if (!isVercel) {
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
   });
 } else {
   app.get('/', (req, res) => {
@@ -153,6 +177,6 @@ export default app;
 
 if (!isVercel) {
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }

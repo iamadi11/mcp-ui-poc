@@ -17,6 +17,8 @@
 
 Each skill’s `SKILL.md` references **`docs/AI_WORKFLOW.md`**; read that file for the canonical sequence and policies.
 
+After clone: `npm run skills:install`, then `/setup-matt-pocock-skills` once. Non-trivial work uses `/ask-matt`. UI work uses `design-system/MCP-UI/MASTER.md`. See **`docs/agents/README.md`**. Matt `tdd` and `code-review` replace duplicate project TDD/review playbooks — do not run two.
+
 ## MCP servers (recommended)
 
 Align with Cursor where possible:

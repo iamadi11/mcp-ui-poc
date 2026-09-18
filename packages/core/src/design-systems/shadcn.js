@@ -1,13 +1,13 @@
 import { COMPONENT_CATALOG, renderSpecHtml } from './spec-html.js'
 
-// shadcn/ui-flavored theme: neutral zinc palette, Inter-adjacent stack,
-// subtle borders + radius matching shadcn semantic tokens.
+// shadcn ThemeAdapter: zinc surfaces, IBM Plex (host chrome matches MASTER.md).
 const theme = {
-  head: '',
-  chartColors: ['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#52525b', '#27272a'],
+  head: `<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">`,
+  chartColors: ['#0F766E', '#2DD4BF', '#14B8A6', '#5EEAD4', '#0D9488', '#99F6E4'],
   css: `
 :root{color-scheme:light dark}
-body{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;background:#fafafa;color:#09090b}
+body{font-family:'IBM Plex Sans',ui-sans-serif,system-ui,sans-serif;background:#fafafa;color:#09090b}
 .card{background:#fff;border:1px solid #e4e4e7;border-radius:10px;padding:18px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .stat{border:1px solid #e4e4e7;border-radius:8px;padding:12px;background:#fff}
 th{border-bottom:1px solid #e4e4e7;color:#71717a;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em}
@@ -32,5 +32,5 @@ export const shadcnSystem = {
   description: 'Neutral zinc palette, bordered cards, shadcn semantic styling',
   components: COMPONENT_CATALOG,
   theme,
-  render: (spec) => renderSpecHtml(spec, theme),
+  render: (spec, themeOverride) => renderSpecHtml(spec, themeOverride || theme),
 }

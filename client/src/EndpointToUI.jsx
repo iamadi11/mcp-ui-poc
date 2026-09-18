@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2, Save, Trash2, Zap } from 'lucide-react'
+import { Loader2, Save, ThumbsDown, ThumbsUp, Trash2, Zap } from 'lucide-react'
 import { UIResourceRenderer } from '@mcp-ui/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,6 +32,19 @@ const SAMPLE_ENDPOINTS = [
   },
 ]
 
+const INSTRUCTION_CHIPS = [
+  { label: 'Bar chart', value: 'show as a bar chart' },
+  { label: 'Popup / modal', value: 'show this in a popup' },
+  { label: 'Name + email only', value: 'just show name and email' },
+  { label: 'Headline metrics', value: 'just headline metrics' },
+  { label: 'Table only', value: 'show as a table' },
+]
+
+function formatConfidence(value) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return null
+  return `${Math.round(value * 100)}%`
+}
+
 function PreviewSkeleton() {
   return (
     <div className="preview-skeleton" role="status" aria-label="Generating UI">
@@ -49,7 +62,7 @@ function PreviewSkeleton() {
   )
 }
 
-export function EndpointToUI({ onUIAction }) {
+export function EndpointToUI({ onUIAction, typesafeKey = '', decisionStore: decisionStoreProp }) {
   const [designSystems, setDesignSystems] = useState([])
   const [designSystem, setDesignSystem] = useState('')
   const [llmProviders, setLlmProviders] = useState([])
@@ -65,6 +78,13 @@ export function EndpointToUI({ onUIAction }) {
   const [savedEndpoints, setSavedEndpoints] = useState(() => readSavedEndpoints())
   const [saveName, setSaveName] = useState('')
   const [activeEndpointId, setActiveEndpointId] = useState(null)
+  const [rating, setRating] = useState(null)
+  const [ratingBusy, setRatingBusy] = useState(false)
+  const [ratingError, setRatingError] = useState(null)
+  const [downNote, setDownNote] = useState('')
+  const [showDownNote, setShowDownNote] = useState(false)
+  const [ratingOk, setRatingOk] = useState(null)
+  const [decisionStore, setDecisionStore] = useState(decisionStoreProp || '')
 
   useEffect(() => {
     fetch('/api/design-systems')
@@ -84,9 +104,14 @@ export function EndpointToUI({ onUIAction }) {
         setLlmProviders(providers)
         const available = providers.find((p) => p.available)
         setLlmProvider((available || providers[0])?.id || '')
+        if (body.store) setDecisionStore(body.store)
       })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (decisionStoreProp) setDecisionStore(decisionStoreProp)
+  }, [decisionStoreProp])
 
   const handleGenerate = useCallback(async () => {
     setError(null)
@@ -102,13 +127,20 @@ export function EndpointToUI({ onUIAction }) {
     setLoading(true)
     setResult(null)
     setShowSpec(false)
+    setRating(null)
+    setRatingError(null)
+    setRatingOk(null)
+    setDownNote('')
+    setShowDownNote(false)
     try {
       const apiKey = readApiKey()
+      const sessionJev = typesafeKey.trim()
       const res = await fetch('/api/render-endpoint', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(apiKey ? { 'x-anthropic-api-key': apiKey } : {}),
+          ...(sessionJev ? { 'x-typesafe-api-key': sessionJev } : {}),
         },
         body: JSON.stringify({
           url,
@@ -127,7 +159,7 @@ export function EndpointToUI({ onUIAction }) {
     } finally {
       setLoading(false)
     }
-  }, [url, method, headersText, instructions, designSystem, llmProvider])
+  }, [url, method, headersText, instructions, designSystem, llmProvider, typesafeKey])
 
   const handleSaveEndpoint = useCallback(() => {
     const name = saveName.trim() || url
@@ -162,6 +194,49 @@ export function EndpointToUI({ onUIAction }) {
     setError(null)
   }, [])
 
+  const sendFeedback = useCallback(async (nextRating, note) => {
+    const decisionId = result?.componentId || result?.meta?.decisionId
+    if (!decisionId) return
+    setRatingBusy(true)
+    setRatingError(null)
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          decisionId,
+          rating: nextRating,
+          note: note?.trim() || undefined,
+        }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw await errorFromResponse(res, body)
+      setRating(nextRating)
+      setShowDownNote(false)
+      setRatingOk(
+        nextRating === 'up'
+          ? 'Saved — this layout can be reused next time.'
+          : 'Saved — this layout will not be replayed.',
+      )
+    } catch (err) {
+      setRatingError(err instanceof Error ? err.message : 'Could not save rating')
+    } finally {
+      setRatingBusy(false)
+    }
+  }, [result])
+
+  const handleRateUp = useCallback(() => {
+    sendFeedback('up')
+  }, [sendFeedback])
+
+  const handleRateDown = useCallback(() => {
+    if (!showDownNote) {
+      setShowDownNote(true)
+      return
+    }
+    sendFeedback('down', downNote)
+  }, [sendFeedback, showDownNote, downNote])
+
   const handleDeleteEndpoint = useCallback((id) => {
     setSavedEndpoints((prev) => {
       const next = prev.filter((e) => e.id !== id)
@@ -172,6 +247,11 @@ export function EndpointToUI({ onUIAction }) {
   }, [])
 
   const selectedSystem = designSystems.find((s) => s.id === designSystem)
+  const ratingsEnabled = decisionStore === 'redis' || decisionStore === 'redis-local'
+  const plannerChip = result?.meta?.plannerLabel || result?.meta?.planner
+  const confidenceChip = formatConfidence(result?.meta?.jevConfidence)
+  const latencyChip =
+    typeof result?.meta?.latencyMs === 'number' ? `${result.meta.latencyMs}ms` : null
 
   return (
     <div className="builder-layout">
@@ -346,6 +426,19 @@ export function EndpointToUI({ onUIAction }) {
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder="e.g. focus on geographic distribution, chart by company"
               />
+              <div className="sample-chips" role="group" aria-label="Instruction examples">
+                <span className="sample-chips__label">Try:</span>
+                {INSTRUCTION_CHIPS.map((chip) => (
+                  <button
+                    key={chip.value}
+                    type="button"
+                    className={`sample-chip ${instructions === chip.value ? 'sample-chip--active' : ''}`}
+                    onClick={() => setInstructions(chip.value)}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col items-stretch gap-3 border-t border-border/40 pt-6 sm:flex-row sm:items-center sm:justify-end">
@@ -379,18 +472,103 @@ export function EndpointToUI({ onUIAction }) {
           <div className="generated-ui">
             <div className="generated-ui__head">
               <h3>Generated UI</h3>
-              <div className="meta-chips" aria-label="Generation metadata">
-                <span className="meta-chip" title="Design system used">
-                  {result.meta?.designSystem}
-                </span>
-                <span className="meta-chip" title="Planner that designed the layout">
-                  {result.meta?.planner}
-                </span>
-                <span className="meta-chip" title="Bytes fetched from the endpoint">
-                  {result.meta?.source?.bytes ?? '?'} B
-                </span>
+              <div className="generated-ui__head-meta">
+                <div className="meta-chips" aria-label="Generation metadata">
+                  <span className="meta-chip" title="Design system used">
+                    {result.meta?.designSystem}
+                  </span>
+                  {plannerChip ? (
+                    <span className="meta-chip" title={result.meta?.planner || 'Planner'}>
+                      {plannerChip}
+                    </span>
+                  ) : null}
+                  {latencyChip ? (
+                    <span className="meta-chip" title="Planner latency">
+                      {latencyChip}
+                    </span>
+                  ) : null}
+                  {confidenceChip ? (
+                    <span className="meta-chip" title="Jev confidence">
+                      Jev {confidenceChip}
+                    </span>
+                  ) : null}
+                  {result.meta?.cached ? (
+                    <span className="meta-chip" title="Layout replayed from a stored decision">
+                      cached
+                    </span>
+                  ) : null}
+                  <span className="meta-chip" title="Bytes fetched from the endpoint">
+                    {result.meta?.source?.bytes ?? '?'} B
+                  </span>
+                </div>
+                <div className="rating-bar" role="group" aria-label="Rate this layout">
+                  <span className="rating-bar__hint">
+                    {ratingsEnabled
+                      ? 'Up = reuse this layout next time.'
+                      : 'Ratings need Redis (store is not redis).'}
+                  </span>
+                  <Button
+                    type="button"
+                    variant={rating === 'up' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={handleRateUp}
+                    disabled={ratingBusy || !ratingsEnabled}
+                    aria-pressed={rating === 'up'}
+                    title={
+                      ratingsEnabled
+                        ? 'This layout is useful — replay it next time'
+                        : 'Decision store is not Redis — ratings are disabled'
+                    }
+                  >
+                    <ThumbsUp size={14} /> Up
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={rating === 'down' ? 'destructive' : 'outline'}
+                    size="sm"
+                    onClick={handleRateDown}
+                    disabled={ratingBusy || !ratingsEnabled}
+                    aria-pressed={rating === 'down'}
+                    title={
+                      ratingsEnabled
+                        ? 'This layout is wrong — do not replay it'
+                        : 'Decision store is not Redis — ratings are disabled'
+                    }
+                  >
+                    <ThumbsDown size={14} /> Down
+                  </Button>
+                </div>
               </div>
             </div>
+            {showDownNote && (
+              <div className="rating-note">
+                <Label htmlFor="rating-note">What was wrong? (optional)</Label>
+                <div className="rating-note__row">
+                  <Input
+                    id="rating-note"
+                    value={downNote}
+                    onChange={(e) => setDownNote(e.target.value)}
+                    placeholder="e.g. wanted a chart, too many columns"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !ratingBusy) handleRateDown()
+                    }}
+                  />
+                  <Button type="button" size="sm" onClick={handleRateDown} disabled={ratingBusy}>
+                    Submit
+                  </Button>
+                </div>
+              </div>
+            )}
+            {ratingOk && (
+              <p className="rating-confirm" role="status">
+                {ratingOk}
+              </p>
+            )}
+            {ratingError && (
+              <p className="builder-inline-error" role="alert">
+                {ratingError}
+              </p>
+            )}
             <div className="endpoint-preview-frame">
               <UIResourceRenderer
                 resource={result.resource}

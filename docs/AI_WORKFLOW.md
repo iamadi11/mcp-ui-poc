@@ -22,11 +22,10 @@ Skips require a one-line rationale (e.g. “docs-only: no code change”).
 | Area | Policy |
 |------|--------|
 | **Client (`client/`)** | Run `npm run lint` in `client/` after JSX/JS changes. ESLint is configured via **`client/.eslintrc.cjs`**. Use `npm run build` as an additional compile check when needed. |
-| **Server (`server/`)** | Manually exercise changed API routes or flows; add automated tests when a test runner is introduced. |
-| **End-to-end** | No E2E suite in-repo yet; use structured manual validation (see Validate step). |
-| **Coverage** | No global coverage target until a test framework is adopted; prefer small, focused tests once added. |
-
-When adding a test framework, update this section and `package.json` scripts in one change.
+| **Core (`packages/core`)** | `npm test` (Vitest) after planner, policy, shape, or DecisionAdapter changes. |
+| **Server (`server/`)** | Manually exercise changed API routes or flows. |
+| **End-to-end** | No E2E suite in-repo yet; use [`docs/MANUAL_QA.md`](MANUAL_QA.md) and browser verification for studio chat → preview. |
+| **Coverage** | No global coverage target; prefer small, focused tests in `packages/core/test`. |
 
 ## Architecture boundaries
 
