@@ -110,6 +110,8 @@ __pycache__/
 # skills:install vendor copies (symlinks into .agents — git cannot add paths through them)
 .agents/
 .cursor/skills/
+!.cursor/skills/autonomous-company-product-gap/
+!.cursor/skills/autonomous-company-product-gap/**
 .claude/skills/ask-matt
 .claude/skills/code-review
 .claude/skills/diagnosing-bugs
