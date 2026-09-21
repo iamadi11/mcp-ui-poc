@@ -6,7 +6,9 @@
  *  - `theme`: { head, css, chartColors } passed to the shared spec-html renderer
  *  - `render(spec)`: turns a UI spec into a full HTML document
  *
- * The active system is selected via MCP_DESIGN_SYSTEM (env) or setActiveDesignSystem().
+ * Process default comes from MCP_DESIGN_SYSTEM (env) or the first registered system.
+ * Request paths must pass an explicit designSystem id to getDesignSystem(id).
+ * setActiveDesignSystem() is for tests/boot only — never expose it as a multi-user HTTP API.
  */
 import { glassSystem } from './glass.js'
 import { shadcnSystem } from './shadcn.js'
@@ -25,6 +27,7 @@ export function registerDesignSystem(system) {
 }
 
 export function setActiveDesignSystem(id) {
+  // Process-wide default only (tests / boot). Concurrent request paths must use getDesignSystem(id).
   if (!systems.has(id)) {
     throw new Error(`Unknown design system: ${id}. Registered: ${[...systems.keys()].join(', ')}`)
   }
