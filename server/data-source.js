@@ -1,8 +1,14 @@
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
+import { Agent, fetch as undiciFetch } from 'undici'
 
 const MAX_BODY_BYTES = Number(process.env.MCP_MAX_FETCH_BYTES || 2 * 1024 * 1024) // 2 MiB
 const FETCH_TIMEOUT_MS = Number(process.env.MCP_FETCH_TIMEOUT_MS || 15000)
+
+function maxRedirects() {
+  const n = Number(process.env.MCP_MAX_REDIRECTS || 5)
+  return Number.isFinite(n) && n > 0 ? n : 5
+}
 
 function allowPrivateEndpoints() {
   return process.env.MCP_ALLOW_PRIVATE_ENDPOINTS === '1'
@@ -52,7 +58,7 @@ function isPrivateIPv4(addr) {
   return false
 }
 
-function isPrivateAddress(addr) {
+export function isPrivateAddress(addr) {
   const host = normalizeHost(addr)
   const ipKind = isIP(host)
   if (ipKind === 4) return isPrivateIPv4(host)
@@ -129,39 +135,40 @@ export async function assertSafeEndpoint(rawUrl) {
 }
 
 /**
- * Fetch arbitrary user-provided endpoint. Returns { data, contentType, raw }.
- * Data of any type: JSON parsed when possible, otherwise raw text kept.
+ * undici Agent whose DNS lookup rejects private addresses (DNS rebinding / TOCTOU mitigation).
+ * Pass a custom dispatcher in tests (e.g. MockAgent).
  */
-export async function fetchEndpointData({ url, method = 'GET', headers = {}, body }) {
-  const target = await assertSafeEndpoint(url)
+export function createSafeDispatcher() {
+  return new Agent({
+    connect: {
+      lookup(hostname, _opts, cb) {
+        if (allowPrivateEndpoints()) {
+          lookup(hostname, { all: true })
+            .then((addrs) => {
+              if (!addrs.length) return cb(new Error(`Could not resolve host: ${hostname}`))
+              cb(null, addrs[0].address, addrs[0].family)
+            })
+            .catch(cb)
+          return
+        }
+        lookup(hostname, { all: true })
+          .then((addrs) => {
+            if (!addrs.length) return cb(new Error(`Could not resolve host: ${hostname}`))
+            const bad = addrs.find((a) => isPrivateAddress(a.address))
+            if (bad) {
+              const err = new Error(`Blocked private address ${bad.address}`)
+              err.status = 400
+              return cb(err)
+            }
+            cb(null, addrs[0].address, addrs[0].family)
+          })
+          .catch(cb)
+      },
+    },
+  })
+}
 
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-  let response
-  try {
-    response = await fetch(target, {
-      method: method.toUpperCase(),
-      headers: { accept: 'application/json, text/*;q=0.8, */*;q=0.5', ...headers },
-      body: body && method.toUpperCase() !== 'GET' ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-      redirect: 'follow',
-    })
-  } catch (e) {
-    const err = new Error(
-      e.name === 'AbortError' ? `Endpoint timed out after ${FETCH_TIMEOUT_MS}ms` : `Fetch failed: ${e.message}`,
-    )
-    err.status = 502
-    throw err
-  } finally {
-    clearTimeout(timer)
-  }
-
-  if (!response.ok) {
-    const err = new Error(`Endpoint returned ${response.status} ${response.statusText}`)
-    err.status = 502
-    throw err
-  }
-
+async function readLimitedBody(response) {
   const reader = response.body.getReader()
   const chunks = []
   let received = 0
@@ -179,7 +186,6 @@ export async function fetchEndpointData({ url, method = 'GET', headers = {}, bod
   }
   const raw = Buffer.concat(chunks).toString('utf8')
   const contentType = response.headers.get('content-type') || ''
-
   let data = raw
   try {
     data = JSON.parse(raw)
@@ -187,4 +193,81 @@ export async function fetchEndpointData({ url, method = 'GET', headers = {}, bod
     // keep as text — planner handles any data type
   }
   return { data, contentType, raw, bytes: received }
+}
+
+/**
+ * Fetch arbitrary user-provided endpoint. Returns { data, contentType, raw }.
+ * Redirects are manual: each Location is re-validated with assertSafeEndpoint.
+ * Optional `dispatcher` override is for tests (MockAgent).
+ */
+export async function fetchEndpointData({ url, method = 'GET', headers = {}, body, dispatcher } = {}) {
+  let target = await assertSafeEndpoint(url)
+  const agent = dispatcher || createSafeDispatcher()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
+  let response
+  let hops = 0
+  let currentMethod = method.toUpperCase()
+  let currentBody = body && currentMethod !== 'GET' ? JSON.stringify(body) : undefined
+
+  try {
+    for (;;) {
+      response = await undiciFetch(target, {
+        method: currentMethod,
+        headers: { accept: 'application/json, text/*;q=0.8, */*;q=0.5', ...headers },
+        body: currentBody,
+        signal: controller.signal,
+        redirect: 'manual',
+        dispatcher: agent,
+      })
+
+      const status = response.status
+      if (status >= 300 && status < 400) {
+        const location = response.headers.get('location')
+        if (!location) break
+        if (++hops > maxRedirects()) {
+          const err = new Error(`Too many redirects (max ${maxRedirects()})`)
+          err.status = 502
+          throw err
+        }
+        // Drain/cancel redirect body before following
+        if (response.body) {
+          try {
+            await response.body.cancel()
+          } catch {
+            /* ignore */
+          }
+        }
+        const next = new URL(location, target).href
+        target = await assertSafeEndpoint(next)
+        // Subsequent hops: safe GET without body (avoids replaying writes to attacker-chosen URLs)
+        currentMethod = 'GET'
+        currentBody = undefined
+        continue
+      }
+      break
+    }
+  } catch (e) {
+    if (e?.status) throw e
+    const err = new Error(
+      e.name === 'AbortError' ? `Endpoint timed out after ${FETCH_TIMEOUT_MS}ms` : `Fetch failed: ${e.message}`,
+    )
+    err.status = e?.status || 502
+    throw err
+  } finally {
+    clearTimeout(timer)
+    if (!dispatcher && typeof agent.close === 'function') {
+      // Don't await close in hot path forever; fire-and-forget is fine for short-lived agents
+      agent.close().catch(() => {})
+    }
+  }
+
+  if (!response.ok) {
+    const err = new Error(`Endpoint returned ${response.status} ${response.statusText}`)
+    err.status = 502
+    throw err
+  }
+
+  return readLimitedBody(response)
 }

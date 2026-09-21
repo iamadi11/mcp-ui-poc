@@ -37,7 +37,8 @@
     "express-rate-limit": "^7.5.1",
     "mongodb": "^6.16.0",
     "redis": "^6.2.1",
-    "ui-compose-kit": "*"
+    "ui-compose-kit": "*",
+    "undici": "^7.29.1"
   },
   "engines": {
     "node": "22.x"
