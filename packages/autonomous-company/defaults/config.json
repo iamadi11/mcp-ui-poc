@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "execution": {
+    "maxIterations": 3,
+    "maxWallTimeMs": 2700000,
+    "maxConcurrentTasks": 1,
+    "maxRetriesPerTask": 2,
+    "stopWhenNoHighValueWork": true,
+    "requireReviewForCode": true,
+    "allowParallelDiscovery": true
+  },
+  "safety": {
+    "allowDeploy": false,
+    "allowForcePush": false,
+    "allowSecretMutation": false,
+    "allowGateWeakening": false,
+    "allowProductionInfraChange": false,
+    "highImpactRequiresArtifactApproval": true
+  },
+  "discovery": {
+    "scanTodoMarkers": true,
+    "scanTestGaps": true,
+    "scanDocDriftHints": true,
+    "includeOpenIssues": false,
+    "maxCandidates": 25,
+    "minEvidenceCount": 1
+  },
+  "prioritization": {
+    "rejectBelowScore": 2.5,
+    "weights": {
+      "userValue": 1.2,
+      "severityRelevance": 1.0,
+      "severity": 1.1,
+      "securityRisk": 1.4,
+      "reliabilityImpact": 1.1,
+      "technicalRisk": 0.8,
+      "effortInverse": 0.7,
+      "confidence": 1.0,
+      "reversibility": 0.5
+    }
+  },
+  "research": {
+    "intervalCycles": 5,
+    "requirePrimarySources": true
+  },
+  "selfImprovement": {
+    "enabled": true,
+    "cannotWeakenSafety": true,
+    "requireIndependentEval": true
+  },
+  "paths": {
+    "stateDir": ".autonomous-company"
+  }
+}

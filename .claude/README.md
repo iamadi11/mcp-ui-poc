@@ -14,6 +14,7 @@
 | `refactor-safely` | Dependency-aware refactors |
 | `review-changes` | Pre-merge checks and risk |
 | `validate-release` | Lint, build, manual gates |
+| `autonomous-company` | Durable autonomous company loop (`/autonomous-company`, `npm run company`) |
 
 Each skill’s `SKILL.md` references **`docs/AI_WORKFLOW.md`**; read that file for the canonical sequence and policies.
 
@@ -35,6 +36,10 @@ No default hooks are committed. Add **PostToolUse**, **SessionStart**, or **PreC
 ## Slash commands
 
 Thin wrappers in **`.claude/commands/`** — they point at skills and **`docs/AI_WORKFLOW.md`**.
+
+- `/autonomous-company` — durable autonomous company loop (see `docs/autonomous-company/`)
+- `/start` — one-shot single-feature cycle without company state
+- `/implement`, `/validate`, `/review` — thin skill wrappers
 
 ## Cursor parity
 

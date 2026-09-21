@@ -75,7 +75,7 @@ Health should read `store: redis-local · mongo: local`. Production uses Upstash
 ## Vercel (Hobby) + GitHub
 
 - Git integration: `main` → production, PRs → preview.
-- CI: `.github/workflows/ci.yml` runs `npm test`, client lint, and `npm run build`.
+- CI: `.github/workflows/ci.yml` runs `npm test`, `npm run company:test`, client lint, and `npm run build`.
 - **Production env (free infra):** `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `MONGODB_URI`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SESSION_SECRET`, `PUBLIC_ORIGIN`.
 - **Do not** put TypeSafe or Anthropic keys on Vercel if the site should stay BYOK. Do not put those keys in GitHub Actions secrets.
 
@@ -105,6 +105,7 @@ Callback URL for the GitHub OAuth App: `https://<host>/api/auth/github/callback`
 |---|---|
 | `npm run dev` / `client` / `build` | Servers and production client |
 | `npm test` | `ui-compose-kit` Vitest |
+| `npm run company` / `company:test` | Autonomous company CLI / its tests (`docs/autonomous-company/`) |
 | `npm run skills:install` / `skills:update` | Agent skills |
 | `npm run export:turns` | Anonymized training JSON from Mongo |
 

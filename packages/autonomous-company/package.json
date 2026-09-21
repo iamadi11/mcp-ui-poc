@@ -1,0 +1,33 @@
+{
+  "name": "autonomous-company",
+  "version": "0.1.0",
+  "description": "Durable controller for repository-level autonomous software company operations",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./cli": "./src/cli.js"
+  },
+  "files": [
+    "src",
+    "defaults",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "company": "node src/cli.js"
+  },
+  "keywords": [
+    "agents",
+    "orchestration",
+    "sdlc",
+    "autonomous"
+  ]
+}

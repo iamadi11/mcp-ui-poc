@@ -1,0 +1,24 @@
+{
+  "antiSlopAnswers": {
+    "What problem are we solving?": "",
+    "What evidence supports it?": "",
+    "Why is this implementation appropriate?": "",
+    "What existing functionality could be affected?": "",
+    "What could go wrong?": "",
+    "How will we verify the result?": "",
+    "What would make us reject this approach?": ""
+  },
+  "gateChecklist": {},
+  "reviewVerdict": "approve|request_changes|reject",
+  "validationResults": [
+    {
+      "command": "npm test --workspace=ui-compose-kit",
+      "required": true,
+      "status": "passed|failed|skipped",
+      "exitCode": 0,
+      "claimedPass": true,
+      "outputExcerpt": ""
+    }
+  ],
+  "summary": ""
+}

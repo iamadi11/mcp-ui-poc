@@ -1,0 +1,14 @@
+{
+  "problem": "",
+  "evidence": [],
+  "intendedOutcome": "",
+  "alternatives": [],
+  "risks": [],
+  "scope": [],
+  "nonGoals": [],
+  "validationPlan": [],
+  "rollback": "",
+  "assumptions": [],
+  "decision": "accept|reject",
+  "rationale": ""
+}

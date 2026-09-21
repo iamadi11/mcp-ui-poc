@@ -97,6 +97,9 @@ jspm_packages/
 .tern-port 
 .vercel
 
+# autonomous company durable runtime state (committed defaults live in packages/autonomous-company)
+.autonomous-company/
+
 # local Claude Code tooling
 .claude/skills/ui-ux-pro-max/
 .claude/launch.json

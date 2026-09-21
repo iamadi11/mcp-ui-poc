@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "updatedAt": null,
+  "productMission": null,
+  "architectureSummary": null,
+  "importantDecisions": [],
+  "rejectedAlternatives": [],
+  "knownLimitations": [],
+  "technicalDebt": [],
+  "userJourneys": [],
+  "testingStrategy": null,
+  "operationalConstraints": [],
+  "researchFindings": [],
+  "lessonsLearned": [],
+  "previousFailures": [],
+  "currentPriorities": [],
+  "assumptions": []
+}
