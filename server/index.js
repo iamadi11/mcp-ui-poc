@@ -25,6 +25,7 @@ import { registerWidgetRoutes } from './widgets.js';
 import { registerEmbedRoutes } from './embed.js';
 import { registerDesignPackRoutes } from './design-packs.js';
 import { planTurn } from './plan-turn.js';
+import { planCache } from './plan-cache.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -103,6 +104,16 @@ app.post('/api/render-endpoint', generateLimiter, async (req, res) => {
   try {
     const { url, method, headers, body, instructions, designSystem, llmProvider, sessionId } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
+    const apiKey = req.get('x-anthropic-api-key') || undefined;
+    const typesafeApiKey = req.get('x-typesafe-api-key') || undefined;
+    const cacheable = planCache.shouldCache({ apiKey, typesafeApiKey });
+    const cacheKey = cacheable
+      ? planCache.planKey({ url, instructions, designSystem, llmProvider })
+      : null;
+    if (cacheKey) {
+      const hit = planCache.get(cacheKey);
+      if (hit) return res.json({ ...hit, planCache: 'hit' });
+    }
     const result = await runWithGoogleMapsKey(req.get('x-google-maps-api-key'), () => planTurn({
       url,
       method,
@@ -113,9 +124,10 @@ app.post('/api/render-endpoint', generateLimiter, async (req, res) => {
       designSystem,
       llmProvider,
       sessionId,
-      apiKey: req.get('x-anthropic-api-key') || undefined,
-      typesafeApiKey: req.get('x-typesafe-api-key') || undefined,
+      apiKey,
+      typesafeApiKey,
     }));
+    if (cacheKey) planCache.set(cacheKey, result);
     res.json(result);
   } catch (error) {
     if (isHtmlPayloadError(error)) {
