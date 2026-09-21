@@ -8,7 +8,7 @@
  */
 import { getLLMAdapter } from './llm/registry.js'
 import { inferShape, findRows } from './shape.js'
-import { applyPolicy, extractPolicy, isIdLikeKey } from './layout-policy.js'
+import { applyPolicy, extractPolicy, isIdLikeKey, sampleRows } from './layout-policy.js'
 import { sanitizeSpecActions } from './sanitize-spec.js'
 import { jevAvailable, planWithJev } from './jev/planner.js'
 import { isIteratePrompt, mergeIteratePolicy, selectReplayPolicy, applyInstructionUpgrades, isLookMotionOnly } from './iterate.js'
@@ -55,11 +55,15 @@ export function hydrateSpec(spec, data, maxRows = 50) {
     if (c.type !== 'table') return c
     if (!Object.prototype.hasOwnProperty.call(c.props || {}, 'rowsPath')) return c
     const rows = getPath(data, c.props.rowsPath)
+    const total = Array.isArray(rows) ? rows.length : 0
+    const truncated = total > maxRows
     return {
       ...c,
       props: {
         columns: c.props.columns,
         rows: Array.isArray(rows) ? rows.slice(0, maxRows) : [],
+        truncated,
+        total,
       },
     }
   })
@@ -546,6 +550,7 @@ export function heuristicPlan(data, sourceUrl, instructions) {
     const numericKey = pickNumericKey(keys, arr[0]) || pickNumericKey(scalars, arr[0]) || null
     const labelKey = keys.find((k) => typeof arr[0][k] === 'string')
       || scalars.find((k) => typeof arr[0][k] === 'string')
+    const chartSample = sampleRows(arr, 12)
     const chart = numericKey
       ? {
           type: 'chart',
@@ -553,8 +558,11 @@ export function heuristicPlan(data, sourceUrl, instructions) {
           props: {
             chartType: 'bar',
             tooltip: true,
-            values: arr.slice(0, 12).map((r) => Number(r[numericKey]) || 0),
-            labels: arr.slice(0, 12).map((r, i) => String(labelKey ? r[labelKey] : i)),
+            values: chartSample.map((r) => Number(r[numericKey]) || 0),
+            labels: chartSample.map((r, i) => String(labelKey ? r[labelKey] : i)),
+            truncated: arr.length > chartSample.length,
+            total: arr.length,
+            sampled: chartSample.length,
           },
         }
       : null
@@ -564,6 +572,8 @@ export function heuristicPlan(data, sourceUrl, instructions) {
       props: {
         columns: keys.map((k) => ({ key: k, label: k })),
         rows: arr.slice(0, 50),
+        truncated: arr.length > 50,
+        total: arr.length,
       },
     }
     const stats = {

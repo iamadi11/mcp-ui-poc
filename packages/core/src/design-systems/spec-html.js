@@ -261,7 +261,11 @@ function renderComponent(component, theme, spec = {}) {
           return `<tr${hit}>${cells}</tr>`
         })
         .join('')
-      return `<div class="table-wrap"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
+      const note =
+        props.truncated && Number(props.total) > 0
+          ? `<p class="truncation-note">Showing ${esc(String((props.rows || []).length))} of ${esc(String(props.total))} rows</p>`
+          : ''
+      return `<div class="table-wrap">${note}<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
     }
     case 'list': {
       const items = (props.items || [])
@@ -281,8 +285,14 @@ function renderComponent(component, theme, spec = {}) {
         .join('')
       return `<dl class="kv">${pairs}</dl>`
     }
-    case 'chart':
-      return chartSvg(props, theme, spec)
+    case 'chart': {
+      const chart = chartSvg(props, theme, spec)
+      const note =
+        props.truncated && Number(props.total) > 0
+          ? `<p class="truncation-note">Showing ${esc(String(props.sampled ?? (props.values || []).length))} of ${esc(String(props.total))} points</p>`
+          : ''
+      return note ? `<div class="chart-truncation">${note}${chart}</div>` : chart
+    }
     case 'text':
       return `<p class="narrative">${esc(props.content)}</p>`
     case 'badge-row': {
@@ -547,6 +557,8 @@ body{padding:20px 24px;max-width:none;margin:0}
 .kpis .stat{background:transparent}
 .kpis .stat-grid{grid-template-columns:repeat(auto-fit,minmax(9rem,11rem));justify-content:start}
 .table-wrap{overflow-x:auto}
+.truncation-note{font-size:.75rem;opacity:.65;margin:0 0 8px;font-family:'JetBrains Mono',ui-monospace,monospace;letter-spacing:.02em}
+.chart-truncation{display:flex;flex-direction:column;gap:0}
 table{width:100%;border-collapse:collapse;font-size:.85rem}
 th{text-align:left;font-weight:600;padding:8px 10px}
 td{padding:8px 10px}

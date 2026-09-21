@@ -304,6 +304,39 @@ describe('design-systems registry', () => {
     expect(JSON.stringify(spec)).not.toContain(key)
   })
 
+  it('renders truncation notes for sampled tables and charts', () => {
+    const html = getDesignSystem('shadcn').render({
+      title: 'Large set',
+      summary: 't',
+      presentation: 'page',
+      components: [
+        {
+          type: 'table',
+          props: {
+            columns: [{ key: 'name', label: 'Name' }],
+            rows: [{ name: 'A' }, { name: 'B' }],
+            truncated: true,
+            total: 40,
+          },
+        },
+        {
+          type: 'chart',
+          props: {
+            chartType: 'bar',
+            values: [1, 2, 3],
+            labels: ['a', 'b', 'c'],
+            truncated: true,
+            total: 30,
+            sampled: 3,
+          },
+        },
+      ],
+    })
+    expect(html).toContain('truncation-note')
+    expect(html).toContain('Showing 2 of 40 rows')
+    expect(html).toContain('Showing 3 of 30 points')
+  })
+
   it('switches the active design system', () => {
     setActiveDesignSystem('material')
     expect(getDesignSystem().id).toBe('material')
