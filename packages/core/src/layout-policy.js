@@ -360,6 +360,8 @@ function buildTable(policy, data, shape) {
   const tableTitle = policy.tableTitle && policy.tableTitle !== 'Records'
     ? policy.tableTitle
     : inferredTableTitle(shape)
+  const totalRows = Array.isArray(rows) ? rows.length : 0
+  const truncated = totalRows > MAX_ROWS
   return {
     type: 'table',
     title: tableTitle,
@@ -378,6 +380,8 @@ function buildTable(policy, data, shape) {
         })
         : [],
       rowsPath: rowsPath ?? '',
+      truncated,
+      total: totalRows,
     },
   }
 }
@@ -396,7 +400,9 @@ function buildChart(policy, data, shape) {
   const chartType = timeSeries
     ? 'line'
     : policy.chart?.chartType || 'bar'
-  const slice = sampleRows(Array.isArray(rows) ? rows : [], MAX_CHART)
+  const allRows = Array.isArray(rows) ? rows : []
+  const slice = sampleRows(allRows, MAX_CHART)
+  const truncated = allRows.length > slice.length
   return {
     type: 'chart',
     title: labelize(valueKey),
@@ -405,6 +411,9 @@ function buildChart(policy, data, shape) {
       tooltip: policy.chart?.tooltip !== false,
       values: slice.map((row) => Number(row?.[valueKey]) || 0),
       labels: slice.map((row, i) => formatChartLabel(labelKey ? row?.[labelKey] : i)),
+      truncated,
+      total: allRows.length,
+      sampled: slice.length,
     },
   }
 }

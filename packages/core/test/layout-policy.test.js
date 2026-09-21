@@ -161,4 +161,36 @@ describe('layout policy', () => {
     expect(spec.components[0].props.brand).toBe('Tata 1mg')
     expect(spec.components[0].props.fields.map((f) => f.type)).toEqual(['email', 'password'])
   })
+
+  it('surfaces truncation flags when tables and charts sample large arrays', () => {
+    const rows = Array.from({ length: 60 }, (_, i) => ({
+      id: i + 1,
+      name: `Item ${i + 1}`,
+      score: i * 2,
+    }))
+    const applied = applyPolicy(
+      {
+        componentTypes: ['table', 'chart'],
+        columns: [
+          { key: 'id', label: 'Id' },
+          { key: 'name', label: 'Name' },
+          { key: 'score', label: 'Score' },
+        ],
+        chart: { chartType: 'bar', valueKey: 'score', labelKey: 'name' },
+        includeKeys: ['id', 'name', 'score'],
+      },
+      rows,
+      'https://example.com/records',
+    )
+    const table = applied.components.find((c) => c.type === 'table')
+    expect(table.props.truncated).toBe(true)
+    expect(table.props.total).toBe(60)
+    expect(table.props.rows.length).toBeLessThanOrEqual(24)
+
+    const chart = applied.components.find((c) => c.type === 'chart')
+    expect(chart.props.truncated).toBe(true)
+    expect(chart.props.total).toBe(60)
+    expect(chart.props.sampled).toBe(chart.props.values.length)
+    expect(chart.props.values.length).toBeLessThanOrEqual(24)
+  })
 })
