@@ -46,7 +46,7 @@ Do **not** invent customers, metrics, or side-quest features to stay busy.
 
 ## Related
 
-- Main skill: `.claude/skills/autonomous-company/SKILL.md`
+- Main skill: `.cursor/skills/autonomous-company/SKILL.md` (mirror: `.claude/skills/autonomous-company/SKILL.md`)
 - Parser: `packages/autonomous-company/src/discovery/roadmap.js`
 - Architecture: `docs/autonomous-company/ARCHITECTURE.md`
 - Detail: `reference.md`

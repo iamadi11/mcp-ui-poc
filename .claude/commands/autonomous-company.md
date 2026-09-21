@@ -2,7 +2,7 @@
 
 Start the repository **Company Operating System** (durable work pool + workers + clock).
 
-Follow: **`.claude/skills/autonomous-company/SKILL.md`**  
+Follow: **`.cursor/skills/autonomous-company/SKILL.md`** (mirror: `.claude/skills/autonomous-company/SKILL.md`)  
 Architecture: **`docs/autonomous-company/ARCHITECTURE.md`**  
 Roadmap: **`docs/engineering-roadmap.md`**  
 If idle without Selected engineering work: **`.cursor/skills/autonomous-company-product-gap/SKILL.md`**

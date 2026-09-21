@@ -6,8 +6,8 @@
 |-----------------|-----------|
 | `company/os/discovery.py` | `packages/autonomous-company/src/discovery/engine.js` + `roadmap.js` |
 | `engineering-roadmap.md` | `docs/engineering-roadmap.md` |
-| `.cursor/skills/autonomous-company/` | `.claude/skills/autonomous-company/SKILL.md` + `.claude/commands/autonomous-company.md` |
-| product-gap skill | `.cursor/skills/autonomous-company-product-gap/` |
+| `.cursor/skills/autonomous-company/` | `.cursor/skills/autonomous-company/` (+ `.claude/skills/autonomous-company/` mirror) |
+| product-gap skill | `.cursor/skills/autonomous-company-product-gap/` (+ `.claude` mirror) |
 | `./scripts/autonomous-company start` | `npm run company -- start` |
 
 ## Selected table contract
