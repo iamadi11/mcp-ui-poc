@@ -342,4 +342,11 @@ describe('design-systems registry', () => {
     expect(getDesignSystem().id).toBe('material')
     setActiveDesignSystem('shadcn')
   })
+
+  it('resolves an explicit design system id independent of the process default', () => {
+    setActiveDesignSystem('shadcn')
+    expect(getDesignSystem('glass').id).toBe('glass')
+    expect(getDesignSystem().id).toBe('shadcn')
+    expect(listDesignSystems().find((s) => s.active).id).toBe('shadcn')
+  })
 })

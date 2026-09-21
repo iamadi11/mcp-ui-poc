@@ -5,7 +5,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import {
   listDesignSystems,
-  setActiveDesignSystem,
   listLLMAdapters,
   aiAvailable,
   verifyApiKey,
@@ -82,17 +81,6 @@ app.get('/api/health', async (req, res) => {
 
 app.get('/api/design-systems', (req, res) => {
   res.json({ designSystems: listDesignSystems() });
-});
-
-app.post('/api/design-systems/active', (req, res) => {
-  try {
-    const { id } = req.body;
-    if (!id) return res.status(400).json({ error: 'id is required' });
-    setActiveDesignSystem(id);
-    res.json({ designSystems: listDesignSystems() });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
 });
 
 app.post('/api/verify-key', generateLimiter, async (req, res) => {
