@@ -10,6 +10,9 @@ function clamp(n, min, max) {
 }
 
 function factorFromEvidence(candidate) {
+  if (typeof candidate.confidence === 'number' && candidate.confidence >= 0.8) {
+    return 5
+  }
   const labels = (candidate.evidence || []).map((e) => e.labeled)
   if (labels.includes('verified')) return 4
   if (labels.includes('user_feedback')) return 5
@@ -25,6 +28,7 @@ function securityBoost(candidate) {
 }
 
 function userValueGuess(candidate) {
+  if (candidate.origin === 'roadmap:selected') return 5
   if (['product', 'ux', 'bug', 'accessibility', 'reliability'].includes(candidate.category)) {
     return 4
   }
@@ -38,7 +42,8 @@ function userValueGuess(candidate) {
 export function scoreCandidate(candidate, weights) {
   const factors = {
     userValue: userValueGuess(candidate),
-    productRelevance: candidate.category === 'product' ? 5 : 3,
+    productRelevance:
+      candidate.origin === 'roadmap:selected' || candidate.category === 'product' ? 5 : 3,
     severity: candidate.category === 'bug' ? 4 : 2,
     securityRisk: securityBoost(candidate),
     reliabilityImpact: candidate.category === 'reliability' ? 5 : 2,
@@ -72,6 +77,29 @@ export function scoreCandidate(candidate, weights) {
 export function challengeCandidate(candidate, priority, config) {
   const reasons = []
 
+  // Selected roadmap rows are pre-accepted product decisions — do not reject as busywork
+  if (candidate.origin === 'roadmap:selected' && (candidate.confidence ?? 0) >= 0.8) {
+    return {
+      accept: true,
+      reasons: [],
+      challengeNotes: [
+        'Selected roadmap item with confidence ≥ 0.8 — Cursor engineering work, not a side quest',
+      ],
+    }
+  }
+
+  // Deferred roadmap: keep as reviewable but allow triage to defer/reject on score
+  if (candidate.origin === 'roadmap:deferred') {
+    reasons.push('Deferred roadmap item — do not promote without new evidence')
+    if (priority.score < 3.5) {
+      return {
+        accept: false,
+        reasons,
+        challengeNotes: reasons,
+      }
+    }
+  }
+
   if (!candidate.evidence?.length) {
     reasons.push('No evidence attached')
   }
@@ -101,7 +129,7 @@ export function challengeCandidate(candidate, priority, config) {
 
   const reject = reasons.length > 0 && (
     priority.score < config.prioritization.rejectBelowScore ||
-    reasons.some((r) => r.includes('No evidence') || r.includes('busywork'))
+    reasons.some((r) => r.includes('No evidence') || r.includes('busywork') || r.includes('Deferred roadmap'))
   )
 
   return {

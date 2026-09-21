@@ -80,13 +80,16 @@ Workers **return to idle** after completion and pull again. They do not exit the
 
 `start` / `tick` drive the OS. Completing a task is an **event**, not a stop reason.
 
+Discovery includes **`docs/engineering-roadmap.md`**: **Selected / must implement** rows become high-confidence (`≥ 0.8`) engineering candidates; **Deferred** stays low-confidence review. Selected feature/fix items are marked **BLOCKED** for a Cursor LLM worker (no fake compile). See `.cursor/skills/autonomous-company-product-gap/`.
+
 Stop / idle only when:
 
-- No high-value READY work and discovery yields nothing meaningful  
+- No high-value READY / BLOCKED-for-Cursor work and discovery yields nothing meaningful (`NO_ACTIONABLE_HIGH_VALUE_TASK` or `ONLY_SPECULATIVE_OR_DEFERRED`)
 - Budgets exhausted  
 - Explicit `stop` / pause  
 - Risk threshold / safety block  
 
+`HIGH_VALUE_WORK_EXISTS` keeps the company autonomous while Selected roadmap work remains.  
 `IDLE_MONITORING` persists state and waits for new evidence (next start/tick).
 
 ## 6. Follow-ups & feedback

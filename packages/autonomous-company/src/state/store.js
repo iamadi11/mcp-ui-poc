@@ -240,7 +240,18 @@ export function upsertCandidate(paths, pool, candidate) {
   const existingIdx = pool.tasks.findIndex((t) => t.id === id)
   const existingDetail = loadTask(paths, id)
 
-  const blocking = ['completed', 'ready', 'queued', 'in_progress', 'active', 'claimed', 'review', 'in_review', 'validation']
+  const blocking = [
+    'completed',
+    'ready',
+    'queued',
+    'in_progress',
+    'active',
+    'claimed',
+    'review',
+    'in_review',
+    'validation',
+    'blocked',
+  ]
   if (existingDetail && blocking.includes(existingDetail.status)) {
     return { id, created: false, reason: `exists_as_${existingDetail.status}` }
   }

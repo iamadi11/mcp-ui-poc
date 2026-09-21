@@ -45,6 +45,12 @@ import { concludeNoImprovement } from '../improve/proposals.js'
 import { agentsForPhase, routeEngineerSubtype } from '../agents/registry.js'
 import { evaluateAntiSlopAnswers } from '../anti-slop/protocol.js'
 import { evaluateGates, checkSafetyAction } from '../gates/quality.js'
+import {
+  requiresCursorEngineering,
+  CURSOR_ENGINEERING_BLOCK_REASON,
+  hasHighValueEngineeringWork,
+  isSpeculativeOrDeferredOnly,
+} from '../discovery/roadmap.js'
 
 function ensureWorkers(store) {
   if (store.workers?.workers?.length) return store.workers
@@ -346,10 +352,36 @@ export function tickCompany(repoRoot, options = {}) {
     const lockResult = acquireLocks(run, work)
     if (!lockResult.ok) {
       work.status = 'blocked'
+      work.blockReason = 'file_lock_conflict'
       saveTask(paths, work)
       syncPoolSummary(paths, pool, work)
       continue
     }
+
+    // Selected roadmap engineering feature|fix → BLOCKED for Cursor LLM (no fake compile)
+    if (requiresCursorEngineering(work)) {
+      work.status = 'blocked'
+      work.blockReason = CURSOR_ENGINEERING_BLOCK_REASON
+      work.decisionHistory = [
+        ...(work.decisionHistory || []),
+        {
+          at: nowIso(),
+          type: 'blocked_for_cursor',
+          reason: CURSOR_ENGINEERING_BLOCK_REASON,
+        },
+      ]
+      saveTask(paths, work)
+      syncPoolSummary(paths, pool, work)
+      run.locks = releaseLocks({ ...run, locks: lockResult.locks }, work.id)
+      workOrders.push({
+        ...buildWorkOrder(work, worker),
+        phase: 'blocked_for_cursor',
+        blockedForCursor: true,
+        blockReason: CURSOR_ENGINEERING_BLOCK_REASON,
+      })
+      continue
+    }
+
     run.locks = lockResult.locks
     claimWorkForWorker(roster, worker, work, { leaseMs: config.execution.claimLeaseMs })
     work.status = 'in_progress'
@@ -368,7 +400,11 @@ export function tickCompany(repoRoot, options = {}) {
   saveWorkers(paths, roster)
   savePool(paths, pool)
 
+  // reload tasks for value assessment
+  const poolTasks = pool.tasks.map((s) => loadTask(paths, s.id)).filter(Boolean)
   const counts = poolCounts(pool)
+  const highValue = hasHighValueEngineeringWork(poolTasks) || workOrders.some((w) => w.blockedForCursor)
+  const speculativeOnly = !highValue && isSpeculativeOrDeferredOnly(poolTasks)
   const hasWork =
     counts.ready > 0
     || counts.in_progress > 0
@@ -376,6 +412,7 @@ export function tickCompany(repoRoot, options = {}) {
     || counts.blocked > 0
     || workOrders.length > 0
     || roster.workers.some((w) => w.status === 'busy')
+    || highValue
 
   appendEvent(paths, {
     type: 'tick',
@@ -386,19 +423,55 @@ export function tickCompany(repoRoot, options = {}) {
     recovered: recovered.length,
     workOrders: workOrders.length,
     dueCadences: due,
+    highValue,
+    speculativeOnly,
   })
 
+  if (highValue) {
+    run.mode = 'autonomous'
+    run.status = 'running'
+    run.phase = workOrders.length ? 'implement' : 'operating'
+    run.activeTaskId = workOrders[0]?.taskId || run.activeTaskId
+    run.stopReason = 'HIGH_VALUE_WORK_EXISTS'
+    saveRun(paths, run)
+    return {
+      ok: true,
+      idle: false,
+      stopped: false,
+      cycle: run.cycle,
+      accepted,
+      rejected,
+      workOrders,
+      recovered: recovered.length,
+      status: formatStatus(loadStore(repoRoot, options)),
+      dashboard: renderCompanyDashboard(loadStore(repoRoot, options)),
+      stopReason: 'HIGH_VALUE_WORK_EXISTS',
+      nextAgentSteps: [
+        'Execute READY / BLOCKED-for-Cursor Selected roadmap work (Cursor LLM)',
+        'Load .cursor/skills/autonomous-company-product-gap if unsure',
+        'Record evidence + complete via CLI',
+        'npm run company -- tick  # company continues after each completion',
+      ],
+    }
+  }
+
   if (!hasWork && config.execution.stopWhenNoHighValueWork !== false) {
+    const reason = speculativeOnly
+      ? 'ONLY_SPECULATIVE_OR_DEFERRED'
+      : 'NO_ACTIONABLE_HIGH_VALUE_TASK'
     run.mode = 'idle_monitoring'
     run.status = 'running'
     run.phase = 'idle'
-    run.stopReason = 'NO_ACTIONABLE_HIGH_VALUE_TASK'
+    run.stopReason = reason
     run.activeTaskId = null
     saveRun(paths, run)
     return {
       ok: true,
       idle: true,
-      message: 'NO ACTIONABLE HIGH-VALUE TASK — company idle/monitoring.',
+      message:
+        reason === 'ONLY_SPECULATIVE_OR_DEFERRED'
+          ? 'ONLY SPECULATIVE OR DEFERRED WORK — load product-gap skill; do not invent side quests.'
+          : 'NO ACTIONABLE HIGH-VALUE TASK — company idle/monitoring.',
       cycle: run.cycle,
       workOrders: [],
       status: formatStatus(loadStore(repoRoot, options)),
@@ -428,7 +501,7 @@ export function tickCompany(repoRoot, options = {}) {
     nextAgentSteps: [
       'Execute open work orders from this tick',
       'Record evidence + complete via CLI',
-      'npm run company -- tick  # company continues after each completion',
+      'npm run company -- tick   # REQUIRED — company continues after each completion',
     ],
   }
 }

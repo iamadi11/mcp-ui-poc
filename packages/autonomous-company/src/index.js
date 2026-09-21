@@ -12,6 +12,17 @@ export {
 } from './state/store.js'
 export { discoverCandidates, discoverOpenIssues, resolvedIssueNumbersFromPool } from './discovery/engine.js'
 export {
+  parseEngineeringRoadmapMarkdown,
+  discoverEngineeringRoadmap,
+  requiresCursorEngineering,
+  CURSOR_ENGINEERING_BLOCK_REASON,
+  hasHighValueEngineeringWork,
+  isSpeculativeOrDeferredOnly,
+  SELECTED_CONFIDENCE,
+  DEFERRED_CONFIDENCE,
+  ROADMAP_RELATIVE_PATH,
+} from './discovery/roadmap.js'
+export {
   scoreCandidate,
   challengeCandidate,
   prioritizeCandidates,

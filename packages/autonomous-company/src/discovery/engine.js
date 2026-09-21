@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { discoverEngineeringRoadmap } from './roadmap.js'
 
 const TODO_RE = /\b(TODO|FIXME|HACK|XXX)(?:\s*[:\-—]\s*|\s+)([^\n*]{8,160})/g
 
@@ -322,9 +323,20 @@ export function discoverCandidates(repoRoot, store, config, options = {}) {
   if (config.discovery.includeOpenIssues) {
     all.push(...discoverOpenIssues(repoRoot, store, options))
   }
+  if (config.discovery.scanEngineeringRoadmap !== false) {
+    all.push(...discoverEngineeringRoadmap(repoRoot, options))
+  }
 
   // Unfinished work is handled by resume, not duplicated as candidates
   const unfinished = discoverUnfinishedCompanyWork(store).filter((c) => c._meta?.preferResume)
+
+  // Prefer Selected roadmap rows ahead of ops/test-gap noise when capping
+  all.sort((a, b) => {
+    const aSel = a.origin === 'roadmap:selected' ? 1 : 0
+    const bSel = b.origin === 'roadmap:selected' ? 1 : 0
+    if (aSel !== bSel) return bSel - aSel
+    return (b.confidence || 0) - (a.confidence || 0)
+  })
 
   const deduped = []
   const seen = new Set()

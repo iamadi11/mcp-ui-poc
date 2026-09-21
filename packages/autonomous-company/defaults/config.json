@@ -25,6 +25,7 @@
     "scanTestGaps": true,
     "scanDocDriftHints": true,
     "includeOpenIssues": true,
+    "scanEngineeringRoadmap": true,
     "maxCandidates": 25,
     "minEvidenceCount": 1
   },
