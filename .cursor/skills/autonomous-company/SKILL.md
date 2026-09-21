@@ -37,7 +37,7 @@ Forbidden as the primary autonomy mechanism: saying “continue”, role-playing
 
 If status/stopReason is **`IDLE` / `idle_monitoring` / `ONLY_SPECULATIVE_OR_DEFERRED` / `NO_ACTIONABLE_HIGH_VALUE_TASK`** and there is **no** READY (or BLOCKED-for-Cursor) work with `department=engineering` / `roadmap:EE-*` / `origin=roadmap:selected`:
 
-1. **Load** `.cursor/skills/autonomous-company-product-gap/SKILL.md` (or `.claude/skills/autonomous-company-product-gap/`) **first**.
+1. **Load** `.cursor/skills/autonomous-company-product-gap/SKILL.md` (mirrored at `.claude/skills/autonomous-company-product-gap/`) **first**.
 2. Confirm whether **Selected / must implement** rows remain in `docs/engineering-roadmap.md`.
 3. If Selected rows remain unimplemented → remediate discovery (do not invent side quests).
 4. If Selected is empty and only Deferred/speculative remains → honest idle.
