@@ -6,6 +6,7 @@ import { inferShape } from './shape.js'
 import { getLLMAdapter } from './llm/registry.js'
 import { sanitizeCss } from './design-systems/pack.js'
 import { isCheckoutIntent, brandFromPrompt } from './demo-payload.js'
+import { withUntrustedDataSystem, formatUntrustedShapeBlock } from './untrusted-data.js'
 
 const MAX_HTML = 40_000
 const MAX_SCRIPT = 16_000
@@ -262,24 +263,26 @@ function applyGeneratedFallbacks(clean, ctx = {}) {
 }
 
 function systemPrompt({ look, motion, accent }) {
-  return [
-    'You generate a complete UI widget as HTML for a chat-first studio.',
-    'Jev already chose look and motion. You do not invent a second layout language.',
-    'Return JSON only: title, kicker, html, css, script.',
-    'html is the widget inner markup — no <html>, <body>, or <script> tags.',
-    'Put interactivity in script (games, toggles, boards). No inline event handlers.',
-    'No fetch, eval, cookies, storage, workers, or external URLs.',
-    'Use semantic HTML and IBM Plex Sans. Accent color: ' + (accent || '#0F766E') + '.',
-    `Look token: ${look || 'default'}. Motion token: ${motion || 'none'} is host chrome only — the motion token is not enough to animate inner markup.`,
-    'If the user asked for a game, the script must be playable (win/draw/reset).',
-    'If the user named a brand, category, or look (graffiti, neon, clothing), the HTML must match that — never a generic sneaker store.',
-    'If they asked for animation on load, graffiti, or a painted entrance, you MUST put a real CSS @keyframes (or script) animation that runs on first paint in css/script. Do not rely on the host motion token or a data-motion attribute.',
-    'For graffiti: include a VISIBLE overlay — spray dots (radial-gradient), a paint stripe (linear-gradient), or an ink blot via pure CSS. Opacity/translate fade alone is not enough. No external image URLs.',
-    'If the user asked for checkout, the HTML must include cart/line items — not a login or sign-in card. Do not replace checkout with EMAIL / FULL NAME leftover fields. If both cart and login appear, keep the cart and drop the login/shipping form.',
-    'Follow-ups revise the previous HTML to satisfy the original request. Do not replace a checkout, game, or form with a different product such as a graffiti message wall. Do not replace a checkout with a login or sign-in form.',
-    'Keep the brand, category, and product from the conversation goal in title, kicker, and html.',
-    'Titles must be short (under ~28 chars). Prefer "Snitch checkout" over long prompts like "Clothing brand Snitch, graffiti animation on load".',
-  ].join(' ')
+  return withUntrustedDataSystem(
+    [
+      'You generate a complete UI widget as HTML for a chat-first studio.',
+      'Jev already chose look and motion. You do not invent a second layout language.',
+      'Return JSON only: title, kicker, html, css, script.',
+      'html is the widget inner markup — no <html>, <body>, or <script> tags.',
+      'Put interactivity in script (games, toggles, boards). No inline event handlers.',
+      'No fetch, eval, cookies, storage, workers, or external URLs.',
+      'Use semantic HTML and IBM Plex Sans. Accent color: ' + (accent || '#0F766E') + '.',
+      `Look token: ${look || 'default'}. Motion token: ${motion || 'none'} is host chrome only — the motion token is not enough to animate inner markup.`,
+      'If the user asked for a game, the script must be playable (win/draw/reset).',
+      'If the user named a brand, category, or look (graffiti, neon, clothing), the HTML must match that — never a generic sneaker store.',
+      'If they asked for animation on load, graffiti, or a painted entrance, you MUST put a real CSS @keyframes (or script) animation that runs on first paint in css/script. Do not rely on the host motion token or a data-motion attribute.',
+      'For graffiti: include a VISIBLE overlay — spray dots (radial-gradient), a paint stripe (linear-gradient), or an ink blot via pure CSS. Opacity/translate fade alone is not enough. No external image URLs.',
+      'If the user asked for checkout, the HTML must include cart/line items — not a login or sign-in card. Do not replace checkout with EMAIL / FULL NAME leftover fields. If both cart and login appear, keep the cart and drop the login/shipping form.',
+      'Follow-ups revise the previous HTML to satisfy the original request. Do not replace a checkout, game, or form with a different product such as a graffiti message wall. Do not replace a checkout with a login or sign-in form.',
+      'Keep the brand, category, and product from the conversation goal in title, kicker, and html.',
+      'Titles must be short (under ~28 chars). Prefer "Snitch checkout" over long prompts like "Clothing brand Snitch, graffiti animation on load".',
+    ].join(' '),
+  )
 }
 
 function historyBlock(history) {
@@ -361,7 +364,7 @@ export async function generateUiHtml({
         `Look: ${look || 'default'}`,
         `Motion: ${motion || 'none'}`,
         sourceUrl && !String(sourceUrl).startsWith('demo:') ? `Source: ${sourceUrl}` : null,
-        `Shape: ${JSON.stringify(shape)}`,
+        formatUntrustedShapeBlock(shape),
         prev ? `Previous HTML:\n${prev}` : null,
         previous?.css ? `Previous CSS:\n${String(previous.css).slice(0, 4000)}` : null,
         previous?.script ? `Previous script:\n${String(previous.script).slice(0, 4000)}` : null,

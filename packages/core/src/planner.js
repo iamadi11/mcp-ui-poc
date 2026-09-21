@@ -17,6 +17,7 @@ import { classifySurface, catalogCannotExpress, isProductSurface, DEMO_WORKSPACE
 import { catalogFromPack, normalizePack } from './design-systems/pack.js'
 import { generateUiHtml, generatedPolicy } from './generate-ui.js'
 import { composeTurnPrompt, currentTurnText } from './chat-context.js'
+import { withUntrustedDataSystem, formatUntrustedShapeBlock } from './untrusted-data.js'
 
 const COPY_SLOT_SCHEMA = {
   type: 'object',
@@ -84,14 +85,15 @@ async function fillCopySlots({ spec, policy, data, sourceUrl, instructions, apiK
   try {
     const slots = await adapter.generateStructured({
       apiKey,
-      system: 'Fill short UI copy only. Never invent layout, widgets, or data. Keep title under 48 characters.',
+      system: withUntrustedDataSystem(
+        'Fill short UI copy only. Never invent layout, widgets, or data. Keep title under 48 characters.',
+      ),
       userContent: [
         excerpt ? `User instructions: ${excerpt}` : null,
         `Current title: ${spec?.title || ''}`,
         `Current summary: ${spec?.summary || ''}`,
         `Component: ${first.type || 'unknown'}`,
-        'Shape:',
-        JSON.stringify(inferShape(data)),
+        formatUntrustedShapeBlock(inferShape(data)),
       ].filter(Boolean).join('\n'),
       schema: COPY_SLOT_SCHEMA,
       maxTokens: 400,

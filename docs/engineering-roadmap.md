@@ -11,7 +11,12 @@ High-confidence work the company should ship. Discovery emits these as engineeri
 
 | ID | Type | Title | Evidence | Acceptance |
 |----|------|-------|----------|------------|
-| EE-001 | fix | Fence LLM prompts treating fetched endpoint data as UNTRUSTED (#5 residual) | GitHub issue #5; `packages/core/src/planner.js` `fillCopySlots` / `generate-ui.js` system prompts lack explicit UNTRUSTED fencing; URL allowlist already in `sanitize-spec.js` | System (and any userContent that embeds shape/data) instructs the model that endpoint data is UNTRUSTED/data-only; tests assert fencing strings; do not weaken `sanitizeSpecActions` |
+
+## Shipped
+
+| ID | Type | Title | Evidence | Shipped |
+|----|------|-------|----------|---------|
+| EE-001 | fix | Fence LLM prompts treating fetched endpoint data as UNTRUSTED (#5 residual) | `packages/core/src/untrusted-data.js`; wired in `planner.js` / `generate-ui.js`; tests in `untrusted-data.test.js` | 2026-09-21 |
 
 ## Deferred
 
@@ -36,4 +41,4 @@ Do not flip without a new ADR:
 1. `discoverEngineeringRoadmap` parses **Selected** → `roadmap:EE-###` candidates (confidence ≥ 0.8).
 2. **Deferred** → separate low-confidence review candidates (may be deferred/rejected).
 3. Cursor `/autonomous-company` implements READY / BLOCKED-for-Cursor Selected items — not invented side quests.
-4. After shipping a Selected row, move it to a “Shipped” section or remove it and record evidence in company memory.
+4. After shipping a Selected row, move it to a **Shipped** section (or remove it) and record evidence in company memory.

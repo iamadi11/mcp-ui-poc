@@ -58,6 +58,12 @@ export { googleMapsKey, runWithGoogleMapsKey, sanitizeGoogleMapsKey } from './go
 export { generateUiHtml, generatedPolicy, sanitizeGeneratedHtml, sanitizeGeneratedScript } from './generate-ui.js'
 export { isSafeHttpUrl } from './safe-url.js'
 export { collectHttpUrls, sanitizeSpecActions } from './sanitize-spec.js'
+export {
+  UNTRUSTED_DATA_SYSTEM_RULES,
+  withUntrustedDataSystem,
+  formatUntrustedShapeBlock,
+  assertsUntrustedFencing,
+} from './untrusted-data.js'
 
 import { registerLLMAdapter } from './llm/registry.js'
 import { anthropicAdapter } from './llm/anthropic.js'
