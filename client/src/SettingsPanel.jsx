@@ -193,8 +193,8 @@ export function SettingsPanel({ typesafeKey = '', onTypesafeKeyChange = () => {}
               <span className="settings-panel__title">Anthropic API key</span>
             </div>
             <p className="settings-panel__hint">
-              Optional LLM fallback. Saved in this browser and sent as a header —
-              never stored on the server.
+              Optional LLM fallback. Kept in this browser tab session only (cleared
+              when the tab closes) and sent as a header — never stored on the server.
             </p>
             <label htmlFor="anthropic-api-key" className="sr-only">
               Anthropic API key
@@ -236,8 +236,8 @@ export function SettingsPanel({ typesafeKey = '', onTypesafeKeyChange = () => {}
             </div>
             <p className="settings-panel__hint">
               Browser key for map workspaces. Enable Maps JavaScript API and the Drawing
-              library. Restrict by HTTP referrer. Saved here, sent as a header, never
-              stored in the widget spec. Published embeds use the server
+              library. Restrict by HTTP referrer. Kept in this tab session only, sent as a
+              header, never stored in the widget spec. Published embeds use the server
               GOOGLE_MAPS_API_KEY. Replan after saving.
             </p>
             <label htmlFor="google-maps-api-key" className="sr-only">
@@ -262,8 +262,8 @@ export function SettingsPanel({ typesafeKey = '', onTypesafeKeyChange = () => {}
               aria-live="polite"
             >
               {mapsStatus === 'saved'
-                ? 'Saved — the next Replan or New chat map will load the Maps JavaScript API.'
-                : 'No key saved — map workspaces use a demo canvas unless GOOGLE_MAPS_API_KEY is set on the server.'}
+                ? 'Saved for this tab session — the next Replan or New chat map will load the Maps JavaScript API.'
+                : 'No session key — map workspaces use a demo canvas unless GOOGLE_MAPS_API_KEY is set on the server.'}
             </p>
             <div className="settings-panel__actions">
               <button type="button" className="settings-panel__clear" onClick={handleClearMaps}>
