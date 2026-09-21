@@ -105,15 +105,20 @@ Studio does **not** replay Redis fingerprints. `CONTEXT.md`: every turn plans li
 
 Do these on http://localhost:3000 with API on :3001. **New chat** before (a), (c), and (d). TypeSafe + Anthropic keys from `.env.local` (leave Settings fields **empty**). Planner chip must never say **Replay**.
 
+**Hostile motion / playability (do not pass on routing alone):**
+
+- **Graffiti visible** = user can see paint/spray/tag motion on load (scale/rotate/clip-path/text-shadow spray, particles, canvas paint). Host `mcp-enter` stagger alone **fails**. `@keyframes` with **opacity-only** or a tiny `translateY` fade **fails**, even if the animation is named `graffiti-*`.
+- **Playable game** = click a cell in the preview; it marks X/O. Decorative 3×3 with no working click handlers **fails**. Workspace board / “Workspace generated” / missing-key alert **fails**.
+
 | # | Setup | Action | Pass |
 |---|---|---|---|
-| P0a | New chat, empty composer, no URL chip | `create checkout for clothing brand Snitch, graffiti animation on load` | Planner **LLM** / generate (`haiku:generate`), **not Catalog checkout**, **not Replay**. Canvas is a generated **html-block** Snitch/clothing checkout with load motion (`data-motion` not `none`). **Not** Stride shoes / Aero Runner catalog cart. Chat thoughts mention generate / out of catalog. |
-| P0b | Same session as P0a (do **not** New chat) | `graffiti is not visible` | Still a **Snitch checkout** (cart / pay / clothing). **Not** a graffiti message wall. Planner may be LLM generate or Iterate. Original ask is remembered in thoughts (`Remembering the original ask`). |
-| P0c | New chat | `Create a game of tic tac toe with heavy animation` | Generated / **html-block** game with motion. **Not** a workspace board (`work-stage`, “Workspace generated”, notes canvas). Planner **not Replay**. |
-| P0d | New chat, then **New chat** again | Send the P0a create prompt, then send the **same** create prompt in a second new session | Both live plans. Planner **not Replay**. Second canvas is still Snitch generate, **not** a cached Stride cart. |
-| P0e | Settings fields empty; `.env.local` has `TYPESAFE_API_KEY` (and optionally `ANTHROPIC_API_KEY`) | Open `/`, then Settings → Keys | Health `jev.available: true`. Canvas does **not** show **Add a TypeSafe key to generate**. Settings TypeSafe status is **Connected from the server (.env.local)** (or Connected), **never** “Add a TypeSafe key to generate.” Paste-key field may stay blank. Composer Send is enabled. |
+| P0a | New chat, empty composer, no URL chip | `create checkout for clothing brand Snitch, graffiti animation on load` | Planner **LLM** / generate (`haiku:generate`), **not Catalog checkout**, **not Replay**. Canvas is a generated **html-block** Snitch/clothing **checkout** (cart / items / pay — not a SNITCH wordmark alone). **Visible graffiti/load spray** per the hostile bar above (reload Preview and watch the first ~1–2s). **Not** Stride shoes / Aero Runner. Chat thoughts mention generate / out of catalog. |
+| P0b | Same session as P0a (do **not** New chat) | `graffiti is not visible` | Still the **same Snitch checkout** (cart / pay / clothing). Motion is **more visible** than P0a (spray/clip/paint), not dropped. **Not** a graffiti message wall / standalone art board. Thoughts include `Remembering the original ask`. |
+| P0c | New chat | `Create a game of tic tac toe with heavy animation` | Generated **html-block** 3×3. **Click a cell → X or O appears** (iframe playable). Motion on load ok. **Not** workspace board (`work-stage`, “Workspace generated”). **Not** “Add a TypeSafe key”. Planner **not Replay**. |
+| P0d | New chat, then **New chat** again | Send the P0a create prompt, then the **same** create prompt in a second new session | Both live plans. Planner **not Replay**, meta not cached. Second canvas is still Snitch generate / html-block — **not** a cached Stride catalog cart. |
+| P0e | Settings fields empty; `.env.local` has `TYPESAFE_API_KEY` (and optionally `ANTHROPIC_API_KEY`) | Open `/`, then Settings → Keys | Health `jev.available: true` / `jevFromEnv: true`. Canvas does **not** show **Add a TypeSafe key to generate**. Settings TypeSafe status is **Connected from the server (.env.local)** (or Connected), **never** “Add a TypeSafe key to generate.” Paste fields may stay blank. Send enabled. |
 
-API-only (if the UI is down): `POST http://localhost:3001/api/chat/turn` with `{ "message", "sessionId", "fresh": true, "history"? }`. Assert `meta.planner !== "replay"`, `meta.cached !== true`, and `spec.components[].type`.
+API-only (if the UI is down): `POST http://localhost:3001/api/chat/turn` with `{ "message", "sessionId", "fresh": true, "history"? }`. Assert `meta.planner !== "replay"`, `meta.cached !== true`, and `spec.components[].type`. For P0c also assert ≥9 cell buttons + click `addEventListener` in `props.script` with matching selectors.
 
 ## Product gaps to re-check after changes
 

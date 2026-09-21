@@ -15,6 +15,32 @@ function isGamePrompt(text) {
   return false
 }
 
+/** Named brand from "called/named X", "clothing brand X", or "for X". */
+export function namedBrandFromPrompt(prompt) {
+  const raw = String(prompt || '')
+  const called = raw.match(/\b(?:brand\s+)?(?:called|named)\s+([A-Za-z][A-Za-z0-9&'’-]*)/i)
+  if (called?.[1] && called[1].length >= 2) {
+    return called[1].charAt(0).toUpperCase() + called[1].slice(1, 56)
+  }
+  const clothing = raw.match(/\b(?:clothing|apparel|fashion|streetwear)\s+brand\s+([A-Za-z][A-Za-z0-9&'’-]*)/i)
+  if (clothing?.[1] && clothing[1].length >= 2) {
+    return clothing[1].charAt(0).toUpperCase() + clothing[1].slice(1, 56)
+  }
+  const forMatch = raw.match(/\bfor\s+(?:the\s+)?(.+?)(?:[.!?\n]|$)/i)
+  if (forMatch) {
+    const name = forMatch[1]
+      .replace(/\b(app|application|page|site|store|website|web\s*app|login|log\s*in|sign[-\s]?in|dashboard|checkout|check-out|check\s+out)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (name.length >= 2) return name.charAt(0).toUpperCase() + name.slice(1, 56)
+  }
+  return ''
+}
+
+function isLoginPrompt(text) {
+  return /\b(log\s*in|login|sign\s*in|sign-in|signin)\b/i.test(text)
+}
+
 /** Catalog primitives cannot honor custom brand, look, games, or load animation. */
 export function catalogCannotExpress(prompt) {
   const text = String(prompt || '')
@@ -28,11 +54,19 @@ export function catalogCannotExpress(prompt) {
     return true
   }
   if (isGamePrompt(text)) return true
+  // Named brand + login needs a branded look — generic catalog login-form is not enough.
+  if (isLoginPrompt(text) && namedBrandFromPrompt(text)) return true
   return false
 }
 
 export function titleFromPrompt(prompt) {
-  const cleaned = String(prompt || '')
+  const text = String(prompt || '')
+  const brand = namedBrandFromPrompt(text)
+  const clothing = /\b(clothing|apparel|fashion|streetwear)\b/i.test(text)
+  if (brand && clothing) {
+    return `${brand} checkout`.slice(0, 48)
+  }
+  const cleaned = text
     .replace(/^(please\s+)?(create|build|make|generate|show|design|explain)(?:\s+(?:an?|the)(?=\s))?\s+/i, '')
     .trim()
   const line = cleaned.split(/[.!\n]/)[0].trim()
@@ -53,7 +87,20 @@ export function classifySurface(prompt, sourceUrl = '') {
   const source = String(sourceUrl || '')
   const hasLiveUrl = source.startsWith('http') || /https?:\/\//i.test(text)
 
-  if (source === 'demo:login' || /\b(log\s*in|login|sign\s*in|sign-in|signin)\b/i.test(text)) {
+  const loginish = isLoginPrompt(text)
+  const checkoutish = /checkout|check-out|check out/.test(lower)
+  // Leftover demo:login must not trap a checkout (or other non-login) ask.
+  if ((source === 'demo:login' || loginish) && !(checkoutish && !loginish)) {
+    if (loginish && (catalogCannotExpress(text) || namedBrandFromPrompt(text))) {
+      const brand = namedBrandFromPrompt(text)
+      return {
+        kind: 'auth',
+        main: 'generated',
+        catalog: false,
+        tools: [],
+        title: brand || titleFromPrompt(text),
+      }
+    }
     return { kind: 'auth', main: 'form', catalog: true, tools: [] }
   }
   if (source === 'demo:checkout' || /checkout|check-out|check out/.test(lower)) {

@@ -59,6 +59,28 @@ describe('classifySurface', () => {
     expect(surface.main).toBe('generated')
   })
 
+  it('sends named-brand login out of catalog so Haiku can brand the form', () => {
+    const prompt = 'create a login page for Tata 1mg'
+    expect(catalogCannotExpress(prompt)).toBe(true)
+    const surface = classifySurface(prompt)
+    expect(surface.catalog).toBe(false)
+    expect(surface.main).toBe('generated')
+  })
+
+  it('keeps generic login in catalog', () => {
+    const prompt = 'create a login page'
+    expect(catalogCannotExpress(prompt)).toBe(false)
+    expect(classifySurface(prompt).catalog).toBe(true)
+    expect(classifySurface(prompt).main).toBe('form')
+  })
+
+  it('shortens clothing checkout titles to Brand checkout', () => {
+    expect(titleFromPrompt('create checkout for clothing brand Snitch, graffiti animation on load'))
+      .toMatch(/^Snitch checkout$/i)
+    expect(titleFromPrompt('Clothing brand Snitch, graffiti animation on load'))
+      .toMatch(/^Snitch checkout$/i)
+  })
+
   it('sends tic-tac-toe and other games out of catalog instead of a workspace board', () => {
     const prompt = 'Create a game of tic tac toe with heavy animation.'
     expect(catalogCannotExpress(prompt)).toBe(true)

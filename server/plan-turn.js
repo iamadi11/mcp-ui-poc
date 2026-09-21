@@ -42,18 +42,24 @@ function looksLikeMissingKey(message) {
 }
 
 function surfaceGenerateError(message, { apiKey } = {}) {
-  const raw = String(message || 'Could not generate this UI.')
+  const raw = String(message || 'Could not generate this UI.').trim()
   const hasAi = Boolean(apiKey || process.env.ANTHROPIC_API_KEY)
   if (hasAi && looksLikeMissingKey(raw)) {
     return 'Haiku could not generate this UI. Try again, or simplify the prompt.'
   }
-  return raw
+  if (!hasAi && looksLikeMissingKey(raw)) {
+    return 'This UI is not in the catalog. Add an Anthropic key in Settings to generate it from the prompt.'
+  }
+  if (hasAi && raw) return raw
+  return raw || 'Could not generate this UI.'
 }
 
 export function plannerLabel(planner, cached) {
   if (cached || planner === 'replay') return 'Replay'
   if (planner === 'iterate') return 'Iterate'
   if (planner === 'catalog') return 'Catalog'
+  if (planner === 'generate:missing') return 'Generate failed'
+  if (typeof planner === 'string' && planner.startsWith('haiku')) return 'Haiku'
   if (typeof planner === 'string' && planner.startsWith('jev:')) return 'Jev'
   if (planner === 'heuristic') return 'Heuristic'
   if (planner) return 'LLM'

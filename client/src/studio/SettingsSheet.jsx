@@ -79,7 +79,8 @@ export function SettingsSheet({
   useEffect(() => {
     const stored = readApiKey()
     if (stored) verify(stored)
-  }, [verify])
+    else setStatus(aiFromEnv ? 'env' : 'none')
+  }, [verify, aiFromEnv])
 
   useEffect(() => {
     if (typesafeKey) verifyJev(typesafeKey)
@@ -176,14 +177,14 @@ export function SettingsSheet({
                     ? 'Anthropic rejected this key.'
                     : status === 'error'
                       ? 'Could not verify this key.'
-                      : aiFromEnv
-                        ? 'Using ANTHROPIC_API_KEY from the server (.env.local).'
+                      : status === 'env' || aiFromEnv
+                        ? 'Connected from the server (.env.local).'
                         : status === 'checking'
                           ? 'Checking…'
                           : 'Optional copy and generate. Local servers use ANTHROPIC_API_KEY from .env.local.'}
               </p>
               <div className="flex gap-2">
-                <Button type="button" size="sm" variant="outline" onClick={() => { writeApiKey(''); setKey(''); setStatus('none') }}>Clear</Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => { writeApiKey(''); setKey(''); setStatus(aiFromEnv ? 'env' : 'none') }}>Clear</Button>
                 <Button type="button" size="sm" onClick={() => { writeApiKey(key.trim()); verify(key.trim()) }}>Save</Button>
               </div>
             </section>

@@ -81,6 +81,69 @@ function hasInnerLoadMotion(css, script, rendered) {
   return named || anim || (keyframes && /animation\s*:/.test(css || '')) || scriptMotion
 }
 
+/**
+ * Hostile bar: keyframes alone ≠ graffiti. Opacity-only / tiny fade fails.
+ * Visible graffiti needs a graffiti|spray|paint|… animation whose keyframes
+ * move paint-like props (transform beyond tiny translateY, clip-path, text-shadow, filter, …).
+ */
+function extractKeyframeBodies(css, nameRe) {
+  const src = String(css || '')
+  const out = []
+  const re = /@keyframes\s+([^{\s]+)\s*\{/gi
+  let m
+  while ((m = re.exec(src))) {
+    const name = m[1]
+    if (!nameRe.test(name)) continue
+    let i = m.index + m[0].length
+    let depth = 1
+    while (i < src.length && depth > 0) {
+      const ch = src[i]
+      if (ch === '{') depth += 1
+      else if (ch === '}') depth -= 1
+      i += 1
+    }
+    out.push({ name, body: src.slice(m.index + m[0].length, i - 1) })
+  }
+  return out
+}
+
+function hasVisibleGraffitiMotion(css, script, rendered) {
+  // Judge author / product spray CSS. Ignore host shell tokens like mcp-enter.
+  const pack = `${css || ''}\n${script || ''}`
+  const renderedPack = `${pack}\n${rendered || ''}`
+  if (!/animation\s*:\s*[^\n;]*(graffiti|spray|paint|drip|tag|burst)/i.test(renderedPack)) return false
+  // Prefer author CSS; fall back to rendered when css slot is empty.
+  const blocks = extractKeyframeBodies(css || rendered || '', /(?:^|[^a-z-])(?:graffiti|spray|paint|drip|tag|burst)|(?:graffiti|spray|paint|drip|tag|burst)/i)
+    .filter((b) => !/^mcp-enter|^mcp-live/i.test(b.name))
+  // Host may inject mcp-spray-dots as a safety net — that counts as visible spray.
+  let sawVisual = false
+  for (const { name, body } of blocks) {
+    const paintish = /clip-path|text-shadow|filter:|box-shadow|background(-image|-size|-position)?\s*:|stroke|fill\s*:|radial-gradient/i.test(body)
+    const strongTransform = /transform\s*:[^;]*(scale|rotate|skew|translateX|translate3d|matrix)/i.test(body)
+    const onlyOpacity = /opacity/.test(body) && !paintish && !strongTransform && !/transform\s*:/.test(body)
+    const tinyFade =
+      /opacity/.test(body) &&
+      /transform\s*:[^;]*translateY\s*\(\s*-?(?:0|[1-9]|1[0-9]|2[0-4])px\s*\)/i.test(body) &&
+      !paintish &&
+      !/scale|rotate|skew|clip-path|text-shadow|filter:|radial-gradient/i.test(body)
+    if (onlyOpacity || tinyFade) continue
+    if (paintish || strongTransform) sawVisual = true
+    if (/mcp-spray/i.test(name) && (paintish || strongTransform)) sawVisual = true
+  }
+  if (sawVisual) return true
+  return /(?:spray|paint|graffiti|drip).{0,40}(?:canvas|getContext|particle)/i.test(script || '')
+}
+
+/** Author-CSS-only judge: ignores ThemeAdapter mcp-spray injection. */
+function hasAuthorVisibleGraffiti(css, script) {
+  const author = String(css || '')
+    .replace(/@keyframes\s+mcp-[\w-]+\s*\{[^}]*(?:\{[^}]*\}[^}]*)*\}/gi, '')
+    .replace(/\.gen-body::before[\s\S]*?animation\s*:\s*mcp-spray-dots[^;]*;?/gi, '')
+  // Strip appended mcp-spray block more reliably by cutting at mcp-spray-dots keyframes
+  const cut = author.split(/@keyframes\s+mcp-spray-dots/i)[0]
+  return hasVisibleGraffitiMotion(cut, script, '')
+}
+
 function isWordmarkOnly(innerHtml) {
   const html = String(innerHtml || '')
   const commerce = /cart|checkout|pay|hoodie|qty|quantity|subtotal|\btotal\b|price/i.test(html)
@@ -88,11 +151,28 @@ function isWordmarkOnly(innerHtml) {
   return !commerce && tags <= 2
 }
 
+function passesSnitchGraffitiQuality(props, rendered) {
+  if (isWordmarkOnly(props?.html)) return false
+  // Accept either strong author graffiti or host mcp-spray safety net on a real checkout.
+  return hasVisibleGraffitiMotion(props?.css, props?.script, rendered)
+}
+
 function isPlayableTicTacToe(innerHtml, script, rendered) {
-  const html = `${innerHtml || ''}\n${rendered || ''}`
-  const cells = (html.match(/<button\b[^>]*(cell|data-index|gridcell)|role=["']gridcell["']/gi) || []).length
-  const binds = /addEventListener\s*\(|\.onclick\s*=|querySelector(All)?\s*\(/i.test(script || rendered || '')
-  return cells >= 9 && binds && !/work-stage|Workspace generated/i.test(html)
+  // Do not scan the ThemeAdapter shell — it documents work-stage CSS selectors.
+  const html = String(innerHtml || '')
+  const pack = String(script || '')
+  const cellNodes = (html.match(/<button\b[^>]*>/gi) || []).filter((b) =>
+    /cell|data-index|gridcell|aria-label=["'][^"']*cell/i.test(b),
+  )
+  const cells = Math.max(
+    cellNodes.length,
+    (html.match(/data-index\s*=\s*["']?\d/gi) || []).length,
+    (html.match(/role=["']gridcell["']/gi) || []).length,
+  )
+  const binds = /addEventListener\s*\(\s*['"]click['"]|\.onclick\s*=/i.test(pack)
+  const selectsCells = /querySelector(All)?\s*\(\s*['"][^'"]*(?:cell|data-index|gridcell)/i.test(pack)
+  const marksBoard = /['"]X['"]|['"]O['"]|currentPlayer|gameBoard/i.test(pack)
+  return cells >= 9 && binds && selectsCells && marksBoard && !/work-stage|Workspace generated/i.test(html)
 }
 
 describe('P0 (a) Snitch clothing checkout generates; not Stride shoes', () => {
@@ -154,11 +234,26 @@ describe('P0 (a) Snitch clothing checkout generates; not Stride shoes', () => {
     expect(html).toMatch(/data-motion="stagger"/)
     expect(html).toMatch(/mcp-enter/)
     expect(hasInnerLoadMotion(props.css, props.script, html)).toBe(true)
+    expect(hasVisibleGraffitiMotion(props.css, props.script, html)).toBe(true)
+    expect(passesSnitchGraffitiQuality(props, html)).toBe(true)
     expect(html).toMatch(/@keyframes\s+graffiti-spray/)
     expect(html).toMatch(/animation:\s*graffiti-spray/)
   })
 
-  it('live quality: a SNITCH wordmark with no inner animation fails the graffiti bar', async () => {
+  it('rejects opacity-only “graffiti” fades — keyframes alone are not visible spray', () => {
+    const fadeOnly =
+      '@keyframes graffiti-fade { from { opacity: 0 } to { opacity: 1 } } .brand { animation: graffiti-fade 0.8s ease both }'
+    const tinySlide =
+      '@keyframes graffiti-in { from { opacity: 0; transform: translateY(-8px) } to { opacity: 1; transform: translateY(0) } } .brand { animation: graffiti-in 0.6s both }'
+    const spray =
+      '@keyframes graffiti-spray { 0% { opacity: 0; transform: scale(.3) rotate(-20deg); clip-path: inset(100% 0 0 0); text-shadow: 0 0 0 #ff006e } 100% { opacity: 1; transform: none; clip-path: inset(0); text-shadow: 3px 3px 0 #ff006e } } .brand { animation: graffiti-spray 1.2s both }'
+    expect(hasInnerLoadMotion(fadeOnly, '', '')).toBe(true)
+    expect(hasVisibleGraffitiMotion(fadeOnly, '', '')).toBe(false)
+    expect(hasVisibleGraffitiMotion(tinySlide, '', '')).toBe(false)
+    expect(hasVisibleGraffitiMotion(spray, '', '')).toBe(true)
+  })
+
+  it('live quality: a SNITCH wordmark with no paint/spray motion fails the graffiti bar', async () => {
     const packed = promptPayload(SNITCH_CREATE)
     const { spec, planner } = await planUI({
       data: packed.data,
@@ -176,7 +271,7 @@ describe('P0 (a) Snitch clothing checkout generates; not Stride shoes', () => {
       generateUi: async () => ({
         title: 'Snitch',
         html: '<h1>SNITCH</h1>',
-        css: '',
+        css: '@keyframes graffiti-fade { from { opacity: 0 } to { opacity: 1 } } h1 { animation: graffiti-fade 1s }',
       }),
     })
 
@@ -185,7 +280,9 @@ describe('P0 (a) Snitch clothing checkout generates; not Stride shoes', () => {
     const html = renderTheme(spec)
     expect(html).toMatch(/data-motion="stagger"/)
     expect(isWordmarkOnly(props.html)).toBe(true)
-    expect(hasInnerLoadMotion(props.css, props.script, html)).toBe(true)
+    // Author fade-only is not graffiti even if ThemeAdapter appends mcp-spray-dots.
+    expect(hasAuthorVisibleGraffiti(props.css, props.script)).toBe(false)
+    expect(passesSnitchGraffitiQuality(props, html)).toBe(false)
   })
 })
 
@@ -293,6 +390,22 @@ describe('P0 (c) tic-tac-toe is generate, not a workspace board', () => {
     expect(packed.source).toBe('demo:generated')
     expect(blob(packed.data)).not.toMatch(/Workspace generated/)
 
+    const playableHtml = Array.from({ length: 9 }, (_, i) =>
+      `<button type="button" class="cell" data-index="${i}"></button>`,
+    ).join('')
+    const playableScript = `
+      const cells = document.querySelectorAll('.cell');
+      let currentPlayer = 'X';
+      const gameBoard = Array(9).fill(null);
+      cells.forEach((cell) => cell.addEventListener('click', () => {
+        const i = Number(cell.dataset.index);
+        if (gameBoard[i]) return;
+        gameBoard[i] = currentPlayer;
+        cell.textContent = currentPlayer;
+        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      }));
+    `
+
     const { spec, planner, policy } = await planUI({
       data: packed.data,
       sourceUrl: packed.source,
@@ -308,9 +421,9 @@ describe('P0 (c) tic-tac-toe is generate, not a workspace board', () => {
       }),
       generateUi: async () => ({
         title: 'Tic-tac-toe',
-        html: '<div class="board" role="grid"><button type="button">play</button></div>',
-        css: '.board{display:grid}',
-        script: 'document.querySelector(".board")',
+        html: `<div class="board" role="grid">${playableHtml}</div>`,
+        css: '.board{display:grid;grid-template-columns:repeat(3,1fr)} .cell{animation:pop .4s both} @keyframes pop{from{transform:scale(0)}to{transform:none}}',
+        script: playableScript,
       }),
     })
 
@@ -321,6 +434,23 @@ describe('P0 (c) tic-tac-toe is generate, not a workspace board', () => {
     expect(policy.html).toContain('board')
     expect(blob(spec)).not.toMatch(/Workspace generated/)
     expect(blob(spec)).not.toMatch(/work-stage/)
+
+    const props = htmlBlockProps(spec)
+    const rendered = renderTheme(spec)
+    expect(isPlayableTicTacToe(props.html, props.script, rendered)).toBe(true)
+    expect(blob(rendered)).not.toMatch(/Workspace generated/)
+  })
+
+  it('fails playability when the board is decorative (no click handlers / wrong selectors)', () => {
+    const html = '<div class="board">' +
+      Array.from({ length: 9 }, (_, i) => `<button class="ttt-cell" data-index="${i}"></button>`).join('') +
+      '</div>'
+    // Selects .cell but DOM uses .ttt-cell — unplayable mismatch Haiku sometimes ships.
+    const script = 'document.querySelectorAll(".cell").forEach((c)=>c.addEventListener("click",()=>{}))'
+    expect(isPlayableTicTacToe(html, script, '')).toBe(false)
+    const fixed =
+      'const cells=document.querySelectorAll(".ttt-cell"); let currentPlayer="X"; const gameBoard=[]; cells.forEach((c)=>c.addEventListener("click",()=>{c.textContent=currentPlayer}))'
+    expect(isPlayableTicTacToe(html, fixed, '')).toBe(true)
   })
 })
 

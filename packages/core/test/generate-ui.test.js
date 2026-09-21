@@ -138,20 +138,83 @@ describe('generateUiHtml', () => {
     expect(slots.html).toContain('wordmark')
     expect(slots.css).toMatch(/@keyframes/)
     expect(slots.css).toMatch(/animation:/)
+    expect(slots.css).toMatch(/radial-gradient|linear-gradient|mcp-spray|paint-stripe|ink-blot|spray-dot/i)
     expect(slots.css).not.toMatch(/fetch\(|eval\(|localStorage/)
+    expect(slots.css).not.toMatch(/url\s*\(\s*['"]?https?:/i)
   })
 
-  it('does not inject load-motion fallback when Haiku already returned @keyframes', async () => {
+  it('injects graffiti-visual CSS on follow-up when previous markup had only a fade', async () => {
+    const goal = 'create checkout for clothing brand Snitch, graffiti animation on load'
+    const slots = await generateUiHtml({
+      instructions: 'graffiti is not visible',
+      goal,
+      history: [
+        { role: 'user', text: goal },
+        { role: 'user', text: 'graffiti is not visible' },
+      ],
+      previous: {
+        html: '<section class="snitch-cart"><h2>Snitch checkout</h2><ul class="cart"><li class="line-item">hoodie</li></ul></section>',
+        css: '@keyframes mcp-paint-in{from{opacity:0}to{opacity:1}}.snitch-cart{animation:mcp-paint-in .8s both}',
+      },
+      generateUi: async () => ({
+        title: 'Snitch checkout',
+        html: '<section class="snitch-cart"><h2>Snitch checkout</h2><ul class="cart"><li class="line-item">hoodie</li></ul></section>',
+        css: '@keyframes mcp-paint-in{from{opacity:0}to{opacity:1}}.snitch-cart{animation:mcp-paint-in .8s both}',
+      }),
+    })
+    expect(slots.html).toMatch(/snitch-cart|hoodie/i)
+    expect(slots.html).not.toMatch(/Graffiti Wall/i)
+    expect(slots.css).toMatch(/radial-gradient|linear-gradient|mcp-spray|paint-stripe|ink-blot|spray-dot/i)
+  })
+
+  it('asks Haiku for a visible graffiti overlay, not only a fade, when graffiti is requested', async () => {
+    const { registerLLMAdapter } = await import('../src/llm/registry.js')
+    let captured = null
+    registerLLMAdapter({
+      id: 'spy-graffiti',
+      name: 'Spy graffiti',
+      isAvailable: () => true,
+      generateStructured: async (args) => {
+        captured = args
+        return {
+          title: 'Snitch checkout',
+          html: '<section class="snitch-cart">hoodie</section>',
+          css: '@keyframes graffiti-load{from{opacity:0}to{opacity:1}}.snitch-cart{animation:graffiti-load .6s both}',
+        }
+      },
+    })
+    await generateUiHtml({
+      instructions: 'graffiti is not visible',
+      goal: 'create checkout for clothing brand Snitch, graffiti animation on load',
+      history: [{ role: 'user', text: 'create checkout for clothing brand Snitch, graffiti animation on load' }],
+      previous: { html: '<section class="snitch-cart">hoodie</section>' },
+      llmProvider: 'spy-graffiti',
+      apiKey: 'sk-test',
+    })
+    expect(captured).toBeTruthy()
+    const told = `${captured.system}\n${captured.userContent}`
+    expect(told).toMatch(/visible|overlay|spray|paint stroke|ink blot|stripe/i)
+    expect(captured.userContent).toMatch(/Previous HTML:[\s\S]*snitch-cart/i)
+  })
+
+  it('does not inject load-motion fallback when Haiku already returned graffiti visuals + keyframes', async () => {
     const prompt = 'Add a graffiti animation on widget load'
     const slots = await generateUiHtml({
       instructions: prompt,
       generateUi: async () => ({
         title: 'Spray',
         html: '<div class="spray">tag</div>',
-        css: '@keyframes graffiti-load { from { opacity: 0 } to { opacity: 1 } } .spray { animation: graffiti-load .5s ease both }',
+        css: [
+          '@keyframes graffiti-load { from { opacity: 0 } to { opacity: 1 } }',
+          '.spray { animation: graffiti-load .5s ease both; position:relative }',
+          '.spray::before{content:"";position:absolute;inset:0;pointer-events:none;',
+          'background:radial-gradient(circle at 20% 40%,#0F766E 0 3px,transparent 4px),',
+          'linear-gradient(110deg,transparent 20%,rgba(15,118,110,.5) 35%,transparent 50%)}',
+        ].join(''),
       }),
     })
     expect(slots.css).toMatch(/@keyframes graffiti-load/)
+    expect(slots.css).toMatch(/radial-gradient/)
     expect(slots.css).not.toMatch(/mcp-paint-in/)
   })
 
@@ -203,6 +266,50 @@ describe('generateUiHtml', () => {
     expect(slots.html).not.toMatch(/FULL NAME/)
     expect(slots.css).toMatch(/@keyframes/)
     expect(slots.css).toMatch(/animation:/)
+  })
+
+  it('strips login leftovers from mixed cart + EMAIL/FULL NAME checkout HTML', async () => {
+    const prompt = 'create checkout for clothing brand Snitch'
+    const slots = await generateUiHtml({
+      instructions: prompt,
+      goal: prompt,
+      generateUi: async () => ({
+        title: 'Clothing brand Snitch, graffiti animation on load',
+        kicker: 'Welcome',
+        html: [
+          '<section class="mcp-checkout">',
+          '<h2>Snitch</h2>',
+          '<ul class="cart"><li class="line-item">Hoodie <span>qty 1</span></li></ul>',
+          '<form class="auth-card shipping">',
+          '<label>EMAIL</label><input type="email"/>',
+          '<label>FULL NAME</label><input/>',
+          '<button type="submit">Sign in</button>',
+          '</form>',
+          '</section>',
+        ].join(''),
+      }),
+    })
+    expect(slots.html).toMatch(/cart|line-item|Hoodie/i)
+    expect(slots.html).not.toMatch(/EMAIL/)
+    expect(slots.html).not.toMatch(/FULL NAME/)
+    expect(slots.html).not.toMatch(/Sign in/i)
+    expect(slots.title).toMatch(/^Snitch checkout$/i)
+  })
+
+  it('shortens twitchy clothing-checkout titles to Brand checkout', async () => {
+    const prompt = 'create checkout for clothing brand Snitch, graffiti animation on load'
+    const slots = await generateUiHtml({
+      instructions: prompt,
+      goal: prompt,
+      generateUi: async () => ({
+        title: 'Clothing brand Snitch, graffiti animation on load',
+        kicker: 'Clothing',
+        html: '<section class="mcp-checkout"><ul class="cart"><li class="line-item">hoodie</li></ul></section>',
+        css: '@keyframes spray{to{opacity:1}}.mcp-checkout{animation:spray .5s both}',
+      }),
+    })
+    expect(slots.title).toMatch(/^Snitch checkout$/i)
+    expect(slots.title.length).toBeLessThanOrEqual(24)
   })
 })
 

@@ -306,9 +306,9 @@ describe('planUI', () => {
   it('calls Jev for a login page and constructs login-form', async () => {
     let asked = 0
     const data = {
-      store: 'Tata 1mg',
+      store: 'Stride',
       channel: 'Sign in',
-      notice: 'Sign in to Tata 1mg.',
+      notice: 'Sign in to Stride.',
       items: [
         { field: 'Email', type: 'email', required: 'Yes' },
         { field: 'Password', type: 'password', required: 'Yes' },
@@ -317,7 +317,7 @@ describe('planUI', () => {
     const { spec, planner, policy, trace } = await planUI({
       data,
       sourceUrl: 'demo:login',
-      instructions: 'create a login page for Tata 1mg',
+      instructions: 'create a login page',
       designSystem,
       askJev: async () => {
         asked += 1
@@ -338,8 +338,49 @@ describe('planUI', () => {
     expect(planner).toBe('jev:jev-1.13.0')
     expect(policy.componentTypes).toEqual(['login-form'])
     expect(spec.components.map((c) => c.type)).toEqual(['login-form'])
-    expect(spec.components[0].props.brand).toBe('Tata 1mg')
+    expect(spec.components[0].props.brand).toBe('Stride')
     expect(trace.path[0]).toBe('jev')
+  })
+
+  it('generates branded login as html-block instead of catalog login-form', async () => {
+    const prompt = 'create a login page for Tata 1mg'
+    const data = {
+      store: 'Tata 1mg',
+      channel: 'Generated',
+      notice: 'Generated from your prompt.',
+    }
+    let generated = 0
+    const { spec, planner } = await planUI({
+      data,
+      sourceUrl: 'demo:generated',
+      instructions: prompt,
+      designSystem,
+      askJev: async () => ({
+        model: 'jev-1.13.0',
+        answers: {
+          ...jevAnswers(),
+          intent: { choice: 'create_widget', confidence: 0.9 },
+          surface_kind: { choice: 'auth', confidence: 0.92 },
+          named_widget: { choice: 'login-form', confidence: 0.93 },
+          include_login_form: { noul: 0.95 },
+          in_catalog: { noul: 0.9 },
+        },
+      }),
+      generateUi: async () => {
+        generated += 1
+        return {
+          title: 'Tata 1mg',
+          kicker: 'Sign in',
+          html: '<form class="brand-login"><h1>Tata 1mg</h1><label>Email</label><input type="email"/><button type="submit">Sign in</button></form>',
+          css: '.brand-login{font-family:IBM Plex Sans}',
+        }
+      },
+    })
+    expect(generated).toBe(1)
+    expect(planner).toBe('haiku:generate')
+    expect(spec.components.map((c) => c.type)).toEqual(['html-block'])
+    expect(JSON.stringify(spec)).toMatch(/Tata 1mg/)
+    expect(JSON.stringify(spec)).not.toMatch(/"login-form"/)
   })
 
   it('calls Jev for a polygon map workspace', async () => {
@@ -634,7 +675,7 @@ describe('planUI', () => {
 
   it('falls back to catalog login when Jev is unavailable', async () => {
     const data = {
-      store: 'Tata 1mg',
+      store: 'Stride',
       channel: 'Sign in',
       items: [
         { field: 'Email', type: 'email', required: 'Yes' },
@@ -644,11 +685,31 @@ describe('planUI', () => {
     const { spec, planner } = await planUI({
       data,
       sourceUrl: 'demo:login',
-      instructions: 'create a login page for Tata 1mg',
+      instructions: 'create a login page',
       designSystem,
     })
     expect(planner).toBe('catalog')
     expect(spec.components.map((c) => c.type)).toEqual(['login-form'])
+  })
+
+  it('falls back to Haiku generate for branded login when Jev is unavailable', async () => {
+    const prompt = 'create a login page for Tata 1mg'
+    const data = {
+      store: 'Tata 1mg',
+      channel: 'Generated',
+    }
+    const { spec, planner } = await planUI({
+      data,
+      sourceUrl: 'demo:generated',
+      instructions: prompt,
+      designSystem,
+      generateUi: async () => ({
+        title: 'Tata 1mg',
+        html: '<form class="brand-login"><h1>Tata 1mg</h1><input type="email"/></form>',
+      }),
+    })
+    expect(planner).toBe('haiku:generate')
+    expect(spec.components.map((c) => c.type)).toEqual(['html-block'])
   })
 
   it('switches a login session to checkout when the prompt names checkout', async () => {

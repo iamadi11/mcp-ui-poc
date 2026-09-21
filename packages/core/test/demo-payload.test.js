@@ -55,17 +55,22 @@ describe('demo checkout payload', () => {
     expect(JSON.stringify(packed.data)).not.toMatch(/Primary/)
   })
 
-  it('builds a sign-in card from a login prompt, including the word login', () => {
-    expect(isLoginIntent('create a login page for Tata 1mg')).toBe(true)
-    expect(brandFromPrompt('create a login page for Tata 1mg')).toBe('Tata 1mg')
-    const data = demoPayload('create a login page for Tata 1mg')
-    expect(data.store).toBe('Tata 1mg')
+  it('builds a sign-in card from a generic login prompt', () => {
+    expect(isLoginIntent('create a login page')).toBe(true)
+    const data = demoPayload('create a login page')
     expect(JSON.stringify(data).toLowerCase()).toMatch(/email/)
-    const spec = layoutFrom(data, 'create a login page for Tata 1mg')
+    const spec = layoutFrom(data, 'create a login page')
     expect(spec.components.map((c) => c.type)).toEqual(['login-form'])
-    expect(spec.components[0].props.brand).toBe('Tata 1mg')
     expect(spec.components[0].props.submitLabel).toMatch(/sign in/i)
     expect(JSON.stringify(spec)).not.toMatch(/"table"/)
+  })
+
+  it('routes named-brand login to generate instead of catalog login-form', () => {
+    expect(isLoginIntent('create a login page for Tata 1mg')).toBe(true)
+    expect(brandFromPrompt('create a login page for Tata 1mg')).toBe('Tata 1mg')
+    const packed = promptPayload('create a login page for Tata 1mg')
+    expect(packed.source).toBe('demo:generated')
+    expect(packed.data.store).toBe('Tata 1mg')
   })
 
   it('builds a map workspace for a polygon generator prompt, not Primary/Details rows', () => {

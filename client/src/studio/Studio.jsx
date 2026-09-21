@@ -311,18 +311,19 @@ export function Studio({
             setStage('')
             setLiveThoughts([])
             setMessages((prev) => {
-              const thoughtText = turnThoughts.map((item) => item.thought).filter(Boolean).slice(-8).join('\n')
+              const thoughtText = turnThoughts.map((item) => item.thought).filter(Boolean).slice(-12).join('\n')
               const next = thoughtText ? [...prev, { role: 'thought', text: thoughtText }] : [...prev]
               persist(session, next, data, { recordVersion: true, syncState: true })
               return next
             })
           }
           if (event === 'error') {
-            const msg = data.error || 'Turn failed'
+            const msg = String(data.error || data.message || 'Turn failed').trim() || 'Turn failed'
             setError(msg)
+            setResult(null)
             setLiveThoughts([])
             setMessages((prev) => {
-              const thoughtText = turnThoughts.map((item) => item.thought).filter(Boolean).slice(-8).join('\n')
+              const thoughtText = turnThoughts.map((item) => item.thought).filter(Boolean).slice(-12).join('\n')
               const next = [
                 ...(thoughtText ? [...prev, { role: 'thought', text: thoughtText }] : prev),
                 { role: 'assistant', text: msg },

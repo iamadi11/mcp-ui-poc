@@ -711,16 +711,19 @@
 .bubble-thought {
   background: transparent;
   color: var(--muted-foreground);
-  font-size: 0.82rem;
-  line-height: 1.5;
+  font-size: 0.9rem;
+  line-height: 1.6;
   border-left: 2px solid var(--border);
   border-radius: 0;
-  padding: 0.35rem 0.7rem;
-  white-space: pre-wrap;
+  padding: 0.4rem 0.75rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 .thought-kicker {
-  margin: 0 0 0.25rem;
+  margin: 0 0 0.3rem;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 0.68rem;
   letter-spacing: 0.08em;
@@ -731,6 +734,8 @@
 .thought-body,
 .thought-pending {
   margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .thought-list {
@@ -739,7 +744,12 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.28rem;
+  gap: 0.35rem;
+}
+
+.thought-list li {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .thought-cursor {
@@ -1006,20 +1016,23 @@
 
 .preview-frame {
   flex: 1;
-  min-height: 22rem;
-  padding: 1rem 1.25rem;
+  min-height: 0;
+  padding: 1rem 1.25rem 1.25rem;
   position: relative;
   display: flex;
   flex-direction: column;
+  align-items: center;
   background: var(--card);
   isolation: isolate;
 }
 
 .preview-widget-host {
   position: relative;
-  flex: 1;
-  min-height: 22rem;
+  flex: 1 1 auto;
+  align-self: center;
   width: 100%;
+  max-width: 52rem;
+  min-height: min(32rem, 100%);
   z-index: 1;
 }
 
@@ -1029,7 +1042,7 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  min-height: 22rem;
+  min-height: 28rem;
   border: 0;
   display: block;
   background: #F8F9FB;
@@ -1265,8 +1278,9 @@
   .studio-split.has-widget {
     grid-template-rows: minmax(18rem, 1fr) minmax(14rem, 42%);
   }
-  .canvas-preview,
-  .preview-frame,
+  .canvas-preview {
+    min-height: 18rem;
+  }
   .preview-widget-host,
   .preview-widget {
     min-height: 18rem;
@@ -1475,8 +1489,11 @@
 .chat-log.is-thin {
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.75rem;
+  -webkit-overflow-scrolling: touch;
 }
 
 .composer-bar {

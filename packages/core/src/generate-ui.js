@@ -88,7 +88,31 @@ export function sanitizeGenerated(slots) {
 
 const LOAD_MOTION_FALLBACK_CSS = [
   '@keyframes mcp-paint-in{0%{opacity:0;transform:translate3d(-10px,8px,0) rotate(-1.2deg)}100%{opacity:1;transform:none}}',
-  '.gen-body,.gen-shell,.gen-mount,.mcp-checkout,.wordmark{animation:mcp-paint-in .8s cubic-bezier(.22,1,.36,1) both}',
+  '@keyframes mcp-spray-dots{0%{opacity:0;transform:scale(.7) translateY(6px)}100%{opacity:1;transform:none}}',
+  '.gen-body,.gen-shell,.gen-mount,.mcp-checkout,.wordmark,.snitch-cart{position:relative;animation:mcp-paint-in .8s cubic-bezier(.22,1,.36,1) both}',
+  '.gen-body::before,.gen-shell::before,.gen-mount::before,.mcp-checkout::before,.wordmark::before,.snitch-cart::before{',
+  'content:"";position:absolute;left:-6%;bottom:8%;width:48%;height:22%;pointer-events:none;z-index:2;',
+  'background:',
+  'radial-gradient(circle at 14% 42%,#0F766E 0 3px,transparent 4px),',
+  'radial-gradient(circle at 28% 58%,#134E4A 0 2px,transparent 3px),',
+  'radial-gradient(circle at 46% 36%,#0F766E 0 2px,transparent 3px),',
+  'radial-gradient(circle at 62% 64%,#115E59 0 3px,transparent 4px),',
+  'linear-gradient(112deg,transparent 0 16%,rgba(15,118,110,.55) 16% 32%,transparent 32% 46%,rgba(19,78,74,.42) 46% 60%,transparent 60%);',
+  'filter:blur(.15px);animation:mcp-spray-dots .95s cubic-bezier(.22,1,.36,1) both}',
+].join('')
+
+const GRAFFITI_VISUAL_FALLBACK_CSS = [
+  '@keyframes mcp-spray-dots{0%{opacity:0;transform:scale(.7) translateY(6px)}100%{opacity:1;transform:none}}',
+  '.gen-body,.gen-shell,.gen-mount,.mcp-checkout,.wordmark,.snitch-cart{position:relative}',
+  '.gen-body::before,.gen-shell::before,.gen-mount::before,.mcp-checkout::before,.wordmark::before,.snitch-cart::before{',
+  'content:"";position:absolute;left:-6%;bottom:8%;width:48%;height:22%;pointer-events:none;z-index:2;',
+  'background:',
+  'radial-gradient(circle at 14% 42%,#0F766E 0 3px,transparent 4px),',
+  'radial-gradient(circle at 28% 58%,#134E4A 0 2px,transparent 3px),',
+  'radial-gradient(circle at 46% 36%,#0F766E 0 2px,transparent 3px),',
+  'radial-gradient(circle at 62% 64%,#115E59 0 3px,transparent 4px),',
+  'linear-gradient(112deg,transparent 0 16%,rgba(15,118,110,.55) 16% 32%,transparent 32% 46%,rgba(19,78,74,.42) 46% 60%,transparent 60%);',
+  'filter:blur(.15px);animation:mcp-spray-dots .95s cubic-bezier(.22,1,.36,1) both}',
 ].join('')
 
 function contextBlob({ instructions, goal, history } = {}) {
@@ -106,19 +130,51 @@ function wantsLoadMotion(text) {
   return false
 }
 
+function wantsGraffiti(text) {
+  return /\bgraffiti|spray[- ]?paint\b/i.test(String(text || ''))
+}
+
 function hasPaintAnimation(css, script) {
   return /@keyframes\b|\banimation\s*:|\.animate\s*\(/i.test(`${css || ''}\n${script || ''}`)
+}
+
+function hasGraffitiVisual(css, html) {
+  const pack = `${css || ''}\n${html || ''}`
+  return /radial-gradient|linear-gradient|mcp-spray|paint-stripe|ink-blot|spray-dot/i.test(pack)
 }
 
 function wantsCheckout(text) {
   return isCheckoutIntent(text)
 }
 
+function hasCartMarkup(html) {
+  return /\b(cart|line[- ]?item|line item|subtotal|qty|quantity|hoodie)\b/i.test(String(html || ''))
+}
+
+function hasLoginMarkup(html) {
+  return /\b(email|password|sign[- ]?in|log[- ]?in|full name)\b/i.test(String(html || ''))
+}
+
 function looksLikeLoginOnly(html) {
   const text = String(html || '')
-  if (!/\b(email|password|sign[- ]?in|log[- ]?in|full name)\b/i.test(text)) return false
-  if (/\b(cart|line[- ]?item|line item|subtotal|qty|quantity|hoodie)\b/i.test(text)) return false
+  if (!hasLoginMarkup(text)) return false
+  if (hasCartMarkup(text)) return false
   return true
+}
+
+function stripLoginBlocks(html) {
+  let next = String(html || '')
+  next = next.replace(/<form\b[^>]*>[\s\S]*?<\/form>/gi, '')
+  next = next.replace(
+    /<(section|div|aside)\b[^>]*(?:class|id)=["'][^"']*(?:auth|login|sign-?in|shipping|credentials)[^"']*["'][^>]*>[\s\S]*?<\/\1>/gi,
+    '',
+  )
+  next = next.replace(
+    /<label\b[^>]*>\s*(EMAIL|FULL\s*NAME|PASSWORD|PHONE|SHIPPING)[^<]*<\/label>\s*(?:<input\b[^>]*>)?/gi,
+    '',
+  )
+  next = next.replace(/<(button|a)\b[^>]*>\s*(Sign\s*in|Log\s*in|Continue\s*with)[^<]*<\/\1>/gi, '')
+  return next
 }
 
 function checkoutBrand(text, fallback = '') {
@@ -147,6 +203,16 @@ function checkoutCartHtml(brand) {
   return `<section class="mcp-checkout"><h2>${name} checkout</h2><ul class="cart" aria-label="Cart"><li class="line-item">Hoodie <span>qty 1</span></li><li class="line-item">Tee <span>qty 1</span></li></ul></section>`
 }
 
+function shortCheckoutTitle(blob, currentTitle) {
+  const brand = checkoutBrand(blob, '')
+  const clothing = /\b(clothing|apparel|fashion|streetwear)\b/i.test(blob)
+  if (!brand || !clothing) return currentTitle
+  const twitchy = /graffiti|animation|on load|clothing brand|,/i.test(String(currentTitle || ''))
+    || String(currentTitle || '').length > 28
+  if (!twitchy && /\bcheckout\b/i.test(currentTitle) && currentTitle.length <= 28) return currentTitle
+  return `${brand} checkout`.slice(0, 80)
+}
+
 function applyGeneratedFallbacks(clean, ctx = {}) {
   const blob = contextBlob(ctx)
   let next = { ...clean }
@@ -163,9 +229,32 @@ function applyGeneratedFallbacks(clean, ctx = {}) {
       ? next.kicker
       : (clothing ? 'Clothing checkout' : 'Checkout')).slice(0, 48)
     next.html = sanitizeGeneratedHtml(checkoutCartHtml(brand || next.title))
+  } else if (wantsCheckout(blob) && hasCartMarkup(next.html) && hasLoginMarkup(next.html)) {
+    const brand = checkoutBrand(blob, '')
+    let stripped = stripLoginBlocks(next.html)
+    if (hasLoginMarkup(stripped) || !hasCartMarkup(stripped)) {
+      stripped = checkoutCartHtml(brand || next.title)
+    }
+    next.html = sanitizeGeneratedHtml(stripped)
+    const clothing = /\b(clothing|apparel|fashion|streetwear)\b/i.test(blob)
+    if (clothing || /\b(sign[- ]?in|log[- ]?in|welcome|graffiti|animation)/i.test(next.title)) {
+      next.title = shortCheckoutTitle(blob, next.title)
+    }
+    if (/\b(sign[- ]?in|log[- ]?in|welcome)\b/i.test(next.kicker)) {
+      next.kicker = (clothing ? 'Clothing checkout' : 'Checkout').slice(0, 48)
+    }
   }
 
-  if (wantsLoadMotion(blob) && !hasPaintAnimation(next.css, next.script)) {
+  if (wantsCheckout(blob) && /\b(clothing|apparel|fashion|streetwear)\b/i.test(blob)) {
+    next.title = shortCheckoutTitle(blob, next.title)
+  }
+
+  if (wantsGraffiti(blob) && !hasGraffitiVisual(next.css, next.html)) {
+    const inject = wantsLoadMotion(blob) && !hasPaintAnimation(next.css, next.script)
+      ? LOAD_MOTION_FALLBACK_CSS
+      : GRAFFITI_VISUAL_FALLBACK_CSS
+    next.css = sanitizeCss([next.css, inject].filter(Boolean).join('\n'))
+  } else if (wantsLoadMotion(blob) && !hasPaintAnimation(next.css, next.script)) {
     next.css = sanitizeCss([next.css, LOAD_MOTION_FALLBACK_CSS].filter(Boolean).join('\n'))
   }
 
@@ -185,9 +274,11 @@ function systemPrompt({ look, motion, accent }) {
     'If the user asked for a game, the script must be playable (win/draw/reset).',
     'If the user named a brand, category, or look (graffiti, neon, clothing), the HTML must match that — never a generic sneaker store.',
     'If they asked for animation on load, graffiti, or a painted entrance, you MUST put a real CSS @keyframes (or script) animation that runs on first paint in css/script. Do not rely on the host motion token or a data-motion attribute.',
-    'If the user asked for checkout, the HTML must include cart/line items — not a login or sign-in card. Do not replace checkout with EMAIL / FULL NAME leftover fields.',
+    'For graffiti: include a VISIBLE overlay — spray dots (radial-gradient), a paint stripe (linear-gradient), or an ink blot via pure CSS. Opacity/translate fade alone is not enough. No external image URLs.',
+    'If the user asked for checkout, the HTML must include cart/line items — not a login or sign-in card. Do not replace checkout with EMAIL / FULL NAME leftover fields. If both cart and login appear, keep the cart and drop the login/shipping form.',
     'Follow-ups revise the previous HTML to satisfy the original request. Do not replace a checkout, game, or form with a different product such as a graffiti message wall. Do not replace a checkout with a login or sign-in form.',
     'Keep the brand, category, and product from the conversation goal in title, kicker, and html.',
+    'Titles must be short (under ~28 chars). Prefer "Snitch checkout" over long prompts like "Clothing brand Snitch, graffiti animation on load".',
   ].join(' ')
 }
 
@@ -262,7 +353,10 @@ export async function generateUiHtml({
         goal ? `Conversation goal: ${String(goal).slice(0, 500)}` : null,
         historyBlock(history),
         wantsCheckout(blob)
-          ? 'Product: checkout. Include cart/line items (product, qty, price). Do not replace this checkout with a login or sign-in form.'
+          ? 'Product: checkout. Include cart/line items (product, qty, price). Do not replace this checkout with a login or sign-in form. If cart and login both appear, keep cart and drop the login/shipping form.'
+          : null,
+        wantsGraffiti(blob)
+          ? 'Graffiti must be visibly painted on load: CSS spray dots (radial-gradient), a paint stripe (linear-gradient), or an ink blot. A fade/opacity-only animation is not enough. Keep the original product UI — do not invent a graffiti message wall.'
           : null,
         `Look: ${look || 'default'}`,
         `Motion: ${motion || 'none'}`,
