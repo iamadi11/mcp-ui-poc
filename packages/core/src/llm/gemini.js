@@ -7,7 +7,12 @@
  * `sanitizeSchemaForGemini` strips/flattens those recursively before sending.
  */
 
-import { userContentToText, verifyApiKeyError } from './shared.js'
+import {
+  userContentToText,
+  verifyApiKeyError,
+  llmAbortSignal,
+  mapLlmTimeoutError,
+} from './shared.js'
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash'
 
@@ -66,20 +71,25 @@ async function generateStructured({ apiKey, system, userContent, schema, maxToke
 
   const userText = userContentToText(userContent)
 
-  const response = await ai.models.generateContent({
-    model: MODEL,
-    contents: userText,
-    config: {
-      systemInstruction: system,
-      responseMimeType: 'application/json',
-      responseSchema: sanitizeSchemaForGemini(schema),
-      maxOutputTokens: maxTokens,
-    },
-  })
+  try {
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      contents: userText,
+      config: {
+        systemInstruction: system,
+        responseMimeType: 'application/json',
+        responseSchema: sanitizeSchemaForGemini(schema),
+        maxOutputTokens: maxTokens,
+        abortSignal: llmAbortSignal(),
+      },
+    })
 
-  const text = response.text
-  if (!text) throw new Error('AI planner returned no parseable spec')
-  return JSON.parse(text)
+    const text = response.text
+    if (!text) throw new Error('AI planner returned no parseable spec')
+    return JSON.parse(text)
+  } catch (error) {
+    throw mapLlmTimeoutError(error)
+  }
 }
 
 export const geminiAdapter = {

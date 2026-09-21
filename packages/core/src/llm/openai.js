@@ -3,7 +3,7 @@
  * `response_format: {type:'json_schema', json_schema:{name, schema, strict:true}}`.
  */
 
-import { userContentToText, verifyApiKeyError } from './shared.js'
+import { userContentToText, verifyApiKeyError, llmAbortSignal, mapLlmTimeoutError } from './shared.js'
 
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4o'
 
@@ -37,22 +37,29 @@ async function generateStructured({ apiKey, system, userContent, schema, maxToke
 
   const userText = userContentToText(userContent)
 
-  const response = await openai.chat.completions.create({
-    model: MODEL,
-    max_completion_tokens: maxTokens,
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: userText },
-    ],
-    response_format: {
-      type: 'json_schema',
-      json_schema: { name: 'ui_spec', schema, strict: true },
-    },
-  })
+  try {
+    const response = await openai.chat.completions.create(
+      {
+        model: MODEL,
+        max_completion_tokens: maxTokens,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: userText },
+        ],
+        response_format: {
+          type: 'json_schema',
+          json_schema: { name: 'ui_spec', schema, strict: true },
+        },
+      },
+      { signal: llmAbortSignal() },
+    )
 
-  const content = response.choices?.[0]?.message?.content
-  if (!content) throw new Error('AI planner returned no parseable spec')
-  return JSON.parse(content)
+    const content = response.choices?.[0]?.message?.content
+    if (!content) throw new Error('AI planner returned no parseable spec')
+    return JSON.parse(content)
+  } catch (error) {
+    throw mapLlmTimeoutError(error)
+  }
 }
 
 export const openaiAdapter = {

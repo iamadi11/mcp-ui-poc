@@ -3,7 +3,7 @@
  * `output_config: {format:{type:'json_schema', schema}}`).
  */
 
-import { verifyApiKeyError } from './shared.js'
+import { verifyApiKeyError, llmAbortSignal, mapLlmTimeoutError } from './shared.js'
 
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001'
 
@@ -39,22 +39,29 @@ async function generateStructured({ apiKey, system, userContent, schema, maxToke
 
   const thinkingBudget = Math.min(1024, Math.max(0, Number(maxTokens) - 2048))
   const enableThinking = thinking === true || (thinking !== false && thinkingBudget >= 1024)
-  const response = await anthropic.messages.parse({
-    model: MODEL,
-    max_tokens: maxTokens,
-    thinking: enableThinking ? { type: 'enabled', budget_tokens: thinkingBudget } : { type: 'disabled' },
-    system,
-    messages: [{ role: 'user', content: userContent }],
-    output_config: { format: { type: 'json_schema', schema } },
-  })
+  try {
+    const response = await anthropic.messages.parse(
+      {
+        model: MODEL,
+        max_tokens: maxTokens,
+        thinking: enableThinking ? { type: 'enabled', budget_tokens: thinkingBudget } : { type: 'disabled' },
+        system,
+        messages: [{ role: 'user', content: userContent }],
+        output_config: { format: { type: 'json_schema', schema } },
+      },
+      { signal: llmAbortSignal() },
+    )
 
-  let parsed = response.parsed_output
-  if (!parsed) {
-    const textBlock = response.content.find((b) => b.type === 'text')
-    parsed = textBlock ? JSON.parse(textBlock.text) : null
+    let parsed = response.parsed_output
+    if (!parsed) {
+      const textBlock = response.content.find((b) => b.type === 'text')
+      parsed = textBlock ? JSON.parse(textBlock.text) : null
+    }
+    if (!parsed) throw new Error('AI planner returned no parseable spec')
+    return parsed
+  } catch (error) {
+    throw mapLlmTimeoutError(error)
   }
-  if (!parsed) throw new Error('AI planner returned no parseable spec')
-  return parsed
 }
 
 export const anthropicAdapter = {
