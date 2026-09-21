@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 import { Studio } from './studio/Studio.jsx'
 import { OwnerPage } from './studio/OwnerPage.jsx'
+import { isSafeHttpUrl } from './safeUrl.js'
 
 function routeFromPath(pathname) {
   const owner = pathname.match(/^\/w\/([^/]+)/)
@@ -54,7 +55,12 @@ function App() {
       if (action?.type === 'notify') {
         pushToast(action.payload?.message ?? 'Notification from generated UI')
       } else if (action?.type === 'link' && action.payload?.url) {
-        window.open(action.payload.url, '_blank', 'noopener,noreferrer')
+        const url = action.payload.url
+        if (!isSafeHttpUrl(url)) {
+          pushToast('Blocked an unsafe link from the generated UI.', 'error')
+          return
+        }
+        window.open(url, '_blank', 'noopener,noreferrer')
       }
     },
     [pushToast],

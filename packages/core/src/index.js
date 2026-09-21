@@ -56,6 +56,7 @@ export { registerLLMAdapter, getLLMAdapter, listLLMAdapters } from './llm/regist
 export { anthropicAdapter } from './llm/anthropic.js'
 export { googleMapsKey, runWithGoogleMapsKey, sanitizeGoogleMapsKey } from './google-maps-key.js'
 export { generateUiHtml, generatedPolicy, sanitizeGeneratedHtml, sanitizeGeneratedScript } from './generate-ui.js'
+export { isSafeHttpUrl } from './safe-url.js'
 
 import { registerLLMAdapter } from './llm/registry.js'
 import { anthropicAdapter } from './llm/anthropic.js'

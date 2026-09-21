@@ -10,6 +10,7 @@ import { formatChartLabel } from '../layout-policy.js'
 import { googleMapsKey } from '../google-maps-key.js'
 import { sanitizeCss } from './pack.js'
 import { sanitizeGeneratedHtml, sanitizeGeneratedScript } from '../generate-ui.js'
+import { isSafeHttpUrl } from '../safe-url.js'
 
 
 export const COMPONENT_CATALOG = [
@@ -297,10 +298,19 @@ function renderComponent(component, theme, spec = {}) {
     case 'action-row': {
       const buttons = (props.actions || [])
         .map((a) => {
-          const action =
-            a.action === 'notify'
-              ? { type: 'notify', payload: { message: a.message ?? a.label } }
-              : { type: 'link', payload: { url: a.url ?? '#' } }
+          if (a.action === 'notify') {
+            const action = { type: 'notify', payload: { message: a.message ?? a.label } }
+            return `<button type="button" class="action-btn" data-action="${esc(JSON.stringify(action))}">${esc(a.label)}</button>`
+          }
+          const url = a.url ?? '#'
+          if (!isSafeHttpUrl(url)) {
+            const action = {
+              type: 'notify',
+              payload: { message: `Link blocked: only http(s) URLs are allowed.` },
+            }
+            return `<button type="button" class="action-btn" data-action="${esc(JSON.stringify(action))}">${esc(a.label)}</button>`
+          }
+          const action = { type: 'link', payload: { url } }
           return `<button type="button" class="action-btn" data-action="${esc(JSON.stringify(action))}">${esc(a.label)}</button>`
         })
         .join('')
