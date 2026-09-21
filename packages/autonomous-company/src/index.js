@@ -10,7 +10,7 @@ export {
   saveWorkers,
   createEmptyRun,
 } from './state/store.js'
-export { discoverCandidates } from './discovery/engine.js'
+export { discoverCandidates, discoverOpenIssues, resolvedIssueNumbersFromPool } from './discovery/engine.js'
 export {
   scoreCandidate,
   challengeCandidate,

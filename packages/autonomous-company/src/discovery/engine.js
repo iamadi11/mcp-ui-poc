@@ -1,5 +1,6 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { spawnSync } from 'node:child_process'
 
 const TODO_RE = /\b(TODO|FIXME|HACK|XXX)(?:\s*[:\-—]\s*|\s+)([^\n*]{8,160})/g
 
@@ -194,11 +195,118 @@ export function discoverManualQaGaps(repoRoot) {
   ]
 }
 
+const ISSUE_NUM_RE = /(?:github[:_-]?issue[:_-]?|#)(\d+)/gi
+
+/** Collect GitHub issue numbers already tracked in the durable pool. */
+export function resolvedIssueNumbersFromPool(store) {
+  const nums = new Set()
+  const tasksDir = store?.paths?.tasksDir
+  if (!tasksDir || !existsSync(tasksDir)) {
+    for (const summary of store?.pool?.tasks || []) {
+      collectIssueNums(`${summary.problemKey || ''} ${summary.title || ''}`, nums)
+    }
+    return nums
+  }
+  for (const name of readdirSync(tasksDir)) {
+    if (!name.endsWith('.json') || name === 'pool.json') continue
+    try {
+      const task = JSON.parse(readFileSync(join(tasksDir, name), 'utf8'))
+      collectIssueNums(`${task.problemKey || ''} ${task.title || ''}`, nums)
+    } catch {
+      /* ignore corrupt */
+    }
+  }
+  return nums
+}
+
+function collectIssueNums(text, nums) {
+  ISSUE_NUM_RE.lastIndex = 0
+  let m
+  while ((m = ISSUE_NUM_RE.exec(text))) {
+    nums.add(Number(m[1]))
+  }
+}
+
+function categorizeIssue(issue) {
+  const blob = `${issue.title || ''}\n${issue.body || ''}`.toLowerCase()
+  if (/severity:\s*high|ssrf|xss|inject|secret|auth|phishing|javascript:/.test(blob)) {
+    return 'security'
+  }
+  if (/timeout|cache|rate.?limit|hang|reliab/.test(blob)) return 'reliability'
+  if (/test/.test(blob)) return 'test_gap'
+  if (/truncat|ux|ui /.test(blob)) return 'ux'
+  return 'bug'
+}
+
+function isNonActionableIssue(issue) {
+  const title = String(issue.title || '').trim()
+  const body = String(issue.body || '').trim()
+  if (title.length < 12 && !/severity|fix|###/i.test(body)) return true
+  if (/^(looks cool|nice|thanks|lgtm)\b/i.test(title) && body.length < 80) return true
+  if (!/severity|fix|### |\*\*fix\*\*/i.test(body) && body.length < 40) return true
+  return false
+}
+
+/**
+ * Fetch open GitHub issues via `gh` when available.
+ * @param {{ listIssues?: () => object[] }} [hooks] - test seam
+ */
+export function discoverOpenIssues(repoRoot, store, { listIssues } = {}) {
+  let issues = []
+  if (typeof listIssues === 'function') {
+    issues = listIssues() || []
+  } else {
+    const result = spawnSync(
+      'gh',
+      ['issue', 'list', '--state', 'open', '--limit', '50', '--json', 'number,title,body,labels'],
+      { cwd: repoRoot, encoding: 'utf8', timeout: 15_000 },
+    )
+    if (result.status !== 0 || !result.stdout) return []
+    try {
+      issues = JSON.parse(result.stdout)
+    } catch {
+      return []
+    }
+  }
+
+  const resolved = resolvedIssueNumbersFromPool(store)
+  const candidates = []
+  for (const issue of issues) {
+    const n = Number(issue.number)
+    if (!Number.isFinite(n) || resolved.has(n)) continue
+    if (isNonActionableIssue(issue)) continue
+    const category = categorizeIssue(issue)
+    candidates.push({
+      category,
+      problemKey: `github:issue:${n}`,
+      title: `${issue.title} (#${n})`,
+      evidence: [
+        {
+          type: 'github_issue',
+          path: `https://github.com/issues/${n}`,
+          note: String(issue.body || '').slice(0, 240),
+          labeled: 'verified',
+        },
+      ],
+      impact: `Open GitHub issue #${n}`,
+      effort: 'M',
+      ownerRole: category === 'security' ? 'security' : 'engineer',
+      filesLikely: [],
+      acceptanceCriteria: [
+        `Address or explicitly defer GitHub issue #${n} with evidence`,
+      ],
+      validationPlan: ['Relevant unit/lint checks for touched files'],
+      risks: ['Issue may be partially fixed already — verify before re-implementing'],
+    })
+  }
+  return candidates
+}
+
 /**
  * Deterministic discovery. Does not invent market demand.
  * Returns candidates that still require prioritization / challenge.
  */
-export function discoverCandidates(repoRoot, store, config) {
+export function discoverCandidates(repoRoot, store, config, options = {}) {
   const max = config.discovery.maxCandidates
   const all = []
 
@@ -210,6 +318,9 @@ export function discoverCandidates(repoRoot, store, config) {
   }
   if (config.discovery.scanDocDriftHints) {
     all.push(...discoverManualQaGaps(repoRoot))
+  }
+  if (config.discovery.includeOpenIssues) {
+    all.push(...discoverOpenIssues(repoRoot, store, options))
   }
 
   // Unfinished work is handled by resume, not duplicated as candidates

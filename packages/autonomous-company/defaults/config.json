@@ -24,7 +24,7 @@
     "scanTodoMarkers": true,
     "scanTestGaps": true,
     "scanDocDriftHints": true,
-    "includeOpenIssues": false,
+    "includeOpenIssues": true,
     "maxCandidates": 25,
     "minEvidenceCount": 1
   },

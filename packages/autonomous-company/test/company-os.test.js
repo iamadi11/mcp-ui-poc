@@ -315,4 +315,66 @@ describe('company OS — multi-cycle autonomy', () => {
     expect(w.status).toBe('idle')
     expect(w.currentWorkId).toBeNull()
   })
+
+  it('discovers open GitHub issues and skips resolved + non-actionable ones', async () => {
+    const { discoverOpenIssues, resolvedIssueNumbersFromPool, discoverCandidates } = await import(
+      '../src/discovery/engine.js'
+    )
+    bootCompany(root)
+    const store = loadStore(root)
+    upsertCandidate(store.paths, store.pool, {
+      category: 'bug',
+      problemKey: 'github:issue:42',
+      title: 'Already done (#42)',
+      status: 'completed',
+      evidence: [{ labeled: 'verified' }],
+      priority: { score: 4 },
+    })
+    const fresh = loadStore(root)
+    const resolved = resolvedIssueNumbersFromPool(fresh)
+    expect(resolved.has(42)).toBe(true)
+
+    const found = discoverOpenIssues(root, fresh, {
+      listIssues: () => [
+        {
+          number: 42,
+          title: 'Already done',
+          body: '**Severity:** High\n### Fix\nDo it',
+        },
+        {
+          number: 99,
+          title: 'SSRF still broken somewhere',
+          body: '**Severity:** High\n### Fix\nHarden redirects',
+        },
+        { number: 1, title: 'looks cool!', body: 'nice' },
+      ],
+    })
+    expect(found.map((c) => c.problemKey)).toEqual(['github:issue:99'])
+    expect(found[0].category).toBe('security')
+
+    const scanned = discoverCandidates(
+      root,
+      fresh,
+      {
+        discovery: {
+          scanTodoMarkers: false,
+          scanTestGaps: false,
+          scanDocDriftHints: false,
+          includeOpenIssues: true,
+          maxCandidates: 10,
+          minEvidenceCount: 1,
+        },
+      },
+      {
+        listIssues: () => [
+          {
+            number: 99,
+            title: 'SSRF still broken somewhere',
+            body: '**Severity:** High\n### Fix\nx',
+          },
+        ],
+      },
+    )
+    expect(scanned.candidates.some((c) => c.problemKey === 'github:issue:99')).toBe(true)
+  })
 })
