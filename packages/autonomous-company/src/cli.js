@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { resolve } from 'node:path'
+import { readFileSync } from 'node:fs'
 import {
   boot,
   beginRun,
@@ -13,37 +14,43 @@ import {
   getConflicts,
   loadStore,
 } from './orchestration/controller.js'
-import { renderStatusText, formatStatus } from './observability/status.js'
+import {
+  startCompany,
+  tickCompany,
+  bootCompany,
+  pauseCompany,
+  stopCompany,
+} from './orchestration/clock.js'
+import { renderStatusText, formatStatus, renderCompanyDashboard } from './observability/status.js'
 import { evaluateGates } from './gates/quality.js'
 import { AGENTS } from './agents/registry.js'
 import { findRepoRoot } from './repo-root.js'
 
 function usage() {
-  return `autonomous-company — durable controller CLI
+  return `autonomous-company — Company Operating System CLI
 
 Usage:
   npm run company -- <command> [options]
 
-Commands:
-  init                 Initialize durable state under .autonomous-company/
-  status               Show current run, phase, pool, locks
-  cycle [--dry-run] [--resume]
-                       Run one discovery→select cycle (or resume)
-  discover             Discovery + prioritization only
-  resume               Resume interrupted/running execution
-  interrupt [reason]   Mark run interrupted (durable)
-  stop [reason]        Stop run and clear active task
-  phase <name>         Advance phase (define|design|...|postmortem)
-  agents               List agent registry
-  conflicts            Show file ownership conflicts
-  safety <action>      Check whether a high-impact action is allowed
+Primary (company OS):
+  start [--ticks N] [--fresh]   Start/resume company clock; continues after task completion
+  tick                         One clock tick (discover/assign/recover/follow-ups)
+  status                       Dashboard + run status
+  pause [reason]               Pause durable company state
+  stop [reason]                Stop company
+
+Work:
   complete <taskId> --report <jsonFile>
-                       Attempt task completion with gate evidence
-  help                 Show this help
+  conflicts
+  safety <action>
+
+Legacy (single-cycle debug):
+  init | discover | cycle [--dry-run] [--resume]
+  phase <name> | resume | interrupt | agents | gates | help
 
 Notes:
-  - This CLI does not invent test results or deploy by default.
-  - Pair with /autonomous-company skill for agent-executed SDLC phases.
+  - Completing a task does NOT stop the company — run tick again.
+  - Pair with /autonomous-company skill as worker executor.
   - See docs/autonomous-company/ARCHITECTURE.md
 `
 }
@@ -51,16 +58,25 @@ Notes:
 function parseArgs(argv) {
   const args = argv.slice(2)
   const command = args[0] || 'help'
-  const flags = new Set(args.filter((a) => a.startsWith('--')))
+  const flags = new Set(args.filter((a) => a.startsWith('--') && !a.includes('=')))
   const positional = args.filter((a) => !a.startsWith('--'))
-  return { command, flags, positional, args }
+  const getFlagValue = (name) => {
+    const idx = args.indexOf(name)
+    if (idx >= 0 && args[idx + 1] && !args[idx + 1].startsWith('--')) return args[idx + 1]
+    const eq = args.find((a) => a.startsWith(`${name}=`))
+    return eq ? eq.split('=')[1] : null
+  }
+  return { command, flags, positional, args, getFlagValue }
 }
 
 async function main() {
   const repoRoot = resolve(findRepoRoot(process.cwd()))
-  const { command, flags, positional, args } = parseArgs(process.argv)
+  const { command, flags, positional, args, getFlagValue } = parseArgs(process.argv)
   const dryRun = flags.has('--dry-run')
   const resume = flags.has('--resume') || command === 'resume'
+  const fresh = flags.has('--fresh')
+  const ticksRaw = getFlagValue('--ticks')
+  const ticks = ticksRaw ? Number(ticksRaw) : undefined
 
   switch (command) {
     case 'help':
@@ -68,15 +84,43 @@ async function main() {
     case '-h':
       console.log(usage())
       return
+    case 'start': {
+      const result = startCompany(repoRoot, { ticks, fresh, resume: !fresh })
+      console.log(result.dashboard)
+      console.log('\n---\n')
+      console.log(JSON.stringify({
+        ok: result.ok,
+        message: result.message,
+        ticks: result.ticks,
+        workOrders: result.workOrders,
+        idle: result.results?.some?.((r) => r.idle) || false,
+        status: result.status,
+      }, null, 2))
+      return
+    }
+    case 'tick': {
+      const result = tickCompany(repoRoot, {})
+      console.log(result.dashboard)
+      console.log('\n---\n')
+      console.log(JSON.stringify(result, null, 2))
+      return
+    }
     case 'init': {
-      const store = boot(repoRoot)
-      console.log(renderStatusText(store.status))
+      const store = bootCompany(repoRoot)
+      console.log(renderCompanyDashboard(store))
       console.log('\nInitialized:', store.paths.root)
       return
     }
     case 'status': {
       const store = loadStore(repoRoot)
+      console.log(renderCompanyDashboard(store))
+      console.log('\n')
       console.log(renderStatusText(formatStatus(store)))
+      return
+    }
+    case 'pause': {
+      const reason = positional[1] || 'manual_pause'
+      console.log(renderStatusText(pauseCompany(repoRoot, reason)))
       return
     }
     case 'discover': {
@@ -111,7 +155,7 @@ async function main() {
     }
     case 'stop': {
       const reason = positional[1] || 'manual_stop'
-      console.log(renderStatusText(stopRun(repoRoot, reason)))
+      console.log(renderStatusText(stopCompany(repoRoot, reason)))
       return
     }
     case 'phase': {
@@ -151,9 +195,12 @@ async function main() {
         process.exitCode = 1
         return
       }
-      const report = JSON.parse(await import('node:fs').then((fs) => fs.readFileSync(args[reportIdx + 1], 'utf8')))
+      const report = JSON.parse(readFileSync(args[reportIdx + 1], 'utf8'))
       const result = completeTask(repoRoot, taskId, report)
       console.log(JSON.stringify(result, null, 2))
+      if (result.ok && result.companyContinues) {
+        console.error('\nCompany continues — run: npm run company -- tick')
+      }
       if (!result.ok) process.exitCode = 1
       return
     }

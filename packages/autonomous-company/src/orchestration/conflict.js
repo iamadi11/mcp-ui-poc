@@ -6,7 +6,9 @@ export function detectFileConflicts(tasks) {
   const owners = new Map()
   const conflicts = []
   for (const task of tasks) {
-    if (!['active', 'in_review', 'queued'].includes(task.status)) continue
+    if (!['active', 'in_progress', 'claimed', 'in_review', 'review', 'validation', 'queued', 'ready', 'blocked'].includes(task.status)) {
+      continue
+    }
     for (const file of task.filesLikely || []) {
       if (!owners.has(file)) {
         owners.set(file, task.id)

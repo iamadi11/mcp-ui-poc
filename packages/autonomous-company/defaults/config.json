@@ -1,10 +1,13 @@
 {
-  "version": 1,
+  "version": 2,
   "execution": {
-    "maxIterations": 3,
+    "maxIterations": 12,
+    "maxCycles": 12,
     "maxWallTimeMs": 2700000,
-    "maxConcurrentTasks": 1,
+    "maxConcurrentTasks": 3,
     "maxRetriesPerTask": 2,
+    "claimLeaseMs": 1800000,
+    "defaultTicksPerStart": 8,
     "stopWhenNoHighValueWork": true,
     "requireReviewForCode": true,
     "allowParallelDiscovery": true
@@ -29,7 +32,7 @@
     "rejectBelowScore": 2.5,
     "weights": {
       "userValue": 1.2,
-      "severityRelevance": 1.0,
+      "productRelevance": 1.0,
       "severity": 1.1,
       "securityRisk": 1.4,
       "reliabilityImpact": 1.1,

@@ -1,207 +1,118 @@
-# Autonomous Company — Architecture & Research
+# Autonomous Company OS — Architecture
 
-**Status:** Accepted for foundation implementation  
+**Status:** Company Operating System (v2)  
 **Date:** 2026-09-21  
-**Product:** mcp-ui-poc (chat-first UI studio)
+**Product:** mcp-ui-poc
 
-## 0. Investigation findings
+## 0. Why v1 was not enough
 
-### Repository intent
+v1 (`runCycle` → one task → stop) was a **durable single-task runner**. It prevented true autonomy because:
 
-This repo is a **chat-first UI studio**: prompt → versioned Widget via Jev decisions + ThemeAdapter construction, with optional Haiku copy/HTML. Canonical workflow: `docs/AI_WORKFLOW.md`. Product glossary: `CONTEXT.md`.
+| Limitation | Effect |
+|------------|--------|
+| One `activeTaskId` + `maxConcurrentTasks: 1` | No organization of workers |
+| Cycle ends when a task is selected or completed | Completing work ends the company |
+| Discovery only at cycle start | No continuous departmental discovery |
+| No follow-up generation | Outcomes do not create new work |
+| Sequential phase CLI for one task | Skill behaves like a coding playbook |
+| Prompt “continue” required | Fake autonomy |
 
-### Existing agent infrastructure (reuse, do not replace)
+**v2 redesign:** a **Company Operating System** with a durable work pool, concurrent workers with leases, a company clock that ticks after completions, departmental cadences, deliberation, follow-ups, and honest idle/monitoring.
 
-| Asset | Role | Decision |
-|-------|------|----------|
-| `docs/AI_WORKFLOW.md` | Canonical SDLC for humans/agents | **Keep** — company phases map onto it |
-| `.claude/skills/*` | Project playbooks (implement, review, TDD, …) | **Keep** — implementers invoke these |
-| `studio-staff` | PM/EM staffing cycle for product improvement | **Reuse** for product audit / PM+EM briefs |
-| `/start` | Single-feature autonomous cycle (no durable state) | **Supersede for long runs**; keep for one-shot |
-| Matt Pocock skills (`skills:install`) | ask-matt, implement, tdd, code-review, research, … | **Integrate**; do not fork or duplicate TDD |
-| `.claude/commands/` | Thin slash wrappers | **Add** `/autonomous-company` |
-| GitHub Issues + `gh` | Issue tracker (per `docs/agents/`) | **Optional signal source**; not required |
-| Vitest in `packages/core` | Test pattern | **Mirror** for company runtime package |
-| CI (`.github/workflows/ci.yml`) | test + lint + build | **Extend** to run company package tests |
+## 1. Mental model
 
-### Host environment
+```
+ONE COMMAND: npm run company -- start
+        ↓
+COMPANY CLOCK (ticks)
+        ↓
+┌─ recover stale claims
+│  departmental discovery (cadence-gated)
+│  triage / reject low value
+│  claim READY work for idle workers (concurrent)
+│  emit work orders / advance simulated departments
+│  collect completions → follow-ups → unblock deps
+│  periodic: strategy / research / debt / retro / improve
+│  reassess value → AUTONOMOUS | IDLE_MONITORING | STOP
+└─ persist state (never wipe on task complete)
+```
 
-- Coding agents: Cursor / Claude Code (skill + slash command).
-- Runtime: Node 22 ESM (repo engines).
-- No Durable Functions / Temporal / Azure hosted skills available in this repo.
-- MCP: browser verification when configured; not assumed always present.
-- Secrets: `.env.local` only; never in company state or prompts.
+Coding agents are **worker executors**, not the orchestrator. Matt Pocock / project skills are **capabilities** invoked by workers.
 
-### Matt Pocock conventions (official, researched 2026-09-21)
-
-Source: [mattpocock/skills](https://github.com/mattpocock/skills)
-
-- Install via `npx skills@latest add mattpocock/skills` (already wrapped by `npm run skills:install`).
-- Run `/setup-matt-pocock-skills` once per clone.
-- Skills are `SKILL.md` directories with YAML frontmatter (`name`, `description`; optional `disable-model-invocation`).
-- Engineering router: `/ask-matt`. Domain docs: `CONTEXT.md` + `docs/adr/`.
-- **Do not** install plugin + editable copies together; this repo uses editable install.
-- **Do not** run two TDD skills (project `tdd` vs Matt `tdd`) in one cycle.
-
-### Claude Code / Cursor skill model (official docs)
-
-- Skills live under `.claude/skills/<name>/SKILL.md`; slash command = directory name.
-- Progressive disclosure: keep SKILL.md lean; put depth in referenced files.
-- User-triggered workflows should set `disable-model-invocation: true`.
-- Durable multi-step state does **not** belong only in conversation context — persist externally.
-
-## 1. Problem statement
-
-`/start` and `studio-staff` are strong **single-cycle** playbooks. They lack:
-
-1. Durable resumable state across interruptions  
-2. A maintained task pool with deduplication  
-3. Explicit multi-role coordination via artifacts  
-4. Budget / stop conditions / honest “no valuable work” exits  
-5. Controlled self-improvement with rollback  
-6. A single long-running company loop with observability  
-
-We need a **repository-level autonomous company** that values evidence and product outcomes over task volume.
-
-## 2. Orchestration alternatives compared
-
-### Approach A — Prompt-only mega-skill
-
-One large SKILL.md that tells the agent to role-play all phases.
-
-- **Pros:** Fast to write; fits slash-command UX.  
-- **Cons:** No durable resume; non-testable prioritization; easy runaway loops; weak anti-slop enforcement.  
-- **Verdict:** Insufficient for the stated requirements.
-
-### Approach B — External workflow engine (Temporal / Durable Functions / custom queue)
-
-- **Pros:** Industrial durability.  
-- **Cons:** Not available in this host; adds ops burden; overkill for a single-repo coding-agent product; still needs an LLM agent for code changes.  
-- **Verdict:** Reject for this repository.
-
-### Approach C — Hybrid: durable Node controller + skill entry + existing skills (CHOSEN)
-
-- **Controller package** (`packages/autonomous-company`): deterministic state machine, discovery heuristics, prioritization, gates, conflict detection, memory, research registry, improvement proposals — all unit-tested.  
-- **Single command** `/autonomous-company` (skill) **and** `npm run company` (CLI): same policies; skill drives agent execution; CLI owns durable mutations.  
-- **Role playbooks**: lean set of agent definitions invoked by phase; reuse Matt + project skills for implementation/review.  
-- **Artifacts**: machine-readable JSON under `.autonomous-company/` (gitignored runtime) + committed schemas/templates.
-
-**Why C wins:** Integrates with proven repo conventions, is testable without network/LLM, supports resume, and keeps the coding agent as the executor rather than inventing a second agent runtime.
-
-## 3. Organization design (justified roles)
-
-Agents exist only when they change decisions or evidence quality. Coordination cost rises with headcount.
-
-| Role ID | When active | Reuses |
-|---------|-------------|--------|
-| `controller` | Always (deterministic CLI) | — |
-| `founder` | Cycle start + major pivots | CONTEXT, ADRs |
-| `product` | Discovery / definition | `studio-staff` PM brief |
-| `customer` | UI / journey validation | MANUAL_QA, browser MCP |
-| `ux` | UI changes | MASTER.md, ui-ux-pro-max |
-| `architect` | Non-trivial design | ADRs, research-first |
-| `em` | Task breakdown / sequencing | `studio-staff` EM plan |
-| `engineer` | Implementation | `implement-feature`, Matt `implement`/`tdd` |
-| `reviewer` | Independent review | Matt `code-review`, `review-changes` |
-| `qa` | Validation strategy | `validate-release` |
-| `security` | Auth, secrets, sanitize, URLs | ADR-005, safety policy |
-| `research` | Scheduled / tech proposals | Matt `research` |
-| `debt` | Health scans | discovery engine |
-| `improve` | Post-cycle process review | improvement registry |
-
-Specialized engineering subtypes (frontend/backend/AI) are **routing labels** on `engineer`, not separate always-on agents.
-
-## 4. Durable state model
-
-Root (gitignored): `.autonomous-company/`
+## 2. Durable state
 
 ```
 .autonomous-company/
-  config.json          # local overrides
-  run.json             # active run (phase, budgets, locks)
-  tasks/
-    pool.json          # prioritized task pool
-    <taskId>.json      # task detail + evidence
-  memory/
-    project.json       # consolidated project memory
-  artifacts/
-    <taskId>/...       # proposals, plans, reviews, validation
-  research/
-    index.json
-  improvements/
-    index.json
-  events/
-    <runId>.jsonl      # append-only observability
+  config.json
+  run.json              # mode, cycle#, clock, budgets
+  workers.json          # worker pool + leases
+  tasks/pool.json       # work universe summaries
+  tasks/<id>.json       # full work items
+  memory/project.json
+  artifacts/<id>/
+  research/index.json
+  improvements/index.json
+  deliberations/
+  events/<runId>.jsonl
 ```
 
-Committed defaults: `packages/autonomous-company/defaults/config.json`  
-Committed seed memory template: `packages/autonomous-company/defaults/memory.seed.json`
+## 3. Work item lifecycle
 
-### Resume rules
+```
+discovered → proposed → triaged → ready
+  → claimed → in_progress → blocked?
+  → review → validation → ready_to_merge → completed
+  → rejected | deferred | abandoned
+claimed → (lease expired) → stale → ready
+```
 
-1. If `run.json` exists with `status: "running"` or `"interrupted"`, resume from `phase` + `activeTaskId`.  
-2. Task IDs are content-addressed fingerprints of `(category, problemKey)` to prevent duplicates.  
-3. File ownership locks recorded per task; conflicting file claims block parallel assign.  
-4. Never invent completed validation — gates require recorded command evidence.
+Fields include: department origin, evidence, outcome, type, priority rationale, confidence, dependencies, risk, effort, owner/reviewer, acceptance criteria, validation requirements, decision history, execution evidence.
 
-## 5. Execution policy (defaults)
+## 4. Workers
 
-| Control | Default | Purpose |
-|---------|---------|---------|
-| `maxIterations` | 3 | Cycles per invocation |
-| `maxWallTimeMs` | 45 min | Hard stop |
-| `maxConcurrentTasks` | 1 | Avoid conflicting edits |
-| `maxRetriesPerTask` | 2 | Failure threshold |
-| `allowDeploy` | false | High-impact gate |
-| `allowForcePush` | false | Safety |
-| `allowSecretMutation` | false | Safety |
-| `requireReviewForCode` | true | Quality |
-| `stopWhenNoHighValueWork` | true | Anti-busywork |
+Departments: product, customer, engineering, qa, security, architecture, research, debt, devex, improve, founder.
 
-High-impact actions (deploy, production env, irreversible data, dependency major bumps, weakening gates) require `policies.highImpact` allow-list + explicit artifact approval. Default: **block and record**.
+Each worker: role, skills/capabilities, status (`idle|busy|blocked`), current claim, lease expiry, specialization.
 
-## 6. SDLC mapping
+Workers **return to idle** after completion and pull again. They do not exit the company.
 
-| Company phase | Maps to | Primary roles | Gate |
-|---------------|---------|---------------|------|
-| discover | AI_WORKFLOW Research | founder, product, debt, research | evidence required |
-| define | Plan (product) | product, customer | proposal or reject |
-| design | Plan (tech) | architect, em | design record |
-| breakdown | Plan (tasks) | em | task specs |
-| implement | Implement | engineer | diff exists |
-| validate | Tests & checks | qa | commands run |
-| review | review-changes / code-review | reviewer | approve/reject |
-| integrate | Document | em, engineer | docs + re-validate |
-| release_ready | validate-release | qa, security | readiness verdict |
-| postmortem | Instrument / learn | improve, founder | memory update |
+## 5. Company clock
 
-Honest exit: **`NO_ACTIONABLE_HIGH_VALUE_TASK`**.
+`start` / `tick` drive the OS. Completing a task is an **event**, not a stop reason.
 
-## 7. Anti-slop protocol
+Stop / idle only when:
 
-Before accepting work, every executor answers the seven questions in `anti-slop/protocol.js`. Reviewer rejects placeholder code, tautological tests, unrelated refactors, and claims without command evidence. Self-improvement **cannot** disable safety gates or lower validation requirements without a versioned proposal that is independently rejected by default if it weakens gates.
+- No high-value READY work and discovery yields nothing meaningful  
+- Budgets exhausted  
+- Explicit `stop` / pause  
+- Risk threshold / safety block  
 
-## 8. Integration plan
+`IDLE_MONITORING` persists state and waits for new evidence (next start/tick).
 
-1. Add workspace package `autonomous-company`.  
-2. Root scripts: `company`, `company:test`.  
-3. Skill + command + docs.  
-4. CI: include `npm run company:test`.  
-5. Update `docs/agents/README.md` routing table.  
-6. Do **not** remove `/start` or `studio-staff`.
+## 6. Follow-ups & feedback
 
-## 9. Non-goals (foundation)
+On completion the OS asks: what changed → consequences → new work → obsolete work → unblocks → product value → next. Follow-ups enter the pool through the same triage as discoveries.
 
-- Fully unsupervised production deploys  
-- Replacing Matt Pocock skills  
-- Multi-repo swarm  
-- Claiming unrestricted autonomy when host permissions block actions  
+## 7. Deliberation
 
-## 10. Success criteria for this delivery
+Significant proposals (`product`, `security`, `self_improvement`, architecture-affecting) require multi-perspective records (product + engineering + security + architecture + customer when relevant) before READY. Disagreement is stored; founder/em records the decision with confidence.
 
-- Single command documented and wired (`/autonomous-company` + `npm run company`)  
-- Durable init/resume/status  
-- Discovery can emit zero tasks  
-- Prioritization produces rationale + can reject low value  
-- Quality gates + adversarial unit tests pass  
-- Architecture + audit report committed with honest limitations  
+## 8. Safety & anti-slop (preserved)
+
+Default-deny deploy/force-push/secrets/gate-weakening. Completion still requires anti-slop answers + gate evidence. Self-improvement cannot weaken safety.
+
+## 9. Single command UX
+
+```bash
+npm run company -- start          # boot + run clock until idle/budget
+npm run company -- start --ticks 5
+npm run company -- tick           # one clock tick (agent loop)
+npm run company -- status         # dashboard
+npm run company -- stop
+```
+
+`/autonomous-company` skill: start → execute work orders → complete/block → **tick again** until status is idle/stopped. Never treat “task done” as “company done.”
+
+## 10. Compatibility
+
+Legacy `cycle` / `phase` remain as thin wrappers for one-shot debugging. Primary autonomy path is `start`/`tick`.
