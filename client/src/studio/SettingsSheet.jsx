@@ -160,7 +160,7 @@ export function SettingsSheet({
             </section>
             <section className="flex flex-col gap-2">
               <Label htmlFor="anthropic-api-key">Anthropic API key</Label>
-              <p className="text-sm text-muted-foreground">Optional copy and out-of-catalog generate. Saved in this browser if you paste one.</p>
+              <p className="text-sm text-muted-foreground">Optional copy and out-of-catalog generate. Kept in this tab session only (cleared when the tab closes).</p>
               <Input
                 id="anthropic-api-key"
                 type="password"
@@ -190,7 +190,7 @@ export function SettingsSheet({
             </section>
             <section className="flex flex-col gap-2">
               <Label htmlFor="google-maps-api-key">Google Maps API key</Label>
-              <p className="text-sm text-muted-foreground">Browser key for map workspaces. Never stored on the widget.</p>
+              <p className="text-sm text-muted-foreground">Browser key for map workspaces. Kept in this tab session only. Never stored on the widget.</p>
               <Input
                 id="google-maps-api-key"
                 type="password"
@@ -202,7 +202,7 @@ export function SettingsSheet({
               />
               <p className="text-sm text-muted-foreground" role="status">
                 {mapsStatus === 'saved'
-                  ? 'Saved for this browser.'
+                  ? 'Saved for this tab session.'
                   : mapsFromEnv
                     ? 'Using GOOGLE_MAPS_API_KEY from the server (.env.local).'
                     : 'Optional unless you generate a map.'}

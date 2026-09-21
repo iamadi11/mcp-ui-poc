@@ -2,38 +2,49 @@ const API_KEY_STORAGE_KEY = 'mcpui:anthropicApiKey'
 const MAPS_KEY_STORAGE_KEY = 'mcpui:googleMapsApiKey'
 const ENDPOINTS_STORAGE_KEY = 'mcpui:savedEndpoints'
 
-export function readApiKey() {
+/** Provider secrets use sessionStorage (cleared when the tab/session ends). */
+function readSessionSecret(key) {
   try {
-    return localStorage.getItem(API_KEY_STORAGE_KEY) || ''
+    const session = sessionStorage.getItem(key)
+    if (session) return session
+    // One-time migrate away from long-lived localStorage copies.
+    const legacy = localStorage.getItem(key)
+    if (legacy) {
+      sessionStorage.setItem(key, legacy)
+      localStorage.removeItem(key)
+      return legacy
+    }
+    return ''
   } catch {
     return ''
   }
+}
+
+function writeSessionSecret(key, value) {
+  try {
+    if (value) sessionStorage.setItem(key, value)
+    else sessionStorage.removeItem(key)
+    // Ensure any prior localStorage copy cannot linger.
+    localStorage.removeItem(key)
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function readApiKey() {
+  return readSessionSecret(API_KEY_STORAGE_KEY)
 }
 
 export function writeApiKey(key) {
-  try {
-    if (key) localStorage.setItem(API_KEY_STORAGE_KEY, key)
-    else localStorage.removeItem(API_KEY_STORAGE_KEY)
-  } catch {
-    /* ignore quota */
-  }
+  writeSessionSecret(API_KEY_STORAGE_KEY, key)
 }
 
 export function readGoogleMapsKey() {
-  try {
-    return localStorage.getItem(MAPS_KEY_STORAGE_KEY) || ''
-  } catch {
-    return ''
-  }
+  return readSessionSecret(MAPS_KEY_STORAGE_KEY)
 }
 
 export function writeGoogleMapsKey(key) {
-  try {
-    if (key) localStorage.setItem(MAPS_KEY_STORAGE_KEY, key)
-    else localStorage.removeItem(MAPS_KEY_STORAGE_KEY)
-  } catch {
-    /* ignore quota */
-  }
+  writeSessionSecret(MAPS_KEY_STORAGE_KEY, key)
 }
 
 export function readSavedEndpoints() {
