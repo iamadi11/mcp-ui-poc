@@ -16,6 +16,7 @@ jobs:
           cache: npm
       - run: npm run install-all
       - run: npm test
+      - run: npm run test:server
       - run: npm run company:test
       - run: npm run lint --prefix client
       - run: npm run build

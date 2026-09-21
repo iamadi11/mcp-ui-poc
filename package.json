@@ -17,6 +17,7 @@
     "install-server": "npm install",
     "install-all": "npm run install-server && npm run install-client",
     "test": "npm test --workspace=ui-compose-kit",
+    "test:server": "node --test server/data-source.test.js",
     "company": "node packages/autonomous-company/src/cli.js",
     "company:test": "npm test --workspace=autonomous-company",
     "infra:start": "brew services start redis && brew services start mongodb-community@8.0",
