@@ -17,14 +17,10 @@ import { prioritizeCandidates, selectNextTask } from '../prioritization/score.js
 import { acquireLocks, releaseLocks, detectFileConflicts } from './conflict.js'
 import { seedMemoryFromRepoDocs, consolidateMemory, recordRejection } from '../memory/project.js'
 import { formatStatus } from '../observability/status.js'
-import { evaluateAntiSlopAnswers } from '../anti-slop/protocol.js'
-import {
-  evaluateGates,
-  checkSafetyAction,
-  suggestedValidationCommands,
-} from '../gates/quality.js'
+import { checkSafetyAction, suggestedValidationCommands } from '../gates/quality.js'
 import { agentsForPhase, routeEngineerSubtype } from '../agents/registry.js'
 import { concludeNoImprovement } from '../improve/proposals.js'
+import { completeWorkItem } from './clock.js'
 
 function touchContext(repoRoot) {
   const contextPath = join(repoRoot, 'CONTEXT.md')
@@ -125,7 +121,7 @@ export function runDiscovery(repoRoot, options = {}) {
     if (item.decision === 'queue') {
       const enriched = {
         ...item.candidate,
-        status: 'queued',
+        status: 'ready',
         priority: item.priority,
       }
       const result = upsertCandidate(paths, pool, enriched)
@@ -178,8 +174,10 @@ export function activateTask(repoRoot, taskId, options = {}) {
   if (!task) throw new Error(`Unknown task: ${taskId}`)
   if (task.status === 'rejected') throw new Error('Cannot activate rejected task')
 
-  const activeCount = pool.tasks.filter((t) => t.status === 'active').length
-  if (activeCount >= config.execution.maxConcurrentTasks && task.status !== 'active') {
+  const activeCount = pool.tasks.filter((t) =>
+    ['active', 'in_progress', 'claimed', 'review', 'validation'].includes(t.status),
+  ).length
+  if (activeCount >= config.execution.maxConcurrentTasks && !['active', 'in_progress'].includes(task.status)) {
     return { ok: false, error: 'maxConcurrentTasks reached', conflicts: [] }
   }
 
@@ -195,13 +193,13 @@ export function activateTask(repoRoot, taskId, options = {}) {
   run.locks = lockResult.locks
   run.activeTaskId = task.id
   run.phase = 'define'
-  task.status = 'active'
+  task.status = 'in_progress'
   task.attempts = (task.attempts || 0) + 1
   task.ownerRole = task.ownerRole || 'engineer'
   task.engineerSubtype = routeEngineerSubtype(task)
   saveTask(paths, task)
   const idx = pool.tasks.findIndex((t) => t.id === task.id)
-  if (idx >= 0) pool.tasks[idx] = { ...pool.tasks[idx], status: 'active', updatedAt: nowIso() }
+  if (idx >= 0) pool.tasks[idx] = { ...pool.tasks[idx], status: 'in_progress', updatedAt: nowIso() }
   savePool(paths, pool)
   saveRun(paths, run)
   appendEvent(paths, { type: 'task_activated', runId: run.runId, taskId: task.id })
@@ -318,7 +316,7 @@ export function runCycle(repoRoot, options = {}) {
   // Re-load accepted queued task with highest score
   const fresh = loadStore(repoRoot, options)
   const queued = fresh.pool.tasks
-    .filter((t) => t.status === 'queued')
+    .filter((t) => ['queued', 'ready'].includes(t.status))
     .sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0))
   if (!queued.length) {
     const status = stopRun(repoRoot, 'NO_ACTIONABLE_HIGH_VALUE_TASK', options)
@@ -381,60 +379,8 @@ export function buildWorkOrder(task, phase) {
 }
 
 export function completeTask(repoRoot, taskId, report, options = {}) {
-  const store = loadStore(repoRoot, options)
-  const { paths, run, pool, config } = store
-  const task = loadTask(paths, taskId)
-  if (!task) throw new Error(`Unknown task: ${taskId}`)
-
-  const antiSlop = evaluateAntiSlopAnswers(report.antiSlopAnswers || {})
-  if (!antiSlop.pass) {
-    return { ok: false, error: 'anti_slop_failed', antiSlop }
-  }
-
-  const gates = evaluateGates({
-    category: task.category,
-    checklist: report.gateChecklist || {},
-  })
-  if (!gates.pass) {
-    return { ok: false, error: 'gates_failed', gates }
-  }
-
-  if (config.execution.requireReviewForCode && report.reviewVerdict !== 'approve') {
-    if (['bug', 'security', 'product', 'ux'].includes(task.category)) {
-      return { ok: false, error: 'review_required', reviewVerdict: report.reviewVerdict || null }
-    }
-  }
-
-  // Validation honesty: every required command must have recorded evidence
-  const requiredCmds = (report.validationResults || []).filter((v) => v.required)
-  for (const v of report.validationResults || []) {
-    if (v.status === 'skipped' && v.required) {
-      return { ok: false, error: 'required_validation_skipped', command: v.command }
-    }
-    if (v.claimedPass && v.status !== 'passed') {
-      return { ok: false, error: 'falsified_validation', command: v.command }
-    }
-  }
-  void requiredCmds
-
-  task.status = 'completed'
-  task.completionReport = {
-    at: nowIso(),
-    summary: report.summary || null,
-    validationResults: report.validationResults || [],
-    reviewVerdict: report.reviewVerdict,
-  }
-  saveTask(paths, task)
-  const idx = pool.tasks.findIndex((t) => t.id === task.id)
-  if (idx >= 0) pool.tasks[idx] = { ...pool.tasks[idx], status: 'completed', updatedAt: nowIso() }
-  savePool(paths, pool)
-
-  run.locks = releaseLocks(run, task.id)
-  run.activeTaskId = null
-  run.phase = 'postmortem'
-  saveRun(paths, run)
-  appendEvent(paths, { type: 'task_completed', runId: run.runId, taskId: task.id })
-  return { ok: true, task, status: formatStatus(loadStore(repoRoot, options)) }
+  // Delegate to company OS completion — does NOT stop the company.
+  return completeWorkItem(repoRoot, taskId, report, options)
 }
 
 export function rejectTaskImplementation(repoRoot, taskId, review, options = {}) {

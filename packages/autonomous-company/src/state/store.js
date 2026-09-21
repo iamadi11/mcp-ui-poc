@@ -16,6 +16,8 @@ import {
   nowIso,
   fingerprintTask,
 } from '../config.js'
+import { createWorkItem, normalizeStatus } from '../work/schema.js'
+import { createDefaultWorkers } from '../workers/roster.js'
 
 function atomicWrite(path, data) {
   const tmp = `${path}.tmp`
@@ -30,11 +32,13 @@ export function statePaths(repoRoot, config) {
     run: join(root, 'run.json'),
     pool: join(root, 'tasks', 'pool.json'),
     tasksDir: join(root, 'tasks'),
+    workers: join(root, 'workers.json'),
     memory: join(root, 'memory', 'project.json'),
     artifacts: join(root, 'artifacts'),
     research: join(root, 'research', 'index.json'),
     improvements: join(root, 'improvements', 'index.json'),
     eventsDir: join(root, 'events'),
+    deliberations: join(root, 'deliberations'),
     configLocal: join(root, 'config.json'),
   }
 }
@@ -48,6 +52,7 @@ export function ensureStateDirs(paths) {
     join(paths.root, 'research'),
     join(paths.root, 'improvements'),
     paths.eventsDir,
+    paths.deliberations,
   ]) {
     mkdirSync(dir, { recursive: true })
   }
@@ -65,17 +70,21 @@ export function createEmptyPool() {
 
 export function createEmptyRun({ runId } = {}) {
   return {
-    version: 1,
+    version: 2,
     runId: runId || newId('run'),
     status: 'idle',
+    mode: 'stopped',
     phase: 'idle',
     activeTaskId: null,
     iteration: 0,
+    cycle: 0,
     startedAt: null,
     updatedAt: nowIso(),
     wallDeadlineAt: null,
     budgets: {},
     locks: {},
+    cadences: {},
+    workOrders: [],
     lastError: null,
     stopReason: null,
   }
@@ -108,6 +117,9 @@ export function initStore(repoRoot, options = {}) {
   if (!existsSync(paths.run)) {
     atomicWrite(paths.run, createEmptyRun())
   }
+  if (!existsSync(paths.workers)) {
+    atomicWrite(paths.workers, createDefaultWorkers())
+  }
 
   appendEvent(paths, {
     type: 'store_initialized',
@@ -125,11 +137,15 @@ export function loadStore(repoRoot, options = {}) {
     return initStore(repoRoot, options)
   }
   ensureStateDirs(paths)
+  if (!existsSync(paths.workers)) {
+    atomicWrite(paths.workers, createDefaultWorkers())
+  }
   return {
     config,
     paths,
     run: loadJson(paths.run),
     pool: loadJson(paths.pool),
+    workers: loadJson(paths.workers),
     memory: loadJson(paths.memory),
     research: existsSync(paths.research)
       ? loadJson(paths.research)
@@ -138,6 +154,18 @@ export function loadStore(repoRoot, options = {}) {
       ? loadJson(paths.improvements)
       : { version: 1, proposals: [], workflowVersions: [] },
   }
+}
+
+export function saveWorkers(paths, workers) {
+  workers.updatedAt = nowIso()
+  atomicWrite(paths.workers, workers)
+}
+
+export function listTasks(paths) {
+  if (!existsSync(paths.tasksDir)) return []
+  return readdirSync(paths.tasksDir)
+    .filter((f) => f.endsWith('.json') && f !== 'pool.json')
+    .map((f) => loadJson(join(paths.tasksDir, f)))
 }
 
 export function saveRun(paths, run) {
@@ -212,33 +240,21 @@ export function upsertCandidate(paths, pool, candidate) {
   const existingIdx = pool.tasks.findIndex((t) => t.id === id)
   const existingDetail = loadTask(paths, id)
 
-  if (existingDetail && ['completed', 'queued', 'active', 'in_review'].includes(existingDetail.status)) {
+  const blocking = ['completed', 'ready', 'queued', 'in_progress', 'active', 'claimed', 'review', 'in_review', 'validation']
+  if (existingDetail && blocking.includes(existingDetail.status)) {
     return { id, created: false, reason: `exists_as_${existingDetail.status}` }
   }
 
-  const task = {
-    id,
-    category: candidate.category,
-    problemKey: candidate.problemKey,
-    title: candidate.title,
-    status: candidate.status || 'candidate',
-    evidence: candidate.evidence || [],
-    hypothesis: candidate.hypothesis || null,
-    impact: candidate.impact || null,
-    effort: candidate.effort || null,
-    risks: candidate.risks || [],
-    ownerRole: candidate.ownerRole || null,
-    filesLikely: candidate.filesLikely || [],
-    acceptanceCriteria: candidate.acceptanceCriteria || [],
-    nonGoals: candidate.nonGoals || [],
-    validationPlan: candidate.validationPlan || [],
-    priority: candidate.priority || null,
-    rejection: candidate.rejection || null,
-    createdAt: existingDetail?.createdAt || nowIso(),
-    updatedAt: nowIso(),
-    attempts: existingDetail?.attempts || 0,
-    branch: existingDetail?.branch || null,
-  }
+  const task = createWorkItem(
+    {
+      ...candidate,
+      status: normalizeStatus(candidate.status || 'discovered'),
+      createdAt: existingDetail?.createdAt,
+      attempts: existingDetail?.attempts || 0,
+      branch: existingDetail?.branch || null,
+    },
+    { id, now: nowIso() },
+  )
 
   saveTask(paths, task)
   const summary = {
@@ -247,6 +263,7 @@ export function upsertCandidate(paths, pool, candidate) {
     title: task.title,
     status: task.status,
     priorityScore: task.priority?.score ?? null,
+    department: task.department || null,
     updatedAt: task.updatedAt,
   }
   if (existingIdx >= 0) pool.tasks[existingIdx] = summary

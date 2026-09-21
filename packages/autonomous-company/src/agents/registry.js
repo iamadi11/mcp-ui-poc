@@ -207,6 +207,7 @@ export function agentsForPhase(phase) {
     integrate: ['em', 'engineer'],
     release_ready: ['qa', 'security', 'founder'],
     postmortem: ['improve', 'founder', 'em'],
+    operating: ['controller', 'em', 'founder'],
     idle: ['controller'],
   }
   return (map[phase] || ['controller']).map((id) => AGENTS[id])

@@ -1,15 +1,15 @@
 # /autonomous-company
 
-Run the repository **autonomous company** loop (durable SDLC controller + specialized agents).
+Start the repository **Company Operating System** (durable work pool + workers + clock).
 
-Follow the skill: **`.claude/skills/autonomous-company/SKILL.md`**.
-
-Architecture: **`docs/autonomous-company/ARCHITECTURE.md`**.
+Follow: **`.claude/skills/autonomous-company/SKILL.md`**  
+Architecture: **`docs/autonomous-company/ARCHITECTURE.md`**
 
 ```bash
-npm run company -- init
-npm run company -- cycle          # or: cycle --resume / cycle --dry-run
+npm run company -- start
 npm run company -- status
+# after each completion:
+npm run company -- tick
 ```
 
-Do not skip investigation. Prefer evidence. Stop when no high-value work remains.
+Do not treat “one task done” as “company done.” Prefer evidence. Idle when no high-value work remains.

@@ -1,4 +1,4 @@
-export { loadConfig, PHASES, TASK_CATEGORIES, fingerprintTask } from './config.js'
+export { loadConfig, PHASES, TASK_CATEGORIES, TASK_STATUSES, fingerprintTask } from './config.js'
 export {
   initStore,
   loadStore,
@@ -6,6 +6,9 @@ export {
   appendEvent,
   saveTask,
   loadTask,
+  listTasks,
+  saveWorkers,
+  createEmptyRun,
 } from './state/store.js'
 export { discoverCandidates } from './discovery/engine.js'
 export {
@@ -43,6 +46,33 @@ export {
   getConflicts,
   buildWorkOrder,
 } from './orchestration/controller.js'
+export {
+  startCompany,
+  tickCompany,
+  bootCompany,
+  completeWorkItem,
+  pauseCompany,
+  stopCompany,
+  buildWorkOrder as buildCompanyWorkOrder,
+} from './orchestration/clock.js'
+export { proposeFollowUps, buildProductFeedback } from './orchestration/followups.js'
+export { dueCadences, cadenceDiscoveries } from './orchestration/cadence.js'
+export { needsDeliberation, deliberate, applyDeliberationToWork } from './orchestration/deliberation.js'
+export {
+  WORK_STATUSES,
+  normalizeStatus,
+  createWorkItem,
+  isClaimable,
+  isTerminal,
+} from './work/schema.js'
+export {
+  createDefaultWorkers,
+  recoverStaleClaims,
+  claimWorkForWorker,
+  releaseWorker,
+  workerCanTake,
+  DEPARTMENTS,
+} from './workers/roster.js'
 export { detectFileConflicts, acquireLocks, releaseLocks } from './orchestration/conflict.js'
 export {
   createResearchFinding,
@@ -57,7 +87,7 @@ export {
   rollbackWorkflow,
   concludeNoImprovement,
 } from './improve/proposals.js'
-export { formatStatus, renderStatusText } from './observability/status.js'
+export { formatStatus, renderStatusText, renderCompanyDashboard } from './observability/status.js'
 export { findRepoRoot } from './repo-root.js'
 export {
   seedMemoryFromRepoDocs,

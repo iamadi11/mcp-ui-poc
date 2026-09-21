@@ -1,103 +1,92 @@
 ---
 name: autonomous-company
 description: >-
-  Repository-level autonomous software company. Single command to run a durable,
-  evidence-driven SDLC loop: discover, prioritize, assign specialized agents,
-  implement, validate, review, and improve — with resumability, safety gates,
-  and honest stop-when-no-valuable-work. Use when the user invokes
-  /autonomous-company, asks to run the autonomous company, or wants a long-running
-  engineering loop over this repository.
+  Repository-level autonomous software company OS. One command starts a durable
+  company clock with a work pool, concurrent workers, departmental cadences,
+  follow-ups after completion, and honest idle/monitoring — not a single-task
+  coding loop. Use when the user invokes /autonomous-company, asks to run the
+  autonomous company, or wants continuous organizational engineering.
 disable-model-invocation: true
 ---
 
-# Autonomous Company
+# Autonomous Company OS
 
-You are operating this repository as a **disciplined software company**, not a task farm.
+You are a **worker executor inside a living software company**, not a one-shot coding skill.
 
-**Single entry:** `/autonomous-company` (this skill) + durable CLI `npm run company`.
+**Single entry:** `/autonomous-company` + `npm run company -- start`
 
 Architecture: **`docs/autonomous-company/ARCHITECTURE.md`**.  
-Canonical coding workflow: **`docs/AI_WORKFLOW.md`**.  
-Product glossary: **`CONTEXT.md`**.
+Canonical coding: **`docs/AI_WORKFLOW.md`**. Glossary: **`CONTEXT.md`**.
 
-## Operating principles
+## Critical behavioral rule
 
-- Product outcomes over task volume.
-- Evidence over assumptions (label hypotheses).
-- Quality over speed; simplicity over novelty.
-- Honest uncertainty; never invent validation results.
-- Prefer doing nothing when nothing high-value remains: **NO ACTIONABLE HIGH-VALUE TASK IDENTIFIED.**
-- Do not weaken safety/validation to raise completion rates.
-- Reuse Matt Pocock + project skills; do **not** run two TDD skills.
-- Secrets only via env / `.env.local` — never in state, prompts, or artifacts.
+**Completing a task does NOT end the company.**
 
-## Boot sequence (mandatory)
-
-1. Read `docs/autonomous-company/ARCHITECTURE.md` (skim if already loaded this session).
-2. Read `CONTEXT.md` + `docs/AI_WORKFLOW.md`.
-3. Run CLI:
+After `complete`, you MUST run:
 
 ```bash
-npm run company -- init
+npm run company -- tick
+```
+
+and continue until status/mode is `idle_monitoring` or `stopped` (or budgets exhausted).
+
+Forbidden as the primary autonomy mechanism: saying “continue”, role-playing 20 employees in one prompt, or inventing tasks to keep busy.
+
+## Boot (mandatory)
+
+```bash
+npm run company -- start
+# or resume:
+npm run company -- start --ticks 8
 npm run company -- status
 ```
 
-4. If status shows `interrupted` / `running` with `activeTaskId`, **resume** (do not reinvent tasks):
+Read the dashboard + `workOrders` from the CLI JSON.
 
-```bash
-npm run company -- cycle --resume
+## Worker loop (architecture, not a prompt trick)
+
+```
+start/tick
+  → claim work orders (OS assigns workers)
+  → for each work order: investigate → implement (Matt/project skills) → validate → review
+  → npm run company -- complete <id> --report artifacts/.../completion.json
+  → npm run company -- tick          # REQUIRED
+  → repeat until idle_monitoring / stopped
 ```
 
-5. Otherwise start a cycle:
+Matt Pocock + project skills are **capabilities** on workers, not the orchestrator.
 
-```bash
-npm run company -- cycle
-```
-
-Use `--dry-run` first when validating discovery without activating work.
+| Need | Capability |
+|------|------------|
+| Implement | `implement-feature` + Matt `implement` **or** `tdd` (one TDD only) |
+| Review | Matt `code-review` / `review-changes` |
+| Validate | `validate-release` + MANUAL_QA + browser when UI |
+| Research | Matt `research` |
+| Product staffing | `studio-staff` |
+| Ambiguity | `/ask-matt` |
 
 ## Durable state
 
-All mutable company state lives under **`.autonomous-company/`** (gitignored).  
-Mutate it via CLI — do not hand-edit JSON unless recovering corruption.
+`.autonomous-company/` (gitignored): run, **workers.json**, tasks pool, memory, artifacts, deliberations, events.
 
-Artifacts for the active task:
+Mutate via CLI only.
 
-`.autonomous-company/artifacts/<taskId>/` — proposal, design, validation, review, postmortem.
+## Stop / idle (honest)
 
-## Phase loop
+- `NO_ACTIONABLE_HIGH_VALUE_TASK` → idle/monitoring (persists; next start resumes)
+- Budgets (`maxCycles` / wall clock)
+- Explicit `npm run company -- stop`
+- Safety / missing permissions for required validation
 
-Advance phases with `npm run company -- phase <name>` after each phase’s evidence is written.
+Do **not** invent low-value work to avoid idle.
 
-| Phase | You must | Roles (see `agents/`) |
-|-------|----------|------------------------|
-| discover | CLI discovery; challenge weak candidates | founder, product, debt, research |
-| define | Product proposal or reject | product, customer, founder |
-| design | Alternatives + trade-offs | architect, em, security |
-| breakdown | Small tasks, file ownership | em |
-| implement | Focused diff + tests | engineer (+ subtype) |
-| validate | Run **real** repo commands; record exit codes | qa |
-| review | Independent diff review; may reject | reviewer, security |
-| integrate | Re-validate; update docs | em, engineer |
-| release_ready | Readiness verdict (may reject) | qa, security, founder |
-| postmortem | Lessons + memory; optional improve proposal | improve, founder |
+## Completion evidence
 
-Role details: [agents/README.md](agents/README.md).  
-Policies: [policies.md](policies.md).  
-Anti-slop: answer all seven questions before claiming implementation done (enforced by `complete`).
+```bash
+npm run company -- complete <taskId> --report .autonomous-company/artifacts/<taskId>/completion.json
+```
 
-## Reuse existing skills (do not reinvent)
-
-| Need | Invoke |
-|------|--------|
-| Product audit / PM+EM staffing | `studio-staff` |
-| Implementation | `implement-feature` + Matt `implement` **or** `tdd` (one TDD only) |
-| Review | Matt `code-review` / `review-changes` |
-| Validate | `validate-release` + `docs/MANUAL_QA.md` + browser MCP when UI |
-| Research | Matt `research` |
-| Router ambiguity | `/ask-matt` |
-
-`/start` remains for one-shot single-feature cycles without the company state machine.
+Anti-slop answers + gate checklist + real exit codes required. Follow-ups are enqueued by the OS.
 
 ## Safety
 
@@ -105,43 +94,18 @@ Anti-slop: answer all seven questions before claiming implementation done (enfor
 npm run company -- safety deploy
 ```
 
-Default deny: deploy, force push, secret mutation, gate weakening, production infra.  
-High-impact actions require human config allow-list — agents must **not** flip safety flags to unblock themselves.
-
-## Stop conditions
-
-Stop and report honestly when:
-
-- No high-value task remains
-- Budgets exceeded (`maxIterations` / wall clock)
-- Repeated failures / max retries
-- Missing permissions or tools for required validation
-- Ambiguous requirements that cannot be clarified from repo evidence
-- Risk exceeds policy
-
-## Completion of a task
-
-Only via CLI with a report JSON that includes anti-slop answers, gate checklist, review verdict, and validation results with real exit codes:
-
-```bash
-npm run company -- complete <taskId> --report .autonomous-company/artifacts/<taskId>/completion.json
-```
-
-## Self-improvement
-
-After postmortem, consider process improvements. If none justified, record that outcome.  
-Proposals that weaken safety/validation are **rejected by policy**.
+Default deny: deploy, force push, secrets, gate weakening, production infra.
 
 ## Deliverable each invocation
 
-End with a short company report:
+Company report:
 
-1. Run id / phase / stop reason  
-2. Task selected or NO ACTIONABLE HIGH-VALUE TASK  
-3. Evidence collected  
-4. Changes made (if any)  
+1. Run id / mode / cycle / stop-or-idle reason  
+2. Work pool + workers summary  
+3. Work orders executed  
+4. Follow-ups created  
 5. Validation actually run  
-6. Residual risks / next recommendation  
-7. Whether autonomy was limited by host permissions  
+6. Residual risks  
+7. Host permission limits  
 
-Do not claim unrestricted autonomous operation.
+Do not claim unrestricted autonomy.

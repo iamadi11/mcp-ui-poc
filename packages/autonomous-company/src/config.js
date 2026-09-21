@@ -19,6 +19,7 @@ export const PHASES = Object.freeze([
   'integrate',
   'release_ready',
   'postmortem',
+  'operating',
   'idle',
 ])
 
@@ -42,15 +43,27 @@ export const TASK_CATEGORIES = Object.freeze([
 ])
 
 export const TASK_STATUSES = Object.freeze([
-  'candidate',
+  'discovered',
+  'proposed',
+  'triaged',
+  'ready',
+  'claimed',
+  'in_progress',
+  'blocked',
+  'review',
+  'validation',
+  'ready_to_merge',
+  'completed',
   'rejected',
+  'deferred',
+  'abandoned',
+  'stale',
+  // legacy
+  'candidate',
   'queued',
   'active',
-  'blocked',
   'in_review',
   'failed',
-  'completed',
-  'abandoned',
 ])
 
 export function loadJson(path) {
