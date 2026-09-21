@@ -1,6 +1,6 @@
 import rateLimit from 'express-rate-limit';
 
-function readPositiveInt(name, defaultValue) {
+export function readPositiveInt(name, defaultValue) {
   const raw = process.env[name];
   if (raw == null || raw === '') return defaultValue;
   const n = Number.parseInt(String(raw), 10);
