@@ -9,6 +9,7 @@
 import { getLLMAdapter } from './llm/registry.js'
 import { inferShape, findRows } from './shape.js'
 import { applyPolicy, extractPolicy, isIdLikeKey } from './layout-policy.js'
+import { sanitizeSpecActions } from './sanitize-spec.js'
 import { jevAvailable, planWithJev } from './jev/planner.js'
 import { isIteratePrompt, mergeIteratePolicy, selectReplayPolicy, applyInstructionUpgrades, isLookMotionOnly } from './iterate.js'
 import { DEMO_LOGIN_SOURCE, isLoginIntent, brandFromPrompt, DEMO_LANDING_SOURCE, DEMO_CHECKOUT_SOURCE, DEMO_PRICING_SOURCE, DEMO_FORM_SOURCE, DEMO_SETTINGS_SOURCE, DEMO_CALENDAR_SOURCE, DEMO_GENERATED_SOURCE } from './demo-payload.js'
@@ -217,7 +218,10 @@ function withPolicy(result, data, extras = {}) {
     spec = heuristicPlan(data, extras.sourceUrl, extras.instructions)
     policy = extractPolicy(spec, data)
   }
-  spec = applyPolicy(policy, data, extras.sourceUrl)
+  spec = sanitizeSpecActions(applyPolicy(policy, data, extras.sourceUrl), {
+    data,
+    sourceUrl: extras.sourceUrl,
+  })
   return {
     spec: { ...spec, motion: spec.motion || policy.motion || extras.motion || 'none' },
     policy,
