@@ -15,6 +15,14 @@ export function proposeFollowUps(completedTask, report = {}) {
   const files = completedTask.filesLikely || []
   const category = completedTask.category
 
+  // Follow-ups must not chain forever (sec-review → sec-review → …)
+  if (
+    completedTask.origin === 'followup'
+    || String(baseKey).startsWith('followup:')
+  ) {
+    return []
+  }
+
   // QA: missing journey coverage after product/ux/bug ship
   if (['product', 'ux', 'bug', 'reliability'].includes(category)) {
     followUps.push({

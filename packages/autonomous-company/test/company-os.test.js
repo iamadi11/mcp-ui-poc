@@ -226,6 +226,21 @@ describe('company OS — multi-cycle autonomy', () => {
     expect(followUps.every((f) => f.origin === 'followup')).toBe(true)
   })
 
+  it('does not chain follow-ups from follow-up completions', () => {
+    const nested = proposeFollowUps(
+      {
+        id: 't2',
+        problemKey: 'followup:sec-review:p1',
+        title: 'Security residual review: Fix SSRF',
+        category: 'security',
+        origin: 'followup',
+        filesLikely: ['server/data-source.js', 'sanitize-spec.js'],
+      },
+      { summary: 'reviewed' },
+    )
+    expect(nested).toEqual([])
+  })
+
   it('enters idle/monitoring when no high-value work remains', () => {
     writeFileSync(join(root, 'server/index.js'), 'export default {}\n')
     const result = startCompany(root, {
