@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { readApiKey, writeApiKey } from './storage.js'
+import { readApiKey, writeApiKey, readGoogleMapsKey, writeGoogleMapsKey } from './storage.js'
 
 function KeyIcon() {
   return (
@@ -40,6 +40,8 @@ export function SettingsPanel({ typesafeKey = '', onTypesafeKeyChange = () => {}
   const [key, setKey] = useState(() => readApiKey())
   const [status, setStatus] = useState(() => (readApiKey() ? 'checking' : 'none'))
   const [jevStatus, setJevStatus] = useState('none')
+  const [mapsKey, setMapsKey] = useState(() => readGoogleMapsKey())
+  const [mapsStatus, setMapsStatus] = useState(() => (readGoogleMapsKey() ? 'saved' : 'none'))
 
   const verify = useCallback(async (apiKey) => {
     if (!apiKey) {
@@ -104,6 +106,18 @@ export function SettingsPanel({ typesafeKey = '', onTypesafeKeyChange = () => {}
   const handleClearJev = () => {
     onTypesafeKeyChange('')
     setJevStatus('none')
+  }
+
+  const handleSaveMaps = () => {
+    const trimmed = mapsKey.trim()
+    writeGoogleMapsKey(trimmed)
+    setMapsStatus(trimmed ? 'saved' : 'none')
+  }
+
+  const handleClearMaps = () => {
+    writeGoogleMapsKey('')
+    setMapsKey('')
+    setMapsStatus('none')
   }
 
   const fab = combinedFab(jevStatus, status)
@@ -212,6 +226,51 @@ export function SettingsPanel({ typesafeKey = '', onTypesafeKeyChange = () => {}
               </button>
               <button type="button" className="settings-panel__save" onClick={handleSave}>
                 Save &amp; verify
+              </button>
+            </div>
+          </section>
+
+          <section className="settings-panel__section">
+            <div className="settings-panel__head">
+              <span className="settings-panel__title">Google Maps API key</span>
+            </div>
+            <p className="settings-panel__hint">
+              Browser key for map workspaces. Enable Maps JavaScript API and the Drawing
+              library. Restrict by HTTP referrer. Saved here, sent as a header, never
+              stored in the widget spec. Published embeds use the server
+              GOOGLE_MAPS_API_KEY. Replan after saving.
+            </p>
+            <label htmlFor="google-maps-api-key" className="sr-only">
+              Google Maps API key
+            </label>
+            <input
+              id="google-maps-api-key"
+              type="password"
+              className="settings-panel__input"
+              value={mapsKey}
+              onChange={(e) => {
+                setMapsKey(e.target.value)
+                setMapsStatus('none')
+              }}
+              placeholder="AIza…"
+              spellCheck={false}
+              autoComplete="off"
+            />
+            <p
+              className={`settings-panel__status settings-panel__status--${mapsStatus === 'saved' ? 'connected' : 'none'}`}
+              role="status"
+              aria-live="polite"
+            >
+              {mapsStatus === 'saved'
+                ? 'Saved — the next Replan or New chat map will load the Maps JavaScript API.'
+                : 'No key saved — map workspaces use a demo canvas unless GOOGLE_MAPS_API_KEY is set on the server.'}
+            </p>
+            <div className="settings-panel__actions">
+              <button type="button" className="settings-panel__clear" onClick={handleClearMaps}>
+                Clear
+              </button>
+              <button type="button" className="settings-panel__save" onClick={handleSaveMaps}>
+                Save
               </button>
             </div>
           </section>

@@ -1,4 +1,5 @@
 import { COMPONENT_CATALOG, renderSpecHtml } from './spec-html.js'
+import { themeForRender } from './pack.js'
 
 // Minimal unstyled-ish baseline. Useful as a template for registering
 // your own design system: copy, restyle, registerDesignSystem().
@@ -23,5 +24,5 @@ export const plainSystem = {
   description: 'Minimal serif baseline — copy this file to register a custom design system',
   components: COMPONENT_CATALOG,
   theme,
-  render: (spec, themeOverride) => renderSpecHtml(spec, themeOverride || theme),
+  render: (spec, themeOverride) => renderSpecHtml(spec, themeForRender(themeOverride, theme)),
 }

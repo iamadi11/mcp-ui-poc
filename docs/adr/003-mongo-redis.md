@@ -11,7 +11,7 @@ Upstash Redis is already used for fingerprint replay. Atlas M0 (512MB, free) can
 ## Decision
 
 - **Redis**: session turns (TTL), OAuth session, fingerprint → policy, rate limits.
-- **Mongo**: `widgets` (versions, owner, theme, motion), `turns` (shape, jevAnswers, planner, latency, rating), `users` (GitHub id).
+- **Mongo**: `widgets` (versions, owner, theme, motion), `turns` (shape, prompt excerpt, jevAnswers, planner, latency, rating), `studio_chats` (soft-deleted studio threads for training), `users` (GitHub id).
 - Similarity remains `shapeHash` lists, not a paid vector DB.
 - If `MONGODB_URI` is unset, the app still plans; publish/history degrade gracefully.
 

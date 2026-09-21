@@ -1,4 +1,5 @@
 import { COMPONENT_CATALOG, renderSpecHtml } from './spec-html.js'
+import { themeForRender } from './pack.js'
 
 // Material Design 3 flavored theme: Roboto, tonal surfaces, elevation shadows,
 // filled chips and M3 primary palette.
@@ -27,5 +28,5 @@ export const materialSystem = {
   description: 'Material Design 3: Roboto, tonal surfaces, elevation, M3 palette',
   components: COMPONENT_CATALOG,
   theme,
-  render: (spec, themeOverride) => renderSpecHtml(spec, themeOverride || theme),
+  render: (spec, themeOverride) => renderSpecHtml(spec, themeForRender(themeOverride, theme)),
 }

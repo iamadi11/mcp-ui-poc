@@ -4,9 +4,15 @@
  */
 
 const ITERATE_RE =
-  /\b(add|make it|make the|change|tweak|update|upgrade|rename|hide|remove|show only|tooltip|hover|animate|animations?|responsive|drawer|sheet|mobile)\b/i
+  /\b(add|make it|make the|change|tweak|update|upgrade|rename|hide|remove|show only|tooltip|hover|animate|animations?|graffiti|neon|responsive|drawer|sheet|mobile|modern|colour(?:ful)?|color(?:ful)?|vivid|theme|style|look|rounder|radius|corners?|tighter)\b/i
 
 const DASHBOARD_RE = /\bcreate a (new )?dashboard\b|\bbuild a dashboard\b/i
+
+const CREATE_RE =
+  /^\s*((please|can you|could you|would you|will you)\s+)?(create|build|generate|design|make me|make a)\b/i
+
+const CREATE_ANYWHERE_RE =
+  /\b(create|build|generate|design)\b.{0,80}\b(checkout|login|landing|game|form|page|app|dashboard|widget)\b/i
 
 const MISSING_RECORDS_RE =
   /\b(nothing|empty|missing|visible|blank).{0,48}\b(records?|table|rows)\b|\b(records?|table|rows).{0,48}\b(nothing|empty|missing|visible|blank)\b/i
@@ -41,11 +47,13 @@ export function policyFitsShape(policy, shape) {
 export function isIteratePrompt(text) {
   const raw = String(text || '')
   if (DASHBOARD_RE.test(raw)) return false
+  if ((CREATE_RE.test(raw) || CREATE_ANYWHERE_RE.test(raw)) && !/\bmake it\b/i.test(raw)) return false
   if (MISSING_RECORDS_RE.test(raw)) return true
   return ITERATE_RE.test(raw)
 }
 
-export function selectReplayPolicy({ fingerprintPolicy, iterate, instructions, shape } = {}) {
+export function selectReplayPolicy({ fingerprintPolicy, iterate, instructions, shape, fresh } = {}) {
+  if (fresh !== false) return null
   if (iterate) return null
   if (!fingerprintPolicy) return null
   if (!policyFitsShape(fingerprintPolicy, shape)) return null
@@ -89,8 +97,20 @@ export function applyInstructionUpgrades(policy, instructions) {
   }
 
   if (/\bdrawer|\bsheet|\binsights?\b|\bresponsive|\bmobile\b/i.test(text)) {
-    next.drawer = true
-    next.componentTypes = ensureTypes(next.componentTypes, ['table'])
+    const exclusive = ['login-form', 'work-stage', 'landing-page', 'checkout', 'pricing', 'form', 'settings', 'calendar', 'html-block']
+    if (!exclusive.some((type) => next.componentTypes.includes(type))) {
+      next.drawer = true
+      next.componentTypes = ensureTypes(next.componentTypes, ['table'])
+    }
+  }
+
+  const radiusOnly = /\brounder|\bradius|\bcorners?\b|\btighter\b/i.test(text)
+    && !/\bvivid\b|\bmodern\b|\bcolour(?:ful)?\b|\bcolor(?:ful)?\b/i.test(text)
+  if (radiusOnly) {
+    next.radius = /\btighter\b/i.test(text) ? '4px' : '16px'
+  } else if (/\bmodern\b|\bvivid\b|\btheme\b|\bstyle\b|\blook\b|\bcolour(?:ful)?\b|\bcolor(?:ful)?\b/i.test(text)) {
+    next.look = 'vivid'
+    if (!next.motion || next.motion === 'none') next.motion = 'stagger'
   }
 
   if (/\bonly (the )?chart\b|\bhide (the )?table\b/i.test(text)) {
@@ -100,13 +120,65 @@ export function applyInstructionUpgrades(policy, instructions) {
     next.componentTypes = ensureTypes(next.componentTypes, ['stat-grid', 'chart', 'table'])
   }
 
+  if (next.componentTypes.includes('login-form')) {
+    next.componentTypes = ['login-form']
+    next.drawer = false
+  }
+  if (next.componentTypes.includes('work-stage')) {
+    next.componentTypes = ['work-stage']
+    next.drawer = false
+  }
+  if (next.componentTypes.includes('landing-page')) {
+    next.componentTypes = ['landing-page']
+    next.drawer = false
+  }
+  if (next.componentTypes.includes('checkout')) {
+    next.componentTypes = ['checkout']
+    next.drawer = false
+  }
+  if (next.componentTypes.includes('pricing')) {
+    next.componentTypes = ['pricing']
+    next.drawer = false
+  }
+  if (next.componentTypes.includes('form')) {
+    next.componentTypes = ['form']
+    next.drawer = false
+  }
+  if (next.componentTypes.includes('settings')) {
+    next.componentTypes = ['settings']
+    next.drawer = false
+  }
+  if (next.componentTypes.includes('calendar')) {
+    next.componentTypes = ['calendar']
+    next.drawer = false
+  }
+  if (next.componentTypes.includes('html-block')) {
+    next.componentTypes = ['html-block']
+    next.drawer = false
+  }
+
   return next
+}
+
+function isRadiusOnly(text) {
+  return /\brounder|\bradius|\bcorners?\b|\btighter\b/i.test(String(text || ''))
+    && !/\bvivid\b|\bmodern\b|\bcolour(?:ful)?\b|\bcolor(?:ful)?\b/i.test(String(text || ''))
+}
+
+export function isLookMotionOnly(text) {
+  const s = String(text || '')
+  if (!s.trim()) return false
+  if (/\bgraffiti|neon|spray|glitch|paint\b/i.test(s)) return false
+  const look = /\bvivid\b|\brounder\b|\bradius\b|\bcorners?\b|\btighter\b|\bmodern\b|\bcolour(?:ful)?\b|\bcolor(?:ful)?\b|\banimat|\bmotion\b|\bstagger\b|\btheme\b|\bstyle\b|\blook\b/i.test(s)
+  const create = /\bcreate\b|\bbuild\b|\bgame\b|\blogin\b|\bcheckout\b|\blanding\b|\bdashboard\b|\bform\b|\bmap\b|\bpricing\b|\bcalendar\b|\bsettings\b/i.test(s)
+  return look && !create
 }
 
 export function mergeIteratePolicy(previous, generated, instructions) {
   const base = previous || generated || {}
   const upgraded = applyInstructionUpgrades(base, instructions)
   const fromJev = generated || {}
+  const radiusOnly = isRadiusOnly(instructions)
   return {
     ...base,
     ...upgraded,
@@ -117,9 +189,15 @@ export function mergeIteratePolicy(previous, generated, instructions) {
       upgraded.componentTypes?.length ? upgraded.componentTypes : fromJev.componentTypes || base.componentTypes,
     chart: { ...(base.chart || {}), ...(fromJev.chart || {}), ...(upgraded.chart || {}) },
     motion: upgraded.motion || fromJev.motion || base.motion || 'none',
+    look: radiusOnly ? (base.look || 'default') : (upgraded.look || fromJev.look || base.look || 'default'),
+    radius: upgraded.radius || fromJev.radius || base.radius,
     drawer: Boolean(upgraded.drawer || fromJev.drawer || base.drawer),
     includedFields: base.includedFields || fromJev.includedFields,
     rowsPath: base.rowsPath ?? fromJev.rowsPath,
     columns: base.columns || fromJev.columns,
+    html: base.html || fromJev.html,
+    css: base.css || fromJev.css,
+    script: base.script || fromJev.script,
+    kicker: base.kicker || fromJev.kicker,
   }
 }

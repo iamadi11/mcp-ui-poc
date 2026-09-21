@@ -14,12 +14,13 @@ export function ExamplesPanel({ onSend, busy }) {
   return (
     <div className="examples-panel">
       <p className="examples-lead">
-        Public JSON endpoints, already pasted. Send starts a new chat and generates the widget.
+        Public JSON recipes. Send starts a new chat. URLs travel in the prompt.
       </p>
       <div className="studio-chips" role="list">
         <button
           type="button"
           className={`chip ${kind === '' ? 'chip-on' : ''}`}
+          aria-pressed={kind === ''}
           onClick={() => setKind('')}
         >
           All
@@ -29,6 +30,7 @@ export function ExamplesPanel({ onSend, busy }) {
             key={item.id}
             type="button"
             className={`chip ${kind === item.id ? 'chip-on' : ''}`}
+            aria-pressed={kind === item.id}
             onClick={() => setKind(item.id)}
           >
             {item.label}
@@ -60,7 +62,7 @@ export function ExamplesPanel({ onSend, busy }) {
                 disabled={busy}
                 onClick={() => onSend(item)}
               >
-                <Send size={14} />
+                <Send size={14} aria-hidden="true" />
                 Send
               </Button>
             </li>

@@ -1,82 +1,44 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Loader2, Send, ThumbsDown, ThumbsUp, Copy, Upload, MessageSquarePlus, MessageSquare, Library } from 'lucide-react'
-import { UIResourceRenderer } from '@mcp-ui/client'
+import { History, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { errorFromResponse } from '../apiError'
-import { readApiKey } from '../storage.js'
+import { readApiKey, readGoogleMapsKey, readThemePack, writeThemePack } from '../storage.js'
 import { readSse } from './sse.js'
-import { ExamplesPanel } from './ExamplesPanel.jsx'
+import { ChatLog } from './ChatLog.jsx'
+import { CanvasPreview } from './CanvasPreview.jsx'
+import { ComposerBar } from './ComposerBar.jsx'
+import { RecentsSidebar } from './RecentsSidebar.jsx'
+import { SettingsSheet } from './SettingsSheet.jsx'
+import { PublishDialog } from './PublishDialog.jsx'
+import { DebugTrace } from './DebugTrace.jsx'
+import {
+  chatTitle,
+  compactResult,
+  loadHistory,
+  upsertChat,
+  writeHistory,
+  appendVersion,
+  makeVersion,
+  sessionDraft,
+  isArchived,
+  archiveChatLocal,
+  trainingRecord,
+} from './history.js'
 
-const SAMPLE_URLS = [
-  { label: 'Users', url: 'https://jsonplaceholder.typicode.com/users' },
-  { label: 'Posts', url: 'https://jsonplaceholder.typicode.com/posts' },
-  { label: 'Weather', url: 'https://api.open-meteo.com/v1/forecast?latitude=28.6&longitude=77.2&hourly=temperature_2m' },
-]
-
-const CREATE_STARTERS = [
-  { label: 'Dashboard', value: 'Create a dashboard from this API' },
-  { label: 'Table', value: 'Show as a table' },
-  { label: 'Chart', value: 'Show as a bar chart' },
-  { label: 'Embed widget', value: 'Single embeddable component' },
-]
-
-const ITERATE_STARTERS = [
-  { label: 'Add tooltip', value: 'add tooltip on the chart' },
-  { label: 'Hide table', value: 'hide the table' },
-  { label: 'Bar chart', value: 'make it a bar chart' },
-  { label: 'Chart only', value: 'show only the chart' },
-]
-
-const STEP_LABELS = {
-  routed: 'Routed',
-  fetching: 'Fetch',
-  planned: 'Plan',
-  render: 'Render',
+function prefersReducedMotion() {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
 }
 
-function upsertStep(steps, step, data) {
-  const rec = { step, ...data }
-  const index = steps.findIndex((item) => item.step === step)
-  if (index === -1) return [...steps, rec]
-  const next = [...steps]
-  next[index] = rec
-  return next
-}
-
-function MetricsCard({ steps, totalMs, planner, pending }) {
-  if (!steps.length && !pending) return null
-  return (
-    <div className="metrics-card" aria-label="Turn timings">
-      {steps.map((item) => {
-        const label = STEP_LABELS[item.step] || item.step
-        let detail = ''
-        if (item.status === 'start') detail = '…'
-        else if (item.skipped) detail = 'skipped'
-        else if (typeof item.ms === 'number') detail = `${item.ms}ms`
-        const extra = [
-          item.plannerLabel,
-          typeof item.jevConfidence === 'number' ? `${Math.round(item.jevConfidence * 100)}%` : null,
-          item.bytes != null ? `${item.bytes} B` : null,
-        ]
-          .filter(Boolean)
-          .join(' · ')
-        return (
-          <div key={item.step} className="metrics-row">
-            <span className="metrics-step">{label}</span>
-            <span className="metrics-ms">{detail}</span>
-            {extra ? <span className="metrics-extra">{extra}</span> : null}
-          </div>
-        )
-      })}
-      {totalMs != null ? (
-        <div className="metrics-row metrics-total">
-          <span className="metrics-step">Total</span>
-          <span className="metrics-ms">{totalMs}ms</span>
-          {planner ? <span className="metrics-extra">{planner}</span> : null}
-        </div>
-      ) : null}
-    </div>
-  )
+function isDebugMode() {
+  try {
+    return new URLSearchParams(window.location.search).get('debug') === '1'
+  } catch {
+    return false
+  }
 }
 
 function newSessionId() {
@@ -99,31 +61,140 @@ function sessionId() {
   }
 }
 
+function chatIdFromUrl() {
+  try {
+    return new URLSearchParams(window.location.search).get('c')
+  } catch {
+    return null
+  }
+}
+
+function setChatUrl(id) {
+  try {
+    const url = new URL(window.location.href)
+    if (id) url.searchParams.set('c', id)
+    else url.searchParams.delete('c')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}`)
+  } catch {
+    /* ignore */
+  }
+}
+
 function authHeaders(typesafeKey) {
   const headers = { 'Content-Type': 'application/json', Accept: 'text/event-stream' }
   const anth = readApiKey()
   if (anth) headers['x-anthropic-api-key'] = anth
   if (typesafeKey?.trim()) headers['x-typesafe-api-key'] = typesafeKey.trim()
+  const maps = readGoogleMapsKey()
+  if (maps) headers['x-google-maps-api-key'] = maps
   return headers
 }
 
-export function Studio({ typesafeKey = '', onUIAction, decisionStore }) {
-  const [messages, setMessages] = useState([])
+function mapStage(event, data) {
+  if (event === 'stage' && data?.stage) return data.stage
+  if (event === 'fetching' && !data?.skipped) return 'fetching'
+  if (event === 'planned') return 'designing'
+  if (event === 'render') return 'rendering'
+  return null
+}
+
+export function Studio({
+  typesafeKey = '',
+  onTypesafeKeyChange = () => {},
+  onUIAction,
+  jevAvailable = false,
+  aiAvailable = false,
+  jevFromEnv = false,
+  aiFromEnv = false,
+  mapsFromEnv = false,
+  keysUnknown = false,
+}) {
+  const boot = loadHistory()
+  const linked = chatIdFromUrl()
+  const bootChat = boot.chats.find((item) => item.id === linked) || boot.chats.find((item) => item.id === boot.activeId) || null
+  const [messages, setMessages] = useState(() => bootChat?.messages || [])
   const [draft, setDraft] = useState('')
-  const [urlChip, setUrlChip] = useState('')
-  const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
-  const [result, setResult] = useState(null)
-  const [rating, setRating] = useState(null)
+  const [result, setResult] = useState(() => bootChat?.result || null)
   const [auth, setAuth] = useState({ user: null, oauth: false })
   const [publish, setPublish] = useState(null)
   const [copied, setCopied] = useState(false)
-  const [liveMetrics, setLiveMetrics] = useState([])
+  const [stage, setStage] = useState('')
+  const [showSkeleton, setShowSkeleton] = useState(false)
+  const [liveThoughts, setLiveThoughts] = useState([])
+  const [livePath, setLivePath] = useState([])
+  const [liveReason, setLiveReason] = useState('')
   const listRef = useRef(null)
   const inFlight = useRef(false)
-  const [sid, setSid] = useState(() => sessionId())
-  const [pane, setPane] = useState('chat')
+  const lastPrompt = useRef('')
+  const [sid, setSid] = useState(() => {
+    if (bootChat?.id) {
+      try { sessionStorage.setItem('mcp-studio-session', bootChat.id) } catch { /* ignore */ }
+      return bootChat.id
+    }
+    return sessionId()
+  })
+  const [chats, setChats] = useState(() => boot.chats)
+  const [publicId, setPublicId] = useState(() => bootChat?.publicId || null)
+  const [recentsOpen, setRecentsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsTab, setSettingsTab] = useState('keys')
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [chipsOpen, setChipsOpen] = useState(true)
+  const [pack, setPack] = useState(() => readThemePack())
+  const debug = isDebugMode()
+  const fromEnv = Boolean(jevFromEnv || aiFromEnv)
+  const envKeys = fromEnv || jevAvailable || aiAvailable
+  const keysReady = !keysUnknown
+  const missingKey = keysReady && !envKeys && !typesafeKey.trim() && !readApiKey()
+
+  const persist = useCallback((nextSid, nextMessages, nextResult, opts = {}) => {
+    if (!nextSid) return loadHistory().chats
+    if (!(nextMessages || []).length && !nextResult) return loadHistory().chats
+    const prev = loadHistory().chats.find((item) => item.id === nextSid)
+    let nextVersions = opts.versions || prev?.versions || []
+    if (opts.recordVersion && nextResult) {
+      const prompt = opts.prompt || [...(nextMessages || [])].reverse().find((m) => m.role === 'user')?.text || ''
+      nextVersions = appendVersion(nextVersions, makeVersion(prompt, nextResult))
+    }
+    const nextPublicId = opts.publicId !== undefined ? opts.publicId : prev?.publicId || null
+    const nextActive = opts.activeVersionId || nextResult?.componentId || prev?.activeVersionId || null
+    const chat = {
+      id: nextSid,
+      title: chatTitle(nextMessages),
+      messages: nextMessages || [],
+      result: compactResult(nextResult),
+      versions: nextVersions,
+      publicId: nextPublicId,
+      activeVersionId: nextActive,
+      updatedAt: new Date().toISOString(),
+    }
+    if (isArchived(nextSid)) {
+      archiveChatLocal(chat)
+      return loadHistory().chats
+    }
+    const nextChats = upsertChat(loadHistory().chats, chat)
+    setChats(nextChats)
+    writeHistory({ chats: nextChats, activeId: nextSid })
+    if (opts.syncState) {
+      setPublicId(nextPublicId)
+    }
+    return nextChats
+  }, [])
+
+  useEffect(() => {
+    if (!recentsOpen) return undefined
+    const onKey = (event) => {
+      if (event.key === 'Escape') setRecentsOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [recentsOpen])
+
+  useEffect(() => {
+    setChatUrl(sid)
+  }, [sid])
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -134,23 +205,69 @@ export function Studio({ typesafeKey = '', onUIAction, decisionStore }) {
 
   useEffect(() => {
     listRef.current?.lastElementChild?.scrollIntoView({ block: 'end' })
-  }, [messages, status])
+  }, [messages, liveThoughts, busy])
+
+  useEffect(() => {
+    if (!busy || prefersReducedMotion()) {
+      setShowSkeleton(false)
+      return undefined
+    }
+    const timer = setTimeout(() => setShowSkeleton(true), 1000)
+    return () => clearTimeout(timer)
+  }, [busy])
+
+  useEffect(() => {
+    const chat = loadHistory().chats.find((item) => item.id === sid)
+    const draftWidget = sessionDraft(chat?.result)
+    if (!sid || !draftWidget) return undefined
+    let cancelled = false
+    fetch('/api/chat/restore', {
+      method: 'POST',
+      credentials: 'include',
+      headers: authHeaders(typesafeKey),
+      body: JSON.stringify({ sessionId: sid, widget: draftWidget }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (cancelled || !body?.html) return
+        setResult(body)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [sid, typesafeKey])
 
   const send = useCallback(
     async (text, opts = {}) => {
       const message = (text ?? draft).trim()
-      const url = String(opts.url ?? urlChip).trim()
       const session = opts.sessionId || sid
       if (!message || inFlight.current) return
+      if (missingKey && !opts.force) {
+        setError('Add an API key in Settings to generate')
+        setSettingsTab('keys')
+        setSettingsOpen(true)
+        return
+      }
+      lastPrompt.current = message
       inFlight.current = true
       setDraft('')
       setError(null)
       setPublish(null)
-      setRating(null)
-      setLiveMetrics([])
       setBusy(true)
-      setStatus('routed')
-      setMessages((prev) => [...prev, { role: 'user', text: message }])
+      setStage('designing')
+      setChipsOpen(true)
+      setLiveThoughts([{ thought: 'Working on this turn.' }])
+      setLivePath([])
+      setLiveReason('')
+      const pending = [...messages, { role: 'user', text: message }]
+      setMessages(pending)
+      const turnThoughts = []
+      const priorUsers = messages
+        .filter((item) => item.role === 'user' && item.text)
+        .slice(-8)
+        .map((item) => ({ role: 'user', text: String(item.text).slice(0, 500) }))
+      const goal = priorUsers[0]?.text || message
       try {
         const res = await fetch('/api/chat/turn', {
           method: 'POST',
@@ -158,107 +275,148 @@ export function Studio({ typesafeKey = '', onUIAction, decisionStore }) {
           headers: authHeaders(typesafeKey),
           body: JSON.stringify({
             message,
-            url: url || undefined,
             sessionId: session,
             stream: true,
+            fresh: true,
+            themePack: pack || undefined,
+            goal,
+            history: priorUsers,
           }),
         })
         if (!res.ok) throw await errorFromResponse(res)
         const rendered = await readSse(res, (event, data) => {
-          if (event === 'routed' || event === 'fetching' || event === 'planned' || event === 'render') {
-            setLiveMetrics((prev) => upsertStep(prev, event, data || {}))
-            if (event === 'fetching' && data?.status === 'start') setStatus('fetching')
-            else if (event === 'planned' && data?.status === 'start') setStatus('planning')
-            else if (event === 'planned') setStatus(`planned · ${data.plannerLabel || data.planner || ''}`)
-            else setStatus(event)
+          const nextStage = mapStage(event, data)
+          if (nextStage) setStage(nextStage)
+          if (event === 'trace' || event === 'thought') {
+            const rec = data || {}
+            const thought = rec.thought || rec.text || rec.reason
+            if (thought) {
+              turnThoughts.push({ ...rec, thought })
+              setLiveThoughts([...turnThoughts])
+            }
+            if (Array.isArray(rec.path) && rec.path.length) {
+              setLivePath(rec.path)
+              if (rec.reason) setLiveReason(rec.reason)
+            }
           }
           if (event === 'rendered') {
+            const metaThoughts = Array.isArray(data?.meta?.thoughts) ? data.meta.thoughts : []
+            for (const rec of metaThoughts) {
+              const thought = rec?.thought || rec?.text
+              if (thought && !turnThoughts.some((item) => item.thought === thought)) {
+                turnThoughts.push({ ...rec, thought })
+              }
+            }
             setResult(data)
-            const src = data.meta?.source?.url
-            if (src) setUrlChip((cur) => cur || src)
-            const steps = data.meta?.timings || []
-            setLiveMetrics(steps)
-            setStatus(`rendered · ${data.meta?.plannerLabel || ''} · ${data.meta?.totalMs ?? data.meta?.latencyMs ?? '?'}ms`)
-            setMessages((prev) => [
-              ...prev,
-              {
-                role: 'metrics',
-                steps,
-                totalMs: data.meta?.totalMs ?? data.meta?.latencyMs,
-                planner: data.meta?.plannerLabel,
-              },
-            ])
+            setStage('')
+            setLiveThoughts([])
+            setMessages((prev) => {
+              const thoughtText = turnThoughts.map((item) => item.thought).filter(Boolean).slice(-8).join('\n')
+              const next = thoughtText ? [...prev, { role: 'thought', text: thoughtText }] : [...prev]
+              persist(session, next, data, { recordVersion: true, syncState: true })
+              return next
+            })
           }
           if (event === 'error') {
             const msg = data.error || 'Turn failed'
             setError(msg)
-            setMessages((prev) => [...prev, { role: 'assistant', text: msg }])
+            setLiveThoughts([])
+            setMessages((prev) => {
+              const thoughtText = turnThoughts.map((item) => item.thought).filter(Boolean).slice(-8).join('\n')
+              const next = [
+                ...(thoughtText ? [...prev, { role: 'thought', text: thoughtText }] : prev),
+                { role: 'assistant', text: msg },
+              ]
+              persist(session, next, null)
+              return next
+            })
           }
         })
         if (rendered) setResult(rendered)
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Turn failed'
         setError(msg)
+        setLiveThoughts([])
         setMessages((prev) => [...prev, { role: 'assistant', text: msg }])
       } finally {
         inFlight.current = false
         setBusy(false)
+        setStage('')
       }
     },
-    [draft, sid, typesafeKey, urlChip],
+    [draft, messages, missingKey, pack, persist, sid, typesafeKey],
   )
 
-  const runExample = useCallback(
-    (example) => {
-      if (!example?.prompt || inFlight.current) return
-      const nextSid = newSessionId()
-      setSid(nextSid)
-      setMessages([])
-      setDraft('')
-      setStatus('')
-      setError(null)
-      setResult(null)
-      setRating(null)
-      setPublish(null)
-      setLiveMetrics([])
-      setUrlChip(example.url)
-      setPane('chat')
-      send(example.prompt, { url: example.url, sessionId: nextSid })
-    },
-    [send],
-  )
+  const openChat = useCallback((chat) => {
+    if (!chat || inFlight.current) return
+    const nextChats = persist(sid, messages, result)
+    try { sessionStorage.setItem('mcp-studio-session', chat.id) } catch { /* ignore */ }
+    setSid(chat.id)
+    setMessages(chat.messages || [])
+    setResult(chat.result || null)
+    setPublicId(chat.publicId || null)
+    setDraft('')
+    setError(null)
+    setPublish(null)
+    setChipsOpen(true)
+    setLiveThoughts([])
+    writeHistory({ chats: nextChats, activeId: chat.id })
+    setRecentsOpen(false)
+  }, [messages, persist, result, sid])
 
   const newChat = useCallback(() => {
     if (inFlight.current) return
-    setSid(newSessionId())
+    const nextChats = persist(sid, messages, result)
+    const nextSid = newSessionId()
+    setSid(nextSid)
     setMessages([])
     setDraft('')
-    setStatus('')
     setError(null)
     setResult(null)
-    setRating(null)
+    setPublicId(null)
     setPublish(null)
-    setLiveMetrics([])
+    setChipsOpen(true)
+    setLiveThoughts([])
+    setLivePath([])
+    setLiveReason('')
+    setStage('')
+    setRecentsOpen(false)
+    writeHistory({ chats: nextChats, activeId: nextSid })
+  }, [messages, persist, result, sid])
+
+  const resetSession = useCallback((nextChats, activeId = null) => {
+    const nextSid = newSessionId()
+    setSid(nextSid)
+    setMessages([])
+    setDraft('')
+    setError(null)
+    setResult(null)
+    setPublicId(null)
+    setPublish(null)
+    writeHistory({ chats: nextChats, activeId: activeId || nextSid })
   }, [])
 
-  const rate = useCallback(
-    async (value) => {
-      const decisionId = result?.meta?.decisionId || result?.componentId
-      if (!decisionId) return
-      setRating(value)
-      try {
-        await fetch('/api/feedback', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ decisionId, rating: value }),
-        })
-      } catch {
-        /* ratings are best-effort */
-      }
-    },
-    [result],
-  )
+  const removeChat = useCallback(async (chat) => {
+    if (!chat?.id || inFlight.current) return
+    persist(sid, messages, result)
+    const latest = chat.id === sid
+      ? loadHistory().chats.find((item) => item.id === sid) || chat
+      : chat
+    try {
+      await fetch('/api/chat/archive', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trainingRecord(archiveChatLocal(latest))),
+      })
+    } catch {
+      archiveChatLocal(latest)
+    }
+    const nextChats = loadHistory().chats.filter((item) => item.id !== chat.id)
+    setChats(nextChats)
+    if (chat.id === sid) resetSession(nextChats)
+    else writeHistory({ chats: nextChats, activeId: sid })
+  }, [messages, persist, resetSession, result, sid])
 
   const publishWidget = useCallback(async () => {
     setError(null)
@@ -271,6 +429,10 @@ export function Studio({ typesafeKey = '', onUIAction, decisionStore }) {
           sessionId: sid,
           decisionId: result?.componentId,
           origin: window.location.origin,
+          publicId: publicId || undefined,
+          themeId: result?.themeId || result?.meta?.designSystem,
+          themePack: pack || result?.themePack,
+          motion: result?.motion || result?.meta?.motion,
         }),
       })
       const body = await res.json().catch(() => ({}))
@@ -283,211 +445,144 @@ export function Studio({ typesafeKey = '', onUIAction, decisionStore }) {
       }
       if (!res.ok) throw new Error(body.error || 'Publish failed')
       setPublish(body)
+      setPublicId(body.publicId)
+      setPublishOpen(true)
+      persist(sid, messages, result, { publicId: body.publicId, syncState: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Publish failed')
     }
-  }, [result, sid])
+  }, [messages, pack, persist, publicId, result, sid])
+
+  const applyPack = useCallback(async (nextPack) => {
+    setPack(nextPack)
+    writeThemePack(nextPack)
+    if (!result || inFlight.current) return
+    setBusy(true)
+    try {
+      const res = await fetch('/api/chat/customize', {
+        method: 'POST',
+        credentials: 'include',
+        headers: authHeaders(typesafeKey),
+        body: JSON.stringify({
+          sessionId: sid,
+          publicId: publicId || undefined,
+          themePack: nextPack,
+        }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body.error || 'Could not apply look')
+      setResult(body)
+      persist(sid, messages, body, { recordVersion: true, prompt: 'Connect look', syncState: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not apply look')
+    } finally {
+      setBusy(false)
+    }
+  }, [messages, persist, publicId, result, sid, typesafeKey])
 
   const snippet = publish
     ? publish.snippet || `<iframe src="${window.location.origin}${publish.embedUrl}" title="MCP UI widget" loading="lazy" style="width:100%;min-height:420px;border:0"></iframe>`
     : ''
 
   return (
-    <div className="studio">
-      <section className="studio-chat" aria-label={pane === 'examples' ? 'Examples' : 'Chat'}>
-        <div className="studio-chat-head">
-          <div className="studio-tabs" role="tablist" aria-label="Studio">
-            <button
-              type="button"
-              role="tab"
-              id="studio-tab-chat"
-              aria-controls="studio-panel-chat"
-              aria-selected={pane === 'chat'}
-              className={`studio-tab ${pane === 'chat' ? 'studio-tab-on' : ''}`}
-              onClick={() => setPane('chat')}
-            >
-              <MessageSquare size={14} />
-              Chat
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="studio-tab-examples"
-              aria-controls="studio-panel-examples"
-              aria-selected={pane === 'examples'}
-              className={`studio-tab ${pane === 'examples' ? 'studio-tab-on' : ''}`}
-              onClick={() => setPane('examples')}
-            >
-              <Library size={14} />
-              Examples
-            </button>
-          </div>
-          {pane === 'chat' ? (
-            <Button type="button" variant="outline" size="sm" onClick={newChat} disabled={busy}>
-              <MessageSquarePlus size={14} />
-              New chat
-            </Button>
-          ) : null}
-        </div>
-        {pane === 'examples' ? (
-          <div id="studio-panel-examples" role="tabpanel" aria-labelledby="studio-tab-examples" className="examples-wrap">
-            <ExamplesPanel onSend={runExample} busy={busy} />
-          </div>
-        ) : (
-        <div id="studio-panel-chat" role="tabpanel" aria-labelledby="studio-tab-chat" className="chat-panel">
-        <div className="studio-chips" role="list">
-          {SAMPLE_URLS.map((item) => (
-            <button
-              key={item.url}
-              type="button"
-              className={`chip ${urlChip === item.url ? 'chip-on' : ''}`}
-              onClick={() => setUrlChip((cur) => (cur === item.url ? '' : item.url))}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-        <label className="sr-only" htmlFor="studio-url">
-          API URL
-        </label>
-        <input
-          id="studio-url"
-          className="url-paste"
-          type="text"
-          inputMode="url"
-          autoComplete="off"
-          spellCheck="false"
-          placeholder="Paste an API URL"
-          value={urlChip}
-          onChange={(e) => setUrlChip(e.target.value)}
-        />
-        {result ? (
-          <p className="iterate-hint">Editing this widget. New chat starts a fresh one.</p>
-        ) : null}
-        <div className="studio-chips" role="list">
-          {(result ? ITERATE_STARTERS : CREATE_STARTERS).map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              className="chip"
-              disabled={busy}
-              onClick={() => send(item.value)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-        <div className="chat-log" ref={listRef}>
-          {messages.length === 0 && (
-            <p className="chat-empty">Pin an API, then ask for a dashboard. Follow-ups upgrade this widget.</p>
-          )}
-          {messages.map((m, i) => (
-            m.role === 'metrics' ? (
-              <MetricsCard key={`metrics-${i}`} steps={m.steps || []} totalMs={m.totalMs} planner={m.planner} />
-            ) : (
-              <div key={`${m.role}-${i}`} className={`bubble bubble-${m.role}`}>
-                {m.text}
-              </div>
-            )
-          ))}
-          {busy && liveMetrics.length && messages[messages.length - 1]?.role !== 'metrics' ? (
-            <MetricsCard steps={liveMetrics} pending />
-          ) : null}
-        </div>
-        {status ? (
-          <p className="stream-status" role="status">
-            {busy && <Loader2 className="spin" size={14} aria-hidden />}
-            {status}
-          </p>
-        ) : null}
-        <form
-          className="composer"
-          onSubmit={(e) => {
-            e.preventDefault()
-            send()
-          }}
-        >
-          <label className="sr-only" htmlFor="studio-draft">
-            Message
-          </label>
-          <textarea
-            id="studio-draft"
-            rows={3}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                send()
-              }
-            }}
-            placeholder="Ask for a dashboard, then iterate: add tooltip, hide the table…"
-            disabled={busy}
-          />
-          <Button type="submit" disabled={busy || !draft.trim()} aria-label="Send">
-            <Send size={16} />
-            Send
+    <div className="studio-shell">
+      <RecentsSidebar
+        open={recentsOpen}
+        chats={chats}
+        activeId={sid}
+        busy={busy}
+        onOpen={openChat}
+        onNew={newChat}
+        onRemove={removeChat}
+        onClose={() => setRecentsOpen(false)}
+      />
+      <div className="studio-journey">
+        <header className="journey-head">
+          <Button type="button" variant="ghost" size="icon-sm" aria-label="Recents" onClick={() => setRecentsOpen((v) => !v)}>
+            <History />
           </Button>
-        </form>
-        </div>
-        )}
-      </section>
-
-      <section className="studio-preview" aria-label="Preview">
-        <header className="preview-toolbar">
-          <span className="studio-pane-label">Preview</span>
-          <span className="preview-meta">
-            {result?.meta?.plannerLabel || '—'}
-            {decisionStore ? ` · ${decisionStore}` : ''}
-          </span>
-          <div className="preview-actions">
-            <Button type="button" variant="outline" size="sm" disabled={!result} onClick={() => rate('up')} aria-pressed={rating === 'up'}>
-              <ThumbsUp size={14} />
-            </Button>
-            <Button type="button" variant="outline" size="sm" disabled={!result} onClick={() => rate('down')} aria-pressed={rating === 'down'}>
-              <ThumbsDown size={14} />
-            </Button>
-            <Button type="button" size="sm" disabled={!result || busy} onClick={publishWidget}>
-              <Upload size={14} />
-              Publish
+          <div className="brand-copy">
+            <p className="kicker">MCP UI</p>
+            <h1>Studio</h1>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            {auth.oauth && !auth.user ? <a className="text-btn" href="/api/auth/github">GitHub</a> : null}
+            {auth.user ? <span className="status-meta">@{auth.user.login}</span> : null}
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="Settings" onClick={() => { setSettingsTab('keys'); setSettingsOpen(true) }}>
+              <Settings />
             </Button>
           </div>
         </header>
-        {error ? <p className="studio-error">{error}</p> : null}
-        {publish ? (
-          <div className="publish-box">
-            <code>{`${window.location.origin}${publish.embedUrl}`}</code>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                await navigator.clipboard.writeText(snippet)
-                setCopied(true)
-                setTimeout(() => setCopied(false), 1500)
-              }}
-            >
-              <Copy size={14} />
-              {copied ? 'Copied' : 'Copy iframe'}
-            </Button>
-            {auth.user ? <span className="muted">Owner: {auth.user.login}</span> : (
-              <span className="muted">{publish.anonymous ? 'Unlisted link — GitHub optional for owner edits' : null}</span>
+        <div className={`studio-split${result || busy ? ' has-widget' : ''}`}>
+          <CanvasPreview
+            result={result}
+            busy={busy}
+            stage={stage}
+            showSkeleton={showSkeleton}
+            error={error}
+            onPublish={publishWidget}
+            onTryAgain={() => lastPrompt.current && send(lastPrompt.current, { force: true })}
+            onOpenSettings={() => { setSettingsTab('keys'); setSettingsOpen(true) }}
+            missingKey={missingKey && !result}
+            keysReady={keysReady}
+            fromEnv={fromEnv}
+            onUIAction={onUIAction}
+          />
+          <aside className="journey-log">
+            {messages.length || busy ? (
+              <ChatLog messages={messages} thoughts={liveThoughts} pending={busy} listRef={listRef} />
+            ) : (
+              <div className="arrive-copy">
+                <h2>Describe a UI</h2>
+                <p>See it live. Talk to change it. Share an embed.</p>
+              </div>
             )}
-          </div>
-        ) : null}
-        <div className="preview-frame">
-          {busy && !result ? <div className="preview-skeleton" role="status" aria-label="Generating" /> : null}
-          {result?.resource ? (
-            <UIResourceRenderer
-              resource={result.resource}
-              onUIAction={onUIAction}
-              htmlProps={{ style: { width: '100%', minHeight: 420, border: 'none' } }}
+            {debug ? (
+              <DebugTrace
+                thoughts={liveThoughts}
+                path={livePath}
+                reason={liveReason}
+                pending={busy}
+              />
+            ) : null}
+            <ComposerBar
+              draft={draft}
+              onDraft={setDraft}
+              onSend={send}
+              busy={busy}
+              empty={!result}
+              result={result}
+              chipsVisible={chipsOpen}
+              onDismissChips={() => setChipsOpen(false)}
+              onOpenLook={() => { setSettingsTab('look'); setSettingsOpen(true) }}
             />
-          ) : (
-            !busy && <p className="chat-empty">The live widget appears here.</p>
-          )}
+          </aside>
         </div>
-      </section>
+      </div>
+      <SettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        typesafeKey={typesafeKey}
+        onTypesafeKeyChange={onTypesafeKeyChange}
+        pack={pack}
+        onPack={applyPack}
+        initialTab={settingsTab}
+        jevFromEnv={jevFromEnv || jevAvailable}
+        aiFromEnv={aiFromEnv || aiAvailable}
+        mapsFromEnv={mapsFromEnv}
+      />
+      <PublishDialog
+        open={publishOpen}
+        onOpenChange={setPublishOpen}
+        snippet={snippet}
+        embedUrl={publish ? `${window.location.origin}/e/${publish.publicId}` : ''}
+        copied={copied}
+        onCopy={async () => {
+          await navigator.clipboard.writeText(snippet)
+          setCopied(true)
+          setTimeout(() => setCopied(false), 1500)
+        }}
+      />
     </div>
   )
 }

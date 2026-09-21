@@ -1,4 +1,5 @@
 import { COMPONENT_CATALOG, renderSpecHtml } from './spec-html.js'
+import { themeForRender } from './pack.js'
 
 // Glassmorphism theme — mirrors the host shell's --shell-* tokens (blur,
 // saturation, translucent fills, mesh-gradient backdrop) so generated UI
@@ -88,5 +89,5 @@ export const glassSystem = {
   description: 'Glassmorphism: blurred translucent surfaces matching the host app shell',
   components: COMPONENT_CATALOG,
   theme,
-  render: (spec, themeOverride) => renderSpecHtml(spec, themeOverride || theme),
+  render: (spec, themeOverride) => renderSpecHtml(spec, themeForRender(themeOverride, theme)),
 }

@@ -13,6 +13,8 @@ import {
   jevAvailable,
   jevModel,
   verifyJevKey,
+  sanitizeGoogleMapsKey,
+  runWithGoogleMapsKey,
 } from 'ui-compose-kit';
 import { createGenerateLimiter, createFeedbackLimiter } from './rate-limits.js';
 import { isHtmlPayloadError, sendHtmlTooLarge } from './generated-html-limit.js';
@@ -22,6 +24,7 @@ import { registerAuthRoutes, oauthConfigured } from './auth.js';
 import { registerChatRoutes } from './chat.js';
 import { registerWidgetRoutes } from './widgets.js';
 import { registerEmbedRoutes } from './embed.js';
+import { registerDesignPackRoutes } from './design-packs.js';
 import { planTurn } from './plan-turn.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -59,14 +62,19 @@ if (!isVercel) {
 
 app.get('/api/health', async (req, res) => {
   const [store, mongo] = await Promise.all([storeStatus(), mongoStatus()])
+  const jevFromEnv = Boolean(process.env.TYPESAFE_API_KEY)
+  const aiFromEnv = Boolean(process.env.ANTHROPIC_API_KEY)
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    ai: { available: aiAvailable(), model: anthropicAdapter.model },
-    jev: { available: jevAvailable(), model: jevModel() },
+    jevFromEnv,
+    aiFromEnv,
+    ai: { available: aiAvailable(), fromEnv: aiFromEnv, model: anthropicAdapter.model },
+    jev: { available: jevAvailable(), fromEnv: jevFromEnv, model: jevModel() },
     store,
     mongo,
     oauth: oauthConfigured(),
+    maps: { configured: Boolean(sanitizeGoogleMapsKey(process.env.GOOGLE_MAPS_API_KEY)) },
     designSystems: listDesignSystems().map(({ id, active }) => ({ id, active })),
     llmProviders: listLLMAdapters(),
   });
@@ -101,12 +109,13 @@ registerAuthRoutes(app);
 registerChatRoutes(app, { generateLimiter });
 registerWidgetRoutes(app, { generateLimiter });
 registerEmbedRoutes(app);
+registerDesignPackRoutes(app, { generateLimiter });
 
 app.post('/api/render-endpoint', generateLimiter, async (req, res) => {
   try {
     const { url, method, headers, body, instructions, designSystem, llmProvider, sessionId } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' });
-    const result = await planTurn({
+    const result = await runWithGoogleMapsKey(req.get('x-google-maps-api-key'), () => planTurn({
       url,
       method,
       headers,
@@ -118,7 +127,7 @@ app.post('/api/render-endpoint', generateLimiter, async (req, res) => {
       sessionId,
       apiKey: req.get('x-anthropic-api-key') || undefined,
       typesafeApiKey: req.get('x-typesafe-api-key') || undefined,
-    });
+    }));
     res.json(result);
   } catch (error) {
     if (isHtmlPayloadError(error)) {

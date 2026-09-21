@@ -14,8 +14,9 @@ export function noulValue(answer, fallback = 0) {
  * Catalog can already express the ask (named widget or include_* ≥ 0.5, or
  * in_catalog noul). Motion/animation is a token — not a reason to call Haiku.
  */
-export function catalogExpressible(answers) {
+export function catalogExpressible(answers, context = {}) {
   const named = answers?.named_widget?.choice
+  if (context.surface && context.surface.catalog === false) return false
   if (named && named !== 'none') return true
   for (const [key, value] of Object.entries(answers || {})) {
     if (!key.startsWith('include_')) continue
@@ -25,9 +26,12 @@ export function catalogExpressible(answers) {
 }
 
 /** Confidence-gated: answer = what; confidence = whether to act. */
-export function shouldUseLlm(answers, confidence, min = minConfidence()) {
-  if (catalogExpressible(answers)) return false
-  if (noulValue(answers?.needs_llm, 0) >= NOUL_HIGH) return true
+export function shouldUseLlm(answers, confidence, min = minConfidence(), context = {}) {
+  if (catalogExpressible(answers, context)) return false
+  if (context.surface && context.surface.catalog === false && noulValue(answers?.in_catalog, 1) < NOUL_HIGH) {
+    return true
+  }
+  if (noulValue(answers?.needs_llm, 0) >= NOUL_HIGH && noulValue(answers?.in_catalog, 1) < NOUL_HIGH) return true
   if (noulValue(answers?.in_catalog, 1) < NOUL_HIGH) return true
   if (typeof confidence === 'number' && confidence < min) return true
   return false

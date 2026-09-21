@@ -34,10 +34,28 @@ export const heuristicAdapter = {
     else if (/\bembed\b|\bcomponent\b|\bsnippet\b/.test(lower)) surface = 'component'
 
     let named = 'none'
-    if (/\bchart\b/.test(lower)) named = 'chart'
+    if (/\b(log\s*in|login|sign\s*in|sign-in|signin)\b/.test(lower)) named = 'login-form'
+    else if (/\b(contact form|signup form|sign-up form|feedback form)\b/.test(lower) || (/\bform\b/.test(lower) && !/\bdashboard\b/.test(lower))) named = 'form'
+    else if (/\b(account settings|settings page|user settings|preferences)\b/.test(lower)) named = 'settings'
+    else if (/\bcalendar\b/.test(lower)) named = 'calendar'
+    else if (/\b(landing|homepage|home page|marketing site)\b/.test(lower)) named = 'landing-page'
+    else if (/checkout|check-out|check out/.test(lower)) named = 'checkout'
+    else if (/\b(pricing|price plans?)\b/.test(lower)) named = 'pricing'
+    else if (/\b(polygon|map|generator|editor|workspace|board)\b/.test(lower)) named = 'work-stage'
+    else if (/\bchart\b/.test(lower)) named = 'chart'
     else if (/\btable\b/.test(lower)) named = 'table'
     else if (/\blist\b/.test(lower)) named = 'list'
     else if (/headline|metrics|stat/.test(lower)) named = 'stat-grid'
+
+    let surfaceKind = 'records'
+    if (named === 'login-form' || named === 'form' || named === 'settings') surfaceKind = 'auth'
+    else if (named === 'calendar' || named === 'work-stage') surfaceKind = 'tool'
+    else if (named === 'landing-page') surfaceKind = 'marketing'
+    else if (named === 'checkout' || named === 'pricing') surfaceKind = 'commerce'
+
+    const toolPrimitive = named === 'work-stage'
+      ? (/\bmap|polygon|gis\b/.test(lower) ? 'map' : 'board')
+      : 'none'
 
     const types = named !== 'none' ? [named] : ['stat-grid', 'table']
     const fields = state?.shape?.fields || []
@@ -52,11 +70,21 @@ export const heuristicAdapter = {
       presentation: { choice: surface, confidence: 0.4 },
       density: { score: surface === 'page' ? 1.5 : 0.4, confidence: 0.4 },
       named_widget: { choice: named, confidence: 0.4 },
+      surface_kind: { choice: surfaceKind, confidence: 0.4 },
+      tool_primitive: { choice: toolPrimitive, confidence: 0.4 },
+      patch_hide_table: { noul: /\bhide (the )?table\b/.test(lower) ? 0.9 : 0.05 },
+      patch_tooltip: { noul: /\btooltip|\bhover\b/.test(lower) ? 0.9 : 0.05 },
+      patch_chart_bar: { noul: /\bbar\b/.test(lower) && /\bchart\b/.test(lower) ? 0.9 : 0.05 },
+      patch_chart_line: { noul: /\bline\b/.test(lower) && /\bchart\b/.test(lower) ? 0.9 : 0.05 },
+      patch_chart_pie: { noul: /\bpie\b/.test(lower) && /\bchart\b/.test(lower) ? 0.9 : 0.05 },
+      patch_motion: { noul: /\banimat|\bmotion|\bstagger\b/.test(lower) ? 0.8 : 0.05 },
+      patch_look_vivid: { noul: /\bvivid|\bmodern|\bcolour|\bcolor\b/.test(lower) ? 0.8 : 0.05 },
+      patch_drawer: { noul: /\bdrawer|\bsheet\b/.test(lower) ? 0.8 : 0.05 },
       chart_type: { choice: /\bline\b/.test(lower) ? 'line' : /\bpie\b/.test(lower) ? 'pie' : 'bar', confidence: 0.4 },
       needs_fetch: { noul: hasUrl ? 0.9 : 0.1 },
       needs_motion: { noul: /\banimat|\bmotion|\bstagger|\blive\b/.test(lower) ? 0.7 : 0.1 },
-      needs_llm: { noul: 0.1 },
-      in_catalog: { noul: 0.85 },
+      needs_llm: { noul: named === 'none' && !hasUrl && !/\bdashboard\b/.test(lower) ? 0.85 : 0.1 },
+      in_catalog: { noul: named !== 'none' || hasUrl || /\bdashboard\b/.test(lower) ? 0.85 : 0.15 },
       motion: {
         choice: /\blive\b/.test(lower)
           ? 'live'

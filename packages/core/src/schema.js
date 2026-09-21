@@ -134,7 +134,168 @@ export const propsSchema = {
       required: ['actions'],
       additionalProperties: false,
     },
+    {
+      type: 'object',
+      properties: {
+        brand: { type: 'string' },
+        kicker: { type: 'string' },
+        subtitle: { type: 'string' },
+        submitLabel: { type: 'string' },
+        fields: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              label: { type: 'string' },
+              type: { type: 'string' },
+              required: { type: 'boolean' },
+            },
+            required: ['label'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['brand', 'fields'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', enum: ['map', 'board'] },
+        title: { type: 'string' },
+        kicker: { type: 'string' },
+        subtitle: { type: 'string' },
+        tools: { type: 'array', items: { type: 'string' } },
+        layers: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              kind: { type: 'string' },
+              status: { type: 'string' },
+            },
+            required: ['name'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['mode', 'title', 'tools'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: {
+        brand: { type: 'string' },
+        kicker: { type: 'string' },
+        headline: { type: 'string' },
+        cta: { type: 'string' },
+        sections: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              kind: { type: 'string' },
+              copy: { type: 'string' },
+              cta: { type: 'string' },
+            },
+            required: ['copy'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['brand', 'headline'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: {
+        brand: { type: 'string' },
+        kicker: { type: 'string' },
+        subtitle: { type: 'string' },
+        lines: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              product: { type: 'string' },
+              detail: { type: 'string' },
+              qty: { type: 'number' },
+              price: {},
+            },
+            required: ['product'],
+            additionalProperties: false,
+          },
+        },
+        totals: {
+          type: 'object',
+          properties: {
+            subtotal: {},
+            shipping: {},
+            tax: {},
+            total: {},
+          },
+          additionalProperties: false,
+        },
+      },
+      required: ['brand', 'lines'],
+      additionalProperties: false,
+    },
+    {
+      type: 'object',
+      properties: {
+        brand: { type: 'string' },
+        kicker: { type: 'string' },
+        subtitle: { type: 'string' },
+        plans: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              price: {},
+              perks: { type: 'string' },
+              featured: { type: 'boolean' },
+            },
+            required: ['name'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['brand', 'plans'],
+      additionalProperties: false,
+    },
   ],
+}
+
+const workStageProps = propsSchema.anyOf.find((variant) => variant.properties?.mode)
+
+export const workspaceUiSpecSchema = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    summary: { type: 'string', description: 'One-sentence description of the workspace' },
+    presentation: {
+      type: 'string',
+      enum: ['page'],
+    },
+    components: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: ['work-stage'] },
+          title: { type: 'string' },
+          props: workStageProps,
+        },
+        required: ['type', 'props'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['title', 'summary', 'presentation', 'components'],
+  additionalProperties: false,
 }
 
 export const componentSchema = {
@@ -152,6 +313,11 @@ export const componentSchema = {
         'badge-row',
         'alert',
         'action-row',
+        'login-form',
+        'work-stage',
+        'landing-page',
+        'checkout',
+        'pricing',
       ],
     },
     title: { type: 'string' },

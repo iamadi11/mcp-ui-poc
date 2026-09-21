@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import './App.css'
 import { Studio } from './studio/Studio.jsx'
 import { OwnerPage } from './studio/OwnerPage.jsx'
-import { SettingsPanel } from './SettingsPanel.jsx'
 
 function routeFromPath(pathname) {
   const owner = pathname.match(/^\/w\/([^/]+)/)
@@ -15,7 +14,6 @@ function App() {
   const [notifications, setNotifications] = useState([])
   const [typesafeKey, setTypesafeKey] = useState('')
   const [route, setRoute] = useState(() => routeFromPath(window.location.pathname))
-  const [auth, setAuth] = useState({ user: null, oauth: false })
 
   useEffect(() => {
     const onPop = () => setRoute(routeFromPath(window.location.pathname))
@@ -23,38 +21,24 @@ function App() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
-  const checkHealth = useCallback(async () => {
-    setHealth({ state: 'checking' })
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 15000)
-    try {
-      const res = await fetch('/api/health', { signal: controller.signal })
-      clearTimeout(timer)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setHealth({ state: 'ok', payload: await res.json() })
-    } catch (err) {
-      clearTimeout(timer)
-      setHealth({
-        state: 'error',
-        message:
-          err instanceof Error
-            ? err.name === 'AbortError'
-              ? 'Timed out after 15s'
-              : err.message
-            : 'Request failed',
-      })
+  useEffect(() => {
+    let cancelled = false
+    const load = (attempt = 0) => {
+      fetch('/api/health')
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((payload) => {
+          if (!cancelled) setHealth({ state: 'ok', payload })
+        })
+        .catch(() => {
+          if (cancelled) return
+          if (attempt < 2) setTimeout(() => load(attempt + 1), 400)
+          else setHealth({ state: 'error' })
+        })
     }
-  }, [])
-
-  useEffect(() => {
-    checkHealth()
-  }, [checkHealth])
-
-  useEffect(() => {
-    fetch('/api/auth/me', { credentials: 'include' })
-      .then((r) => r.json())
-      .then(setAuth)
-      .catch(() => {})
+    load()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const pushToast = useCallback((message, type = 'info', dismissMs = 5000) => {
@@ -76,25 +60,12 @@ function App() {
     [pushToast],
   )
 
-  const payload = health.state === 'ok' ? health.payload : null
-  const ai = payload?.ai
-  const jev = payload?.jev
-  const store = payload?.store
-  const sessionJev = Boolean(typesafeKey.trim())
-  const isProd = import.meta.env.PROD
-
-  let healthMeta = ''
-  if (payload) {
-    const jevBit = jev?.available
-      ? `Jev: ${jev.model}`
-      : sessionJev
-        ? 'Jev: session key'
-        : 'Jev: paste a TypeSafe key'
-    const llmBit = ai?.available ? `LLM: ${ai.model}` : 'LLM: off'
-    healthMeta = [jevBit, llmBit, `store: ${store || 'unknown'}`, payload.mongo ? `mongo: ${payload.mongo}` : null]
-      .filter(Boolean)
-      .join(' · ')
-  }
+  const jevFromEnv = Boolean(health.payload?.jevFromEnv ?? health.payload?.jev?.fromEnv)
+  const aiFromEnv = Boolean(health.payload?.aiFromEnv ?? health.payload?.ai?.fromEnv)
+  const jevAvailable = jevFromEnv || Boolean(health.payload?.jev?.available)
+  const aiAvailable = aiFromEnv || Boolean(health.payload?.ai?.available)
+  const mapsFromEnv = Boolean(health.payload?.maps?.configured)
+  const keysUnknown = health.state !== 'ok'
 
   return (
     <div className="app">
@@ -107,49 +78,21 @@ function App() {
           ))}
         </div>
       )}
-
-      <header className="app-header">
-        <div className="brand">
-          <p className="kicker">MCP UI studio</p>
-          <h1>Chat a widget. Publish a URL.</h1>
-        </div>
-        <div
-          className={`server-status ${
-            health.state === 'ok' ? 'status-ok' : health.state === 'error' ? 'status-error' : 'status-checking'
-          }`}
-          role="status"
-          aria-live="polite"
-        >
-          {health.state === 'checking' && <span>Checking API…</span>}
-          {health.state === 'ok' && (
-            <span>
-              API connected
-              {healthMeta ? <span className="status-meta">{healthMeta}</span> : null}
-            </span>
-          )}
-          {health.state === 'error' && (
-            <span>
-              {isProd ? `Cannot reach API (${health.message}).` : `Cannot reach API (${health.message}). Run npm run dev.`}
-              <button type="button" className="text-btn" onClick={() => checkHealth()}>
-                Retry
-              </button>
-            </span>
-          )}
-        </div>
-        {auth.oauth && !auth.user ? (
-          <a className="text-btn" href="/api/auth/github">
-            Sign in with GitHub
-          </a>
-        ) : null}
-        {auth.user ? <span className="status-meta">@{auth.user.login}</span> : null}
-        <SettingsPanel typesafeKey={typesafeKey} onTypesafeKeyChange={setTypesafeKey} />
-      </header>
-
       <main className="app-main">
         {route.name === 'owner' ? (
           <OwnerPage publicId={route.publicId} typesafeKey={typesafeKey} />
         ) : (
-          <Studio typesafeKey={typesafeKey} onUIAction={handleUIAction} decisionStore={store} />
+          <Studio
+            typesafeKey={typesafeKey}
+            onTypesafeKeyChange={setTypesafeKey}
+            onUIAction={handleUIAction}
+            jevAvailable={jevAvailable}
+            aiAvailable={aiAvailable}
+            jevFromEnv={jevFromEnv}
+            aiFromEnv={aiFromEnv}
+            mapsFromEnv={mapsFromEnv}
+            keysUnknown={keysUnknown}
+          />
         )}
       </main>
     </div>

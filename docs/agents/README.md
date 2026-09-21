@@ -8,6 +8,7 @@ After clone, a human runs **`npm run skills:install`**, then once in chat **`/se
 |------|---------|
 | Non-trivial feature, refactor, or design choice | `/ask-matt` then `docs/AI_WORKFLOW.md` |
 | UI / visual | `design-system/MCP-UI/MASTER.md` + UI UX Pro Max `SKILL.md` |
+| Staff the studio / PM+EM / spin up Dev+QA+AI Engineer | Project `studio-staff` (do **not** jump to coding) |
 | Implementation | Project `implement-feature` + Matt `implement` / `tdd` (do **not** run two TDD skills) |
 | Bugs | Project `debug-issue` or Matt `diagnosing-bugs` |
 

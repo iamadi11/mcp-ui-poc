@@ -7,6 +7,7 @@ import {
   planUI,
   applyPolicy,
   getDesignSystem,
+  demoPayload,
 } from '../src/index.js'
 
 const previous = {
@@ -39,11 +40,21 @@ describe('isIteratePrompt', () => {
     expect(isIteratePrompt('there is nothing visible in records')).toBe(true)
     expect(isIteratePrompt('Create a dashboard from this API with heavy animations')).toBe(false)
     expect(isIteratePrompt('Create a dashboard from this API with tooltip and animation')).toBe(false)
+    expect(isIteratePrompt('Create a game of tic tac toe with heavy animation')).toBe(false)
+    expect(isIteratePrompt('Can you create checkout page for a clothing brand called snitch. Add a graffiti animation on widget load.')).toBe(false)
+    expect(isIteratePrompt('Can you create checkout for Snitch with graffiti on load')).toBe(false)
+    expect(isIteratePrompt('graffiti is not coming')).toBe(true)
+    expect(isIteratePrompt('graffiti is not visible')).toBe(true)
+    expect(isIteratePrompt('Build a playable chess board with motion')).toBe(false)
+    expect(isIteratePrompt('Can you create checkout page for a clothing brand called snitch. Add a graffiti animation on widget load.')).toBe(false)
+    expect(isIteratePrompt('graffiti is not coming')).toBe(true)
     expect(isIteratePrompt('Add records and create a dashboard.')).toBe(false)
     expect(isIteratePrompt('Show as a table')).toBe(false)
     expect(isIteratePrompt('Add animations on the dashboard.')).toBe(true)
     expect(isIteratePrompt('make the UI responsive')).toBe(true)
     expect(isIteratePrompt('add tooltip and drawer for more insights.')).toBe(true)
+    expect(isIteratePrompt('give the ui a modern design and color full look')).toBe(true)
+    expect(isIteratePrompt('make the design more colourful')).toBe(true)
   })
 })
 
@@ -76,12 +87,61 @@ describe('applyInstructionUpgrades', () => {
     const responsive = applyInstructionUpgrades(previous, 'make the UI responsive')
     expect(responsive.drawer).toBe(true)
   })
+
+  it('keeps the layout and marks a vivid look for modern/color follow-ups', () => {
+    const next = applyInstructionUpgrades(previous, 'give the ui a modern design and color full look')
+    expect(next.look).toBe('vivid')
+    expect(next.motion).toBe('stagger')
+    expect(next.componentTypes).toEqual(['stat-grid', 'chart', 'table'])
+  })
+
+  it('sets radius for rounder corners without flipping vivid', () => {
+    const landing = { presentation: 'page', motion: 'none', componentTypes: ['landing-page'] }
+    const next = applyInstructionUpgrades(landing, 'rounder corners')
+    expect(next.radius).toBe('16px')
+    expect(next.look).not.toBe('vivid')
+    expect(next.componentTypes).toEqual(['landing-page'])
+    const lookChip = applyInstructionUpgrades(landing, 'use a rounder look')
+    expect(lookChip.radius).toBe('16px')
+    expect(lookChip.look).not.toBe('vivid')
+    const merged = mergeIteratePolicy(landing, { ...landing, look: 'vivid' }, 'rounder corners')
+    expect(merged.radius).toBe('16px')
+    expect(merged.look).not.toBe('vivid')
+    expect(isIteratePrompt('rounder corners')).toBe(true)
+    expect(isIteratePrompt('Create a checkout page for flipkart')).toBe(false)
+    expect(isIteratePrompt('Make it more animation heavy')).toBe(true)
+    const checkout = { presentation: 'page', motion: 'none', componentTypes: ['checkout'], title: 'Flipkart' }
+    const vivid = applyInstructionUpgrades(checkout, 'make it vivid and animation heavy')
+    expect(vivid.look).toBe('vivid')
+    expect(vivid.motion).toBe('stagger')
+    expect(vivid.componentTypes).toEqual(['checkout'])
+    expect(vivid.drawer).toBeFalsy()
+  })
 })
 
 describe('selectReplayPolicy', () => {
   it('does not replay a neighbor/fingerprint layout over an iterate prompt', () => {
     expect(selectReplayPolicy({ fingerprintPolicy: previous, iterate: true })).toBeNull()
-    expect(selectReplayPolicy({ fingerprintPolicy: previous, iterate: false })).toBe(previous)
+    expect(selectReplayPolicy({ fingerprintPolicy: previous, iterate: false })).toBeNull()
+    expect(selectReplayPolicy({ fingerprintPolicy: previous, iterate: false, fresh: true })).toBeNull()
+    expect(selectReplayPolicy({ fingerprintPolicy: previous, iterate: false, fresh: false })).toBe(previous)
+  })
+
+  it('never replays a leftover cart when the same create prompt is asked fresh', () => {
+    const snitch = {
+      presentation: 'page',
+      componentTypes: ['checkout'],
+      title: 'Stride',
+    }
+    const prompt = 'Can you create checkout for Snitch with graffiti on load'
+    expect(
+      selectReplayPolicy({
+        fingerprintPolicy: snitch,
+        iterate: isIteratePrompt(prompt),
+        instructions: prompt,
+        fresh: true,
+      }),
+    ).toBeNull()
   })
 
   it('does not replay a stats-only widget when the prompt asks for a dashboard', () => {
@@ -98,6 +158,7 @@ describe('selectReplayPolicy', () => {
         fingerprintPolicy: previous,
         iterate: false,
         instructions: 'Create a dashboard from this API with tooltip and animation',
+        fresh: false,
       }),
     ).toBe(previous)
   })
@@ -136,6 +197,7 @@ describe('selectReplayPolicy', () => {
         iterate: false,
         instructions: 'Create a dashboard from this API with tooltip and animation',
         shape: weatherShape,
+        fresh: false,
       }),
     ).toBe(previous)
   })
@@ -153,16 +215,64 @@ describe('planUI iterate', () => {
       cachedPolicy: previous,
       askJev: async () => {
         asked += 1
-        throw new Error('iterate must not call Jev or replay a neighbor')
+        return {
+          model: 'jev-1.13.0',
+          answers: {
+            intent: { choice: 'iterate', confidence: 0.9 },
+            surface_kind: { choice: 'records', confidence: 0.85 },
+            named_widget: { choice: 'none', confidence: 0.7 },
+            patch_tooltip: { noul: 0.95 },
+            include_chart: { noul: 0.9 },
+            include_table: { noul: 0.9 },
+            include_stat_grid: { noul: 0.9 },
+            in_catalog: { noul: 0.9 },
+          },
+        }
       },
     })
-    expect(asked).toBe(0)
-    expect(planner).toBe('iterate')
+    expect(asked).toBe(1)
+    expect(planner).toBe('jev:jev-1.13.0')
     expect(policy.chart.tooltip).toBe(true)
     expect(policy.chart.valueKey).toBe('temperature_2m')
     expect(spec.components.find((c) => c.type === 'chart').props.tooltip).toBe(true)
     expect(spec.components.map((c) => c.type)).toEqual(['stat-grid', 'chart', 'table'])
     expect(spec.summary).toBe('Live data · api.open-meteo.com')
+  })
+
+  it('upgrades a demo checkout instead of dropping to an empty API prompt', async () => {
+    const data = demoPayload('create a dashboard for ecommerce checkout app for shoes')
+    const previousCheckout = {
+      presentation: 'page',
+      motion: 'none',
+      title: 'Stride checkout',
+      summary: 'Demo cart — attach an orders API to hydrate live checkouts.',
+      componentTypes: ['stat-grid', 'chart', 'table'],
+      includedFields: ['product', 'color', 'size', 'qty', 'price'],
+      rowsPath: 'items',
+      columns: [
+        { key: 'product', label: 'Product' },
+        { key: 'price', label: 'Price' },
+      ],
+      chart: { chartType: 'bar', valueKey: 'price', labelKey: 'product' },
+    }
+    const { spec, planner } = await planUI({
+      data,
+      sourceUrl: 'demo:checkout',
+      instructions: 'give the ui a modern design and color full look',
+      designSystem: getDesignSystem('shadcn'),
+      previousPolicy: previousCheckout,
+      askJev: async () => {
+        throw new Error('visual iterate must not call Jev')
+      },
+    })
+    expect(planner).toBe('iterate')
+    expect(spec.look).toBe('vivid')
+    expect(spec.title.toLowerCase()).toMatch(/checkout/)
+    expect(JSON.stringify(spec)).not.toMatch(/Add an API/)
+    expect(JSON.stringify(spec)).not.toMatch(/No API attached/)
+    const html = getDesignSystem('shadcn').render(spec)
+    expect(html).toMatch(/data-look="vivid"/)
+    expect(html).toContain('Aero Runner')
   })
 
   it('does not treat a same-shape neighbor as the session widget on a new chat', async () => {
@@ -291,6 +401,46 @@ describe('planUI iterate', () => {
     expect(html).toMatch(/<body[^>]*data-drawer/)
     expect(html).toContain('insights-drawer')
     expect(html).toMatch(/@media \(max-width: 720px\)/)
+  })
+
+  it('does not iterate a leftover Stride widget when the user creates a new Snitch checkout', async () => {
+    const prompt = 'Can you create checkout for Snitch with graffiti on load'
+    const leftover = {
+      presentation: 'page',
+      motion: 'none',
+      title: 'Stride',
+      componentTypes: ['checkout'],
+      html: '<div class="stride">Aero Runner</div>',
+    }
+    let generated = 0
+    const { spec, planner } = await planUI({
+      data: demoPayload(prompt),
+      sourceUrl: 'demo:checkout',
+      instructions: prompt,
+      designSystem: getDesignSystem('shadcn'),
+      previousPolicy: leftover,
+      cachedPolicy: leftover,
+      fresh: true,
+      askJev: async () => {
+        throw new Error('create must not reuse leftover via Jev in this test')
+      },
+      generateUi: async () => {
+        generated += 1
+        return {
+          title: 'Snitch checkout',
+          kicker: 'Clothing',
+          html: '<div class="snitch-cart">hoodie</div>',
+          css: '@keyframes graffiti-load { from { opacity: 0 } to { opacity: 1 } }',
+        }
+      },
+    })
+    expect(isIteratePrompt(prompt)).toBe(false)
+    expect(generated).toBe(1)
+    expect(planner).toBe('haiku:generate')
+    expect(planner).not.toBe('iterate')
+    expect(spec.components.map((c) => c.type)).toEqual(['html-block'])
+    expect(JSON.stringify(spec)).toMatch(/snitch/i)
+    expect(JSON.stringify(spec)).not.toMatch(/Aero Runner/)
   })
 })
 

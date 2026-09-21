@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { getDesignSystem, applyPolicy } from 'ui-compose-kit'
+import { getDesignSystem, applyPolicy, runWithGoogleMapsKey } from 'ui-compose-kit'
 import { getWidget, saveWidget } from './mongo.js'
 import { loadSessionWidget } from './store.js'
 import { readSession } from './session.js'
@@ -14,9 +14,12 @@ function newPublicId() {
 function versionOf(widget, requested) {
   const versions = widget?.versions || []
   if (!versions.length) return null
-  if (requested == null || requested === '') return versions[versions.length - 1]
+  if (requested == null || requested === '') {
+    const current = widget.currentVersion
+    return versions.find((item) => item.v === current) || versions[versions.length - 1]
+  }
   const n = Number(requested)
-  return versions.find((v) => v.v === n) || versions[versions.length - 1]
+  return versions.find((item) => item.v === n) || versions.find((item) => item.v === widget.currentVersion) || versions[versions.length - 1]
 }
 
 function embedSnippet(origin, publicId, v) {
@@ -59,9 +62,12 @@ export function registerWidgetRoutes(app, { generateLimiter }) {
     const versions = existing?.versions ? [...existing.versions] : []
     const v = (versions[versions.length - 1]?.v || 0) + 1
     const themeId = req.body?.themeId || draft.themeId || 'shadcn'
+    const themePack = req.body?.themePack || draft.themePack
     const motion = req.body?.motion || draft.motion || 'none'
     const spec = { ...draft.spec, motion }
-    const html = getDesignSystem(themeId).render(spec)
+    const html = await runWithGoogleMapsKey(req.get('x-google-maps-api-key'), () =>
+      getDesignSystem(themeId).render(spec, themePack),
+    )
     assertGeneratedHtmlWithinLimit(html)
 
     versions.push({
@@ -69,6 +75,7 @@ export function registerWidgetRoutes(app, { generateLimiter }) {
       policy: draft.policy,
       spec,
       themeId,
+      themePack: themePack || null,
       motion,
       sourceUrl: draft.sourceUrl || '',
       createdAt: new Date().toISOString(),
@@ -106,10 +113,19 @@ export function registerWidgetRoutes(app, { generateLimiter }) {
       currentVersion: widget.currentVersion,
       themeId: ver?.themeId,
       motion: ver?.motion,
+      look: ver?.spec?.look || 'default',
       spec: ver?.spec,
       sourceUrl: ver?.sourceUrl,
       owner: widget.ownerLogin,
       isOwner: Boolean(user && user.githubId === widget.ownerGithubId),
+      versions: (widget.versions || []).map((item) => ({
+        v: item.v,
+        createdAt: item.createdAt,
+        themeId: item.themeId,
+        motion: item.motion,
+        look: item.spec?.look || 'default',
+        sourceUrl: item.sourceUrl || '',
+      })),
     })
   })
 
@@ -127,8 +143,28 @@ export function registerWidgetRoutes(app, { generateLimiter }) {
     }
 
     const latest = versionOf(widget)
+    if (!latest) return res.status(400).json({ error: 'Widget has no versions' })
+    if (req.body?.restoreVersion != null) {
+      const n = Number(req.body.restoreVersion)
+      const found = (widget.versions || []).find((item) => item.v === n)
+      if (!found) return res.status(400).json({ error: 'Unknown version' })
+      await saveWidget({ ...widget, currentVersion: n })
+      return res.json({
+        publicId: widget.publicId,
+        version: n,
+        currentVersion: n,
+        themeId: found.themeId,
+        motion: found.motion,
+        look: found.spec?.look || 'default',
+        spec: found.spec,
+        sourceUrl: found.sourceUrl,
+      })
+    }
+
     const themeId = req.body?.themeId || latest.themeId || 'shadcn'
+    const themePack = req.body?.themePack || latest.themePack
     const motion = req.body?.motion || latest.motion || 'none'
+    const look = req.body?.look === 'vivid' ? 'vivid' : req.body?.look === 'default' ? 'default' : latest.spec?.look
     let policy = latest.policy
     if (typeof req.body?.density === 'number' && policy) {
       const maxWidgets = req.body.density < 0.75 ? 1 : req.body.density < 1.75 ? 3 : 5
@@ -142,17 +178,19 @@ export function registerWidgetRoutes(app, { generateLimiter }) {
       spec = applyPolicy(policy, data, req.body.sourceUrl)
       sourceUrl = req.body.sourceUrl
     }
-    spec = { ...spec, motion }
+    spec = { ...spec, motion, look: look === 'vivid' ? 'vivid' : 'default' }
 
-    const html = getDesignSystem(themeId).render(spec)
+    const html = await runWithGoogleMapsKey(req.get('x-google-maps-api-key'), () =>
+      getDesignSystem(themeId).render(spec, themePack),
+    )
     assertGeneratedHtmlWithinLimit(html)
     const v = (widget.currentVersion || 0) + 1
     const versions = [
       ...(widget.versions || []),
-      { v, policy, spec, themeId, motion, sourceUrl, createdAt: new Date().toISOString() },
+      { v, policy, spec, themeId, themePack: themePack || null, motion, sourceUrl, createdAt: new Date().toISOString() },
     ]
     await saveWidget({ ...widget, currentVersion: v, versions })
-    res.json({ publicId: widget.publicId, version: v, spec, themeId, motion, sourceUrl })
+    res.json({ publicId: widget.publicId, version: v, spec, themeId, themePack: themePack || null, motion, look: spec.look, sourceUrl })
   })
 }
 

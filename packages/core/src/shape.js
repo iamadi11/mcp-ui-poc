@@ -168,11 +168,12 @@ export function shapeHash(shape) {
   })
 }
 
-export function fingerprint(shape, instructions, designSystemId) {
+export function fingerprint(shape, instructions, designSystemId, packKey = '') {
   return stableHash({
     shape: shapeHash(shape),
     cardinality: shape.cardinality,
     instructions: normalizeInstructions(instructions),
     designSystem: designSystemId || '',
+    pack: packKey || '',
   })
 }

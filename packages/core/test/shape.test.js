@@ -70,6 +70,9 @@ describe('fingerprint', () => {
     expect(fingerprint(shape, 'as a table', 'glass')).not.toBe(
       fingerprint(shape, 'as a table', 'shadcn'),
     )
+    expect(fingerprint(shape, 'as a table', 'shadcn', 'pack-a')).not.toBe(
+      fingerprint(shape, 'as a table', 'shadcn', 'pack-b'),
+    )
   })
 })
 

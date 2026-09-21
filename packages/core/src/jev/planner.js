@@ -5,7 +5,10 @@
 import { inferShape } from '../shape.js'
 import { applyPolicy, defaultComponentTypes, isIdLikeKey, isMoneyKey, isTimeLikeKey } from '../layout-policy.js'
 import { shouldUseLlm, motionToken, noulValue } from '../decisions/router.js'
-import { applyInstructionUpgrades, isIteratePrompt, mergeIteratePolicy } from '../iterate.js'
+import { applyInstructionUpgrades, mergeIteratePolicy, isLookMotionOnly, isIteratePrompt } from '../iterate.js'
+import { DEMO_LOGIN_SOURCE, isLoginIntent, isFormIntent, isSettingsIntent, isCalendarIntent, isCheckoutIntent, isLandingIntent, isPricingIntent, brandFromPrompt } from '../demo-payload.js'
+import { classifySurface, catalogCannotExpress } from '../surface.js'
+import { composeTurnPrompt, currentTurnText } from '../chat-context.js'
 
 export const CATALOG_TYPES = [
   'stat-grid',
@@ -17,7 +20,17 @@ export const CATALOG_TYPES = [
   'badge-row',
   'alert',
   'action-row',
+  'login-form',
+  'work-stage',
+  'landing-page',
+  'checkout',
+  'pricing',
+  'form',
+  'settings',
+  'calendar',
 ]
+
+export const PRODUCT_TYPES = ['login-form', 'work-stage', 'landing-page', 'checkout', 'pricing', 'form', 'settings', 'calendar']
 
 const INCLUDE_PREFIX = 'include_'
 const FIELD_PREFIX = 'field_'
@@ -76,6 +89,7 @@ export function layoutChoiceConfidence(answers) {
   const a = answers || {}
   const keys = []
   if (typeof a.named_widget?.confidence === 'number') keys.push('named_widget')
+  if (typeof a.surface_kind?.confidence === 'number') keys.push('surface_kind')
   if (typeof a.surface?.confidence === 'number') keys.push('surface')
   else if (typeof a.presentation?.confidence === 'number') keys.push('presentation')
   const wantsChart =
@@ -137,7 +151,8 @@ function scoreQuestion(instructions, criteria) {
   return { type: 'score', instructions, criteria }
 }
 
-export function buildJevQuestions(shape) {
+export function buildJevQuestions(shape, { catalogTypes } = {}) {
+  const catalog = Array.isArray(catalogTypes) && catalogTypes.length ? catalogTypes : CATALOG_TYPES
   const questions = {
     intent: choiceQuestion(
       'What is the user trying to do this turn? Use `prompt` and `instructions`.',
@@ -150,10 +165,29 @@ export function buildJevQuestions(shape) {
         explain: 'Explain the current widget; do not redesign it.',
       },
     ),
-    surface: choiceQuestion(
-      'Which surface should the widget use?',
+    surface_kind: choiceQuestion(
+      'Which product surface matches `prompt`? Do not pick records for login, maps, landing, checkout, or pricing.',
       {
-        page: 'Full-width dashboard of several widgets.',
+        records: 'A dashboard of stats, tables, or charts from JSON records.',
+        auth: 'A sign-in or login screen.',
+        tool: 'A workspace such as a map, board, editor, or generator.',
+        marketing: 'A landing or marketing page.',
+        commerce: 'Checkout, cart, or pricing plans.',
+        unknown: 'None of the catalog primitives fit.',
+      },
+    ),
+    tool_primitive: choiceQuestion(
+      'If surface_kind is tool, which primitive? Choose none otherwise.',
+      {
+        none: 'Not a tool workspace.',
+        map: 'Map, polygons, GIS, or Google Maps.',
+        board: 'Board, notes, kanban, or generic canvas.',
+      },
+    ),
+    surface: choiceQuestion(
+      'Which chrome should the widget use?',
+      {
+        page: 'Full-width page of several widgets.',
         modal: 'A popup, dialog, overlay, or one focused widget over the page.',
         component: 'A single bare widget with no page chrome, for inline embedding.',
       },
@@ -174,30 +208,44 @@ export function buildJevQuestions(shape) {
     ]),
     named_widget: choiceQuestion(
       'If `instructions` name a specific widget type, which one? Choose none if they do not.',
-      {
-        none: 'No specific widget is named.',
-        table: 'Show as a table.',
-        chart: 'Show as a chart.',
-        list: 'Show as a list.',
-        'stat-grid': 'Show headline metrics.',
-        'key-value': 'Show a detail / key-value panel.',
-      },
+      Object.fromEntries(
+        [
+          ['none', 'No specific widget is named.'],
+          ['table', 'Show as a table.'],
+          ['chart', 'Show as a chart.'],
+          ['list', 'Show as a list.'],
+          ['stat-grid', 'Show headline metrics.'],
+          ['key-value', 'Show a detail / key-value panel.'],
+          ['login-form', 'Show a sign-in / login card.'],
+          ['form', 'Show a contact or generic form.'],
+          ['settings', 'Show account settings.'],
+          ['calendar', 'Show a week calendar.'],
+          ['work-stage', 'Show a product workspace (map, editor, generator) — not a records dashboard.'],
+          ['landing-page', 'Show a marketing landing page.'],
+          ['checkout', 'Show a checkout or cart.'],
+          ['pricing', 'Show pricing plans.'],
+        ].filter(([id]) => id === 'none' || catalog.includes(id)),
+      ),
     ),
-    chart_type: choiceQuestion(
-      'If a chart is used, which type fits `shape` and `instructions`?',
-      {
-        bar: 'Compare categories or discrete records.',
-        line: 'A trend over an ordered axis.',
-        pie: 'Parts of a whole.',
-      },
-    ),
+    ...(catalog.includes('chart')
+      ? {
+          chart_type: choiceQuestion(
+            'If a chart is used, which type fits `shape` and `instructions`?',
+            {
+              bar: 'Compare categories or discrete records.',
+              line: 'A trend over an ordered axis.',
+              pie: 'Parts of a whole.',
+            },
+          ),
+        }
+      : {}),
     needs_fetch: noulQuestion('Does this turn require fetching or refreshing an API URL?'),
     needs_motion: noulQuestion('Do the instructions ask for animation, live updates, or staggered entrance?'),
     needs_llm: noulQuestion(
-      'High only if a widget type missing from `catalog` is required, or the user wants generated prose. Tables, charts, dashboards, lists, stats, and CSS motion tokens (enter/stagger/live) are in catalog — choose low.',
+      'High if the UI is not in `catalog` (a game, custom app, or a widget type missing from the list) or the user wants generated prose. Dashboards, tables, charts, login, landing, checkout, pricing, forms, settings, calendars, map/polygon workspaces, and CSS motion tokens are in catalog — choose low for those.',
     ),
     in_catalog: noulQuestion(
-      'Can this UI be built from the registered catalog types in `catalog`? Dashboards, tables, charts, and animation tokens are in catalog — choose high.',
+      'Can this UI be built from the registered catalog types in `catalog`? Dashboards, tables, charts, login forms, landings, checkout, pricing, forms, settings, calendars, and map/polygon workspaces are in catalog — choose high. Games and one-off apps are not — choose low.',
     ),
     motion: choiceQuestion('Which motion token should the theme adapter apply in CSS?', {
       none: 'No motion.',
@@ -205,9 +253,17 @@ export function buildJevQuestions(shape) {
       stagger: 'Children enter in sequence.',
       live: 'Subtle pulse for live/updating data.',
     }),
+    patch_hide_table: noulQuestion('Should this iterate hide the table or list?'),
+    patch_tooltip: noulQuestion('Should charts show a tooltip on hover?'),
+    patch_chart_bar: noulQuestion('Should the chart type become bar?'),
+    patch_chart_line: noulQuestion('Should the chart type become line?'),
+    patch_chart_pie: noulQuestion('Should the chart type become pie?'),
+    patch_motion: noulQuestion('Should motion increase (stagger or enter)?'),
+    patch_look_vivid: noulQuestion('Should the look become vivid / more colorful? Choose low for radius or rounder-corners-only requests.'),
+    patch_drawer: noulQuestion('Should a details drawer open on row select?'),
   }
 
-  for (const type of CATALOG_TYPES) {
+  for (const type of catalog) {
     questions[typeId(type)] = noulQuestion(
       `Should the UI include a ${type} component for this data?`,
     )
@@ -223,18 +279,111 @@ export function buildJevQuestions(shape) {
   return questions
 }
 
-export function answersToPolicy(answers, shape, { instructions, sourceUrl } = {}) {
+function exclusiveType(kind, named, sourceUrl, instructions) {
+  const src = String(sourceUrl || '')
+  if (src === 'demo:generated' || named === 'html-block') return null
+  if (catalogCannotExpress(instructions)) return null
+  if (isCheckoutIntent(instructions)) return 'checkout'
+  if (isLandingIntent(instructions)) return 'landing-page'
+  if (isPricingIntent(instructions)) return 'pricing'
+  if (isFormIntent(instructions)) return 'form'
+  if (isSettingsIntent(instructions)) return 'settings'
+  if (isCalendarIntent(instructions)) return 'calendar'
+  if (isLoginIntent(instructions)) return 'login-form'
+  if (named === 'login-form' || src === DEMO_LOGIN_SOURCE) return 'login-form'
+  if (named === 'form' || src === 'demo:form') return 'form'
+  if (named === 'settings' || src === 'demo:settings') return 'settings'
+  if (named === 'calendar' || src === 'demo:calendar') return 'calendar'
+  if (kind === 'auth') return 'login-form'
+  if (named === 'work-stage' || src === 'demo:workspace') return 'work-stage'
+  if (kind === 'tool') return 'work-stage'
+  if (kind === 'marketing' || named === 'landing-page' || src === 'demo:landing') return 'landing-page'
+  if (named === 'checkout' || src === 'demo:checkout') return 'checkout'
+  if (named === 'pricing' || src === 'demo:pricing') return 'pricing'
+  if (kind === 'commerce') {
+    if (/\bpric/.test(String(instructions || '').toLowerCase())) return 'pricing'
+    return 'checkout'
+  }
+  return null
+}
+
+export function applyJevPatches(policy, answers, instructions = '') {
+  const next = {
+    ...(policy || {}),
+    componentTypes: Array.isArray(policy?.componentTypes) ? [...policy.componentTypes] : [],
+    chart: policy?.chart ? { ...policy.chart } : undefined,
+  }
+  if (noulValue(answers?.patch_hide_table, 0) >= NOUL_INCLUDE) {
+    next.componentTypes = next.componentTypes.filter((type) => type !== 'table' && type !== 'list')
+    if (!next.componentTypes.includes('chart')) next.componentTypes.push('chart')
+  }
+  if (noulValue(answers?.patch_tooltip, 0) >= NOUL_INCLUDE) {
+    next.chart = { ...(next.chart || {}), tooltip: true }
+    if (!next.componentTypes.includes('chart')) next.componentTypes.push('chart')
+  }
+  if (noulValue(answers?.patch_chart_line, 0) >= NOUL_INCLUDE) {
+    next.chart = { ...(next.chart || {}), chartType: 'line' }
+  } else if (noulValue(answers?.patch_chart_bar, 0) >= NOUL_INCLUDE) {
+    next.chart = { ...(next.chart || {}), chartType: 'bar' }
+  } else if (noulValue(answers?.patch_chart_pie, 0) >= NOUL_INCLUDE) {
+    next.chart = { ...(next.chart || {}), chartType: 'pie' }
+  }
+  if (noulValue(answers?.patch_motion, 0) >= NOUL_INCLUDE) {
+    next.motion = 'stagger'
+  }
+  if (
+    noulValue(answers?.patch_look_vivid, 0) >= NOUL_INCLUDE
+    && /\bvivid\b|\bmodern\b|\bcolour(?:ful)?\b|\bcolor(?:ful)?\b/i.test(String(instructions || ''))
+  ) {
+    next.look = 'vivid'
+    if (!next.motion || next.motion === 'none') next.motion = 'stagger'
+  }
+  if (noulValue(answers?.patch_drawer, 0) >= NOUL_INCLUDE) {
+    next.drawer = true
+  }
+  return next
+}
+
+export function isJevIterate(answers, previousPolicy, instructions = '') {
+  if (!previousPolicy) return false
+  const intent = answers?.intent?.choice
+  if (intent === 'create_dashboard' || intent === 'create_widget' || intent === 'fetch_api') return false
+  const named = answers?.named_widget?.choice
+  const kind = answers?.surface_kind?.choice
+  const nextType = exclusiveType(kind, named, '', instructions)
+  const prevType = previousPolicy?.componentTypes?.[0]
+  if (nextType && prevType && nextType !== prevType) return false
+  if (intent === 'iterate' || intent === 'explain') return true
+  const patches = [
+    'patch_hide_table',
+    'patch_tooltip',
+    'patch_chart_bar',
+    'patch_chart_line',
+    'patch_chart_pie',
+    'patch_motion',
+    'patch_look_vivid',
+    'patch_drawer',
+  ]
+  return patches.some((id) => noulValue(answers?.[id], 0) >= NOUL_INCLUDE)
+}
+
+export function answersToPolicy(answers, shape, { instructions, sourceUrl, catalogTypes } = {}) {
   let presentation = answers.surface?.choice || answers.presentation?.choice
   if (presentation === 'none_implied' || !['page', 'modal', 'component'].includes(presentation)) {
     presentation = 'page'
   }
 
+  const catalog = Array.isArray(catalogTypes) && catalogTypes.length ? catalogTypes : CATALOG_TYPES
   const named = answers.named_widget?.choice
+  const kind = answers.surface_kind?.choice
+  const exclusiveRaw = exclusiveType(kind, named, sourceUrl, instructions)
+  const exclusive = exclusiveRaw && catalog.includes(exclusiveRaw) ? exclusiveRaw : null
+
   const types = []
-  if (named && named !== 'none' && CATALOG_TYPES.includes(named)) {
+  if (named && named !== 'none' && catalog.includes(named)) {
     types.push(named)
   }
-  for (const type of CATALOG_TYPES) {
+  for (const type of catalog) {
     if (types.includes(type)) continue
     const n = answers[typeId(type)]?.noul
     if (typeof n === 'number' && n >= NOUL_INCLUDE) types.push(type)
@@ -257,22 +406,31 @@ export function answersToPolicy(answers, shape, { instructions, sourceUrl } = {}
 
   let componentTypes = filtered.slice(0, maxWidgets)
   if (!componentTypes.length) {
-    componentTypes = defaultComponentTypes(shape).slice(0, maxWidgets || 3)
+    componentTypes = defaultComponentTypes(shape).filter((type) => catalog.includes(type)).slice(0, maxWidgets || 3)
   }
 
+  if (exclusive) componentTypes = [exclusive]
+  componentTypes = componentTypes.filter((type) => catalog.includes(type))
+  if (!componentTypes.length) {
+    componentTypes = catalog.slice(0, Math.max(1, maxWidgets || 1))
+  }
+
+  const product = PRODUCT_TYPES.includes(componentTypes[0])
   const includedFields = []
   const fields = shape.fields || []
-  fields.forEach((field, i) => {
-    const n = answers[`${FIELD_PREFIX}${i}`]?.noul
-    if (typeof n === 'number' ? n >= NOUL_INCLUDE : true) includedFields.push(field.key)
-  })
+  if (!product) {
+    fields.forEach((field, i) => {
+      const n = answers[`${FIELD_PREFIX}${i}`]?.noul
+      if (typeof n === 'number' ? n >= NOUL_INCLUDE : true) includedFields.push(field.key)
+    })
+  }
 
   const chartTypeChoice = answers.chart_type?.choice
   const numericKey =
     fields.find((f) => f.numeric && isMoneyKey(f.key))?.key ||
     fields.find((f) => f.numeric && !isIdLikeKey(f.key))?.key ||
     null
-  if (numericKey && !componentTypes.includes('stat-grid')) {
+  if (numericKey && !product && !componentTypes.includes('stat-grid')) {
     componentTypes = ['stat-grid', ...componentTypes.filter((type) => type !== 'stat-grid')].slice(0, Math.max(maxWidgets, 3))
   }
 
@@ -285,7 +443,15 @@ export function answersToPolicy(answers, shape, { instructions, sourceUrl } = {}
       : 'bar'
 
   let title = 'Data overview'
-  if (numericKey) title = labelizeTitle(numericKey)
+  if (exclusive === 'login-form') title = brandFromPrompt(instructions, 'Sign in')
+  else if (exclusive === 'work-stage') title = 'Workspace'
+  else if (exclusive === 'landing-page') title = brandFromPrompt(instructions, 'Landing')
+  else if (exclusive === 'checkout') title = brandFromPrompt(instructions, 'Checkout')
+  else if (exclusive === 'pricing') title = brandFromPrompt(instructions, 'Pricing')
+  else if (exclusive === 'form') title = brandFromPrompt(instructions, 'Contact')
+  else if (exclusive === 'settings') title = brandFromPrompt(instructions, 'Settings')
+  else if (exclusive === 'calendar') title = brandFromPrompt(instructions, 'Calendar')
+  else if (numericKey) title = labelizeTitle(numericKey)
   else if (sourceUrl) {
     try {
       title = new URL(sourceUrl).hostname.replace(/^www\./, '')
@@ -294,20 +460,27 @@ export function answersToPolicy(answers, shape, { instructions, sourceUrl } = {}
     }
   }
 
-  return applyInstructionUpgrades({
+  const tool = answers.tool_primitive?.choice
+  const classified = classifySurface(instructions, sourceUrl)
+  const stageMode = exclusive === 'work-stage'
+    ? (tool === 'map' || tool === 'board' ? tool : (classified.main === 'map' ? 'map' : 'board'))
+    : undefined
+
+  let policy = {
     presentation,
     motion: motionToken(answers),
     title,
     summary: sourceUrl ? `Live data · ${shortHost(sourceUrl)}` : 'Generated layout',
     componentTypes,
-    includedFields: includedFields.length ? includedFields : fields.map((f) => f.key),
+    includedFields: includedFields.length ? includedFields : (product ? [] : fields.map((f) => f.key)),
     rowsPath: shape.rowsPath,
     columns: (includedFields.length ? includedFields : fields.map((f) => f.key)).map((key) => ({
       key,
       label: key,
     })),
+    stageMode,
     chart:
-      componentTypes.includes('chart')
+      !product && componentTypes.includes('chart')
         ? {
             chartType,
             valueKey: numericKey,
@@ -315,7 +488,12 @@ export function answersToPolicy(answers, shape, { instructions, sourceUrl } = {}
             tooltip: true,
           }
         : undefined,
-  }, instructions)
+  }
+  policy = applyJevPatches(policy, answers, instructions)
+  policy.componentTypes = (policy.componentTypes || []).filter((type) => catalog.includes(type))
+  if (!policy.componentTypes.length) policy.componentTypes = catalog.slice(0, 1)
+  if (!catalog.includes('chart')) policy.chart = undefined
+  return applyInstructionUpgrades(policy, instructions)
 }
 
 async function defaultAskJev({ state, questions, model, apiKey }) {
@@ -358,22 +536,35 @@ export async function planWithJev({
   previousPolicy,
   askJev,
   typesafeApiKey,
+  catalogTypes: catalogOverride,
+  pack,
+  history,
+  goal,
 }) {
   const shape = inferShape(data)
   const model = jevModel()
-  const questions = buildJevQuestions(shape)
+  const catalogTypes = (Array.isArray(catalogOverride) && catalogOverride.length
+    ? catalogOverride
+    : CATALOG_TYPES).filter(Boolean)
+  const questions = buildJevQuestions(shape, { catalogTypes })
   const past = neighborSummary(neighbors)
-  const iterate = Boolean(previousPolicy && isIteratePrompt(instructions))
+  const turnPrompt = composeTurnPrompt({ current: instructions, history, goal })
+  const turnCurrent = currentTurnText(turnPrompt)
   const state = {
-    prompt: instructions || '',
+    prompt: turnPrompt,
     sourceUrl: sourceUrl || '',
-    instructions: instructions || '',
+    instructions: turnPrompt,
     designSystem: designSystem?.id || designSystem?.name || '',
-    catalog: (designSystem?.components || []).map((c) => c.type),
+    catalog: catalogTypes.length ? catalogTypes : CATALOG_TYPES,
+    pack: pack
+      ? { id: pack.id, accent: pack.tokens?.accent, supports: pack.supports }
+      : undefined,
     shape,
     previousPolicy: previousPolicy || neighbors?.[0]?.policy || null,
     neighbors: past,
     past,
+    goal: goal || '',
+    history: Array.isArray(history) ? history.map((turn) => turn.text || turn).filter(Boolean).slice(-8) : [],
   }
 
   const ask =
@@ -384,27 +575,58 @@ export async function planWithJev({
   const answers = response.answers || response
   const confidence = layoutChoiceConfidence(answers)
   const usedModel = response.model || model
+  const iterate = isJevIterate(answers, previousPolicy, turnCurrent)
+  const surface = classifySurface(turnPrompt, sourceUrl)
+  const previousGenerated = (previousPolicy?.componentTypes || []).includes('html-block')
+  const lookMotionOnly = isLookMotionOnly(turnCurrent)
+  const unknown = surface.catalog === false || previousGenerated || catalogCannotExpress(turnPrompt)
+  const nextExclusive = exclusiveType(surface.kind, answers?.named_widget?.choice, sourceUrl, turnPrompt)
+  const prevType = previousPolicy?.componentTypes?.[0]
+  const askingAgain = Boolean(previousPolicy)
+    && !iterate
+    && !lookMotionOnly
+    && !isIteratePrompt(turnCurrent)
+    && (catalogCannotExpress(turnPrompt) || !nextExclusive || nextExclusive === prevType || prevType === 'html-block')
 
-  if (shouldUseLlm(answers, confidence) && !iterate) {
+  if ((unknown || askingAgain) && !lookMotionOnly) {
+    const vivid = noulValue(answers?.patch_look_vivid, 0) >= 0.5
+      || /\bvivid\b|\bmodern\b|\bcolour(?:ful)?\b|\bcolor(?:ful)?\b/i.test(String(turnCurrent || ''))
     return {
       ok: false,
+      generate: true,
+      confidence,
+      answers: serializeAnswers(answers),
+      model: usedModel,
+      hints: {
+        motion: motionToken(answers),
+        look: vivid ? 'vivid' : (previousPolicy?.look || 'default'),
+        radius: previousPolicy?.radius || '',
+      },
+    }
+  }
+
+  if (shouldUseLlm(answers, confidence, undefined, { surface }) && !iterate) {
+    return {
+      ok: false,
+      generate: false,
       confidence,
       answers: serializeAnswers(answers),
       model: usedModel,
     }
   }
 
-  const generated = answersToPolicy(answers, shape, { instructions, sourceUrl })
-  const policy = iterate ? mergeIteratePolicy(previousPolicy, generated, instructions) : generated
+  const generated = answersToPolicy(answers, shape, { instructions: turnPrompt, sourceUrl, catalogTypes })
+  const policy = iterate ? mergeIteratePolicy(previousPolicy, generated, turnCurrent) : generated
   const spec = applyPolicy(policy, data, sourceUrl)
   return {
     ok: true,
     spec,
     policy,
-    planner: iterate ? 'iterate' : `jev:${usedModel}`,
+    planner: `jev:${usedModel}`,
     confidence,
     answers: serializeAnswers(answers),
     model: usedModel,
     shape,
+    needsCopy: noulValue(answers?.needs_llm, 0) >= 0.5,
   }
 }

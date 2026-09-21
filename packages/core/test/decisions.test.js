@@ -11,9 +11,20 @@ describe('shouldUseLlm', () => {
     expect(shouldUseLlm({ needs_llm: { noul: 0.1 }, in_catalog: { noul: 0.9 } }, 0.8, 0.5)).toBe(false)
   })
 
+  it('uses LLM when unknown and the catalog cannot express the ask', () => {
+    expect(
+      shouldUseLlm(
+        { in_catalog: { noul: 0.1 }, named_widget: { choice: 'none', confidence: 0.4 } },
+        0.8,
+        0.5,
+        { surface: { kind: 'unknown', catalog: false } },
+      ),
+    ).toBe(true)
+  })
+
   it('falls to Haiku on low confidence, needs_llm, or out-of-catalog', () => {
     expect(shouldUseLlm({}, 0.2, 0.5)).toBe(true)
-    expect(shouldUseLlm({ needs_llm: { noul: 0.9 } }, 0.9, 0.5)).toBe(true)
+    expect(shouldUseLlm({ needs_llm: { noul: 0.9 }, in_catalog: { noul: 0.1 } }, 0.9, 0.5)).toBe(true)
     expect(shouldUseLlm({ in_catalog: { noul: 0.1 } }, 0.9, 0.5)).toBe(true)
   })
 
@@ -49,6 +60,15 @@ describe('catalogExpressible', () => {
     expect(catalogExpressible({ include_chart: { noul: 0.8 } })).toBe(true)
     expect(catalogExpressible({ in_catalog: { noul: 0.9 } })).toBe(true)
     expect(catalogExpressible({ named_widget: { choice: 'none' }, in_catalog: { noul: 0.1 } })).toBe(false)
+  })
+
+  it('does not treat a named checkout as in-catalog when the surface is generated', () => {
+    expect(
+      catalogExpressible(
+        { named_widget: { choice: 'checkout' }, include_checkout: { noul: 0.95 } },
+        { surface: { kind: 'commerce', catalog: false } },
+      ),
+    ).toBe(false)
   })
 })
 

@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { errorFromResponse } from './apiError'
-import { readApiKey, readSavedEndpoints, writeSavedEndpoints } from './storage.js'
+import { readApiKey, readGoogleMapsKey, readSavedEndpoints, writeSavedEndpoints } from './storage.js'
 
 const SAMPLE_ENDPOINTS = [
   { label: 'Users', url: 'https://jsonplaceholder.typicode.com/users' },
@@ -135,12 +135,14 @@ export function EndpointToUI({ onUIAction, typesafeKey = '', decisionStore: deci
     try {
       const apiKey = readApiKey()
       const sessionJev = typesafeKey.trim()
+      const mapsKey = readGoogleMapsKey()
       const res = await fetch('/api/render-endpoint', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(apiKey ? { 'x-anthropic-api-key': apiKey } : {}),
           ...(sessionJev ? { 'x-typesafe-api-key': sessionJev } : {}),
+          ...(mapsKey ? { 'x-google-maps-api-key': mapsKey } : {}),
         },
         body: JSON.stringify({
           url,

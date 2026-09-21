@@ -1,3 +1,21 @@
+function parseBlock(block, onEvent) {
+  let event = 'message'
+  const dataLines = []
+  for (const line of String(block || '').split('\n')) {
+    if (line.startsWith('event:')) event = line.slice(6).trim()
+    else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
+  }
+  if (!dataLines.length) return null
+  let data = dataLines.join('\n')
+  try {
+    data = JSON.parse(data)
+  } catch {
+    /* keep string */
+  }
+  onEvent(event, data)
+  return event === 'rendered' ? data : null
+}
+
 export async function readSse(response, onEvent) {
   if (!response.body) {
     const json = await response.json()
@@ -12,26 +30,19 @@ export async function readSse(response, onEvent) {
   while (!done) {
     const chunk = await reader.read()
     done = chunk.done
-    if (done) break
-    buffer += decoder.decode(chunk.value, { stream: true })
+    buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !done })
     const blocks = buffer.split('\n\n')
+    if (done) {
+      for (const block of blocks) {
+        const rendered = parseBlock(block, onEvent)
+        if (rendered) lastRendered = rendered
+      }
+      break
+    }
     buffer = blocks.pop() || ''
     for (const block of blocks) {
-      let event = 'message'
-      const dataLines = []
-      for (const line of block.split('\n')) {
-        if (line.startsWith('event:')) event = line.slice(6).trim()
-        else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
-      }
-      if (!dataLines.length) continue
-      let data = dataLines.join('\n')
-      try {
-        data = JSON.parse(data)
-      } catch {
-        /* keep string */
-      }
-      if (event === 'rendered') lastRendered = data
-      onEvent(event, data)
+      const rendered = parseBlock(block, onEvent)
+      if (rendered) lastRendered = rendered
     }
   }
   return lastRendered

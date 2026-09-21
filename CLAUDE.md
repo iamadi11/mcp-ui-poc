@@ -20,14 +20,14 @@ Use these **first** (see `docs/AI_WORKFLOW.md` for order):
 
 ## Do / don’t (project-specific)
 
-- **Do** keep API and static generation logic in `server/`; UI in `client/src/`. Jev decides; code constructs; Haiku is rare. Never send full API payloads to an LLM — `inferShape` only.
+- **Do** keep API and static generation logic in `server/`; UI in `client/src/`. Jev decides; catalog constructs; Haiku writes copy on catalog layouts and **generates HTML** when the catalog cannot express the prompt. Never send full API payloads to an LLM — `inferShape` only.
 - **Do** use `process.env` for configuration; rely on `.env.local` locally (never commit secrets). Production omits TypeSafe/Anthropic keys (BYOK).
 - **Do** run `npm run lint` from `client/` after changing JSX/JS; `npm test` for `packages/core`.
 - **Don’t** leak shadcn into `layout-policy.js`. **Don’t** add secrets to prompts, logs, or generated MCP UI payloads.
 
 ## Skills
 
-Playbooks: **`.claude/skills/`** plus Matt Pocock skills after `npm run skills:install`. Matt `tdd` / `code-review` replace duplicates — do not run two TDD skills. See **`docs/agents/README.md`**.
+Playbooks: **`.claude/skills/`** plus Matt Pocock skills after `npm run skills:install`. Matt `tdd` / `code-review` replace duplicates — do not run two TDD skills. Staffing the studio (PM+EM, parallel Dev/QA/AI Engineer): **`studio-staff`**. See **`docs/agents/README.md`**.
 
 ## Agent skills
 
@@ -37,4 +37,4 @@ GitHub Issues on `iamadi11/mcp-ui-poc` via the `gh` CLI. See `docs/agents/issue-
 
 ### Domain docs
 
-Single-context: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
+Single-context: root `CONTEXT.md` plus `docs/adr/` (including **005-surfaces.md** for records vs product UI). See `docs/agents/domain.md`.

@@ -1,21 +1,37 @@
 /**
- * AI layer: analyzes fetched data and decides which components from the active
- * design system's catalog to use, producing a UI spec the design system renders.
+ * AI layer: Jev decides look, motion, iterate vs create, and in-catalog.
+ * Code hydrates via applyPolicy. Haiku fills copy slots on catalog layouts
+ * or generates sanitized HTML when the catalog cannot express the ask.
  *
- * Cascade: cached LayoutPolicy replay → Jev judgments → LLM structured spec →
- * deterministic heuristicPlan.
+ * Redis fingerprint replay is off unless fresh === false.
+ * Cascade: Jev → copy slots or HTML generate → catalog/heuristic. Never a second layout language.
  */
-import { uiSpecSchema } from './schema.js'
 import { getLLMAdapter } from './llm/registry.js'
 import { inferShape, findRows } from './shape.js'
 import { applyPolicy, extractPolicy, isIdLikeKey } from './layout-policy.js'
 import { jevAvailable, planWithJev } from './jev/planner.js'
-import { llmAdapter } from './decisions/llm.js'
-import { isIteratePrompt, mergeIteratePolicy, selectReplayPolicy } from './iterate.js'
+import { isIteratePrompt, mergeIteratePolicy, selectReplayPolicy, applyInstructionUpgrades, isLookMotionOnly } from './iterate.js'
+import { DEMO_LOGIN_SOURCE, isLoginIntent, brandFromPrompt, DEMO_LANDING_SOURCE, DEMO_CHECKOUT_SOURCE, DEMO_PRICING_SOURCE, DEMO_FORM_SOURCE, DEMO_SETTINGS_SOURCE, DEMO_CALENDAR_SOURCE, DEMO_GENERATED_SOURCE } from './demo-payload.js'
+import { classifySurface, catalogCannotExpress, isProductSurface, DEMO_WORKSPACE_SOURCE } from './surface.js'
+import { catalogFromPack, normalizePack } from './design-systems/pack.js'
+import { generateUiHtml, generatedPolicy } from './generate-ui.js'
+import { composeTurnPrompt, currentTurnText } from './chat-context.js'
 
-export function aiAvailable(provider = process.env.LLM_PROVIDER || 'anthropic') {
+const COPY_SLOT_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    summary: { type: 'string' },
+    kicker: { type: 'string' },
+    subtitle: { type: 'string' },
+  },
+  required: ['title', 'summary'],
+  additionalProperties: false,
+}
+
+export function aiAvailable(provider = process.env.LLM_PROVIDER || 'anthropic', apiKey) {
   try {
-    return getLLMAdapter(provider).isAvailable()
+    return getLLMAdapter(provider).isAvailable(apiKey)
   } catch {
     return false
   }
@@ -49,27 +65,7 @@ export function hydrateSpec(spec, data, maxRows = 50) {
   return { ...spec, components }
 }
 
-const SYSTEM_PROMPT_RULES = [
-  'Rules:',
-  '- User instructions are the highest priority. If they conflict with a default below, follow the instructions.',
-  '- Decide "presentation": use "modal" when the instructions ask for a popup, modal, dialog, overlay, or a single focused widget shown over the page. Use "component" when the instructions ask for just one bare widget/snippet to embed inline with no page chrome. Use "page" (default) for a full dashboard.',
-  '- Pick the components that best communicate this specific data: metrics first when aggregates exist, table or list for record sets, chart when there is a meaningful numeric dimension, key-value for a single object.',
-  '- Match the number of components to the request: a focused/popup/component ask gets 1 component; a general "show me this data" or dashboard ask gets 2-5 components covering different angles.',
-  '- If instructions name specific fields/metrics (e.g. "just show temperature and humidity"), build components from only those fields — ignore the rest of the data.',
-  '- If instructions name a specific component (e.g. "as a chart", "as a table", "as a list"), use that component type even if another type would normally fit better.',
-  '- Use "alert" for status/warning callouts the instructions ask to highlight (e.g. "warn if stock is low").',
-  '- Use "action-row" only when instructions ask for buttons/links/actions (e.g. "add a button to open the source"). action: "link" needs a real url from the data or sourceUrl; action: "notify" shows an in-app message.',
-  '- For "table" components do NOT copy row data: provide column definitions plus rowsPath (dot-path to the row array in the data; "" if the root is the array). The server hydrates rows from the original payload.',
-  '- For charts, extract real values/labels from the data sample. Never invent data.',
-  'Examples of instruction → decision:',
-  '- "show this in a popup" → presentation: "modal", 1 component.',
-  '- "just show me the temperature" → presentation: "modal", 1 stat-grid with only that value.',
-  '- "just show the temperature as a single component" → presentation: "component", 1 stat-grid with only that value, no page chrome.',
-  '- "show as a bar chart" → 1 chart component, chartType: "bar", even if a table would otherwise be picked.',
-  '- "add a link to view the raw data" → include an action-row with a "link" action pointing at sourceUrl.',
-]
-
-async function planWithLlm({ data, sourceUrl, instructions, designSystem, apiKey, llmProvider }) {
+async function fillCopySlots({ spec, policy, data, sourceUrl, instructions, apiKey, llmProvider, planner }) {
   const provider = llmProvider || process.env.LLM_PROVIDER || 'anthropic'
   let adapter
   try {
@@ -77,51 +73,137 @@ async function planWithLlm({ data, sourceUrl, instructions, designSystem, apiKey
   } catch {
     return null
   }
-
   if (!adapter.isAvailable(apiKey)) return null
-
-  const catalog = designSystem.components
-    .map((c) => `- ${c.type}: ${c.description}`)
-    .join('\n')
-
-  const system = [
-    'You are a UI architect inside an MCP UI server. You receive data fetched from an API endpoint and design a UI for it.',
-    `You may ONLY use components from the "${designSystem.name}" design system catalog:`,
-    catalog,
-    ...SYSTEM_PROMPT_RULES,
-  ].join('\n')
-
-  const shape = inferShape(data)
   const excerpt = String(instructions || '').slice(0, 800)
-  const userContent = [
-    `Source endpoint: ${sourceUrl}`,
-    excerpt ? `User instructions: ${excerpt}` : null,
-    'Data shape (values omitted — never invent records; bind fields from this shape):',
-    '```json',
-    JSON.stringify(shape),
-    '```',
-  ]
-    .filter(Boolean)
-    .join('\n')
+  const first = spec?.components?.[0] || {}
+  try {
+    const slots = await adapter.generateStructured({
+      apiKey,
+      system: 'Fill short UI copy only. Never invent layout, widgets, or data. Keep title under 48 characters.',
+      userContent: [
+        excerpt ? `User instructions: ${excerpt}` : null,
+        `Current title: ${spec?.title || ''}`,
+        `Current summary: ${spec?.summary || ''}`,
+        `Component: ${first.type || 'unknown'}`,
+        'Shape:',
+        JSON.stringify(inferShape(data)),
+      ].filter(Boolean).join('\n'),
+      schema: COPY_SLOT_SCHEMA,
+      maxTokens: 400,
+    })
+    const nextSpec = {
+      ...spec,
+      title: slots.title || spec.title,
+      summary: slots.summary || spec.summary,
+      components: (spec.components || []).map((c, i) => {
+        if (i !== 0) return c
+        return {
+          ...c,
+          props: {
+            ...(c.props || {}),
+            kicker: slots.kicker || c.props?.kicker,
+            subtitle: slots.subtitle || c.props?.subtitle,
+          },
+        }
+      }),
+    }
+    const nextPolicy = {
+      ...policy,
+      title: nextSpec.title,
+      summary: nextSpec.summary,
+    }
+    return { spec: applyPolicy(nextPolicy, data, sourceUrl), policy: nextPolicy, planner: planner || `${adapter.id}:${adapter.model}:slots` }
+  } catch {
+    return null
+  }
+}
 
-  const generated = await adapter.generateStructured({
-    apiKey,
-    system,
-    userContent,
-    schema: uiSpecSchema,
-    maxTokens: llmAdapter.maxTokens,
-  })
+function wantsGeneratedUi(text, sourceUrl, previousPolicy) {
+  if (String(sourceUrl || '') === DEMO_GENERATED_SOURCE) return true
+  if ((previousPolicy?.componentTypes || []).includes('html-block')) return true
+  if (catalogCannotExpress(text)) return true
+  return classifySurface(text, sourceUrl).catalog === false
+}
 
-  const policy = extractPolicy(generated, data)
-  const spec = applyPolicy(policy, data, sourceUrl)
-  return { spec, policy, planner: `${adapter.id}:${adapter.model}` }
+function catalogFallbackPolicy(instructions, sourceUrl, data) {
+  const text = instructions || ''
+  if (catalogCannotExpress(text)) return null
+  const surface = classifySurface(text, sourceUrl)
+  if (isLoginIntent(text) || String(sourceUrl || '') === DEMO_LOGIN_SOURCE) {
+    return applyInstructionUpgrades({
+      presentation: 'page',
+      motion: 'none',
+      componentTypes: ['login-form'],
+      title: brandFromPrompt(text, typeof data?.store === 'string' ? data.store : 'Sign in'),
+    }, text)
+  }
+  if (surface.kind === 'marketing' || String(sourceUrl || '') === DEMO_LANDING_SOURCE) {
+    return applyInstructionUpgrades({
+      presentation: 'page',
+      motion: 'none',
+      componentTypes: ['landing-page'],
+      title: brandFromPrompt(text, typeof data?.store === 'string' ? data.store : 'Landing'),
+    }, text)
+  }
+  if (surface.main === 'checkout' || String(sourceUrl || '') === DEMO_CHECKOUT_SOURCE) {
+    return applyInstructionUpgrades({
+      presentation: 'page',
+      motion: 'none',
+      componentTypes: ['checkout'],
+      title: brandFromPrompt(text, typeof data?.store === 'string' ? data.store : 'Checkout'),
+    }, text)
+  }
+  if (surface.main === 'pricing' || String(sourceUrl || '') === DEMO_PRICING_SOURCE) {
+    return applyInstructionUpgrades({
+      presentation: 'page',
+      motion: 'none',
+      componentTypes: ['pricing'],
+      title: typeof data?.store === 'string' ? data.store : 'Pricing',
+    }, text)
+  }
+  if (surface.main === 'form' || String(sourceUrl || '') === DEMO_FORM_SOURCE) {
+    return applyInstructionUpgrades({
+      presentation: 'page',
+      motion: 'none',
+      componentTypes: ['form'],
+      title: typeof data?.store === 'string' ? data.store : 'Contact',
+    }, text)
+  }
+  if (surface.main === 'settings' || String(sourceUrl || '') === DEMO_SETTINGS_SOURCE) {
+    return applyInstructionUpgrades({
+      presentation: 'page',
+      motion: 'none',
+      componentTypes: ['settings'],
+      title: typeof data?.store === 'string' ? data.store : 'Settings',
+    }, text)
+  }
+  if (surface.main === 'calendar' || String(sourceUrl || '') === DEMO_CALENDAR_SOURCE) {
+    return applyInstructionUpgrades({
+      presentation: 'page',
+      motion: 'none',
+      componentTypes: ['calendar'],
+      title: typeof data?.store === 'string' ? data.store : 'Calendar',
+    }, text)
+  }
+  if (isProductSurface(surface) || String(sourceUrl || '') === DEMO_WORKSPACE_SOURCE) {
+    return applyInstructionUpgrades({
+      presentation: 'page',
+      motion: 'none',
+      componentTypes: ['work-stage'],
+      stageMode: surface.main === 'map' || data?.mode === 'map' ? 'map' : 'board',
+      title: typeof data?.store === 'string' ? data.store : (surface.title || 'Workspace'),
+    }, text)
+  }
+  return null
 }
 
 function specHasLiveRecords(spec) {
   for (const component of spec?.components || []) {
+    if (component.type === 'login-form' || component.type === 'work-stage' || component.type === 'landing-page' || component.type === 'checkout' || component.type === 'pricing' || component.type === 'form' || component.type === 'settings' || component.type === 'calendar' || component.type === 'html-block') return true
     const props = component.props || {}
     if (Array.isArray(props.rows) && props.rows.length) return true
     if (Array.isArray(props.values) && props.values.length) return true
+    if (Array.isArray(props.fields) && props.fields.length) return true
   }
   return false
 }
@@ -130,7 +212,7 @@ function withPolicy(result, data, extras = {}) {
   let spec = result.spec
   let policy = result.policy || extractPolicy(spec, data)
   const planner = result.planner
-  const judged = typeof planner === 'string' && /^(jev:|replay|iterate)/.test(planner)
+  const judged = typeof planner === 'string' && /^(jev:|replay|iterate|catalog)/.test(planner)
   if (!judged && findRows(data).rows?.length && !specHasLiveRecords(spec)) {
     spec = heuristicPlan(data, extras.sourceUrl, extras.instructions)
     policy = extractPolicy(spec, data)
@@ -145,6 +227,7 @@ function withPolicy(result, data, extras = {}) {
     jevConfidence: extras.jevConfidence ?? result.confidence ?? null,
     jevAnswers: extras.jevAnswers ?? result.answers ?? null,
     latencyMs: extras.latencyMs,
+    trace: extras.trace || result.trace || null,
   }
 }
 
@@ -160,8 +243,17 @@ export async function planUI({
   neighbors,
   askJev,
   typesafeApiKey,
+  onTrace,
+  fresh,
+  themePack,
+  generateUi,
+  history,
+  goal,
 } = {}) {
   const started = Date.now()
+  const think = (thought, extra = {}) => {
+    if (typeof onTrace === 'function') onTrace({ thought, ...extra })
+  }
   const done = (result, extras) =>
     withPolicy(result, data, {
       ...extras,
@@ -170,86 +262,244 @@ export async function planUI({
       latencyMs: Date.now() - started,
     })
 
-  const iterate = Boolean(previousPolicy && isIteratePrompt(instructions))
+  think(
+    fresh === false
+      ? 'Cascade: replay identical fingerprints, else Jev, then Haiku generate or copy slots.'
+      : 'Live plan: fingerprint replay skipped. Jev decides this turn.',
+  )
+
+  const pack = themePack ? normalizePack(themePack) : null
+  const catalogTypes = pack ? catalogFromPack(pack) : undefined
+  const sessionFollowUp = Boolean(previousPolicy)
+  const turnPrompt = composeTurnPrompt({ current: instructions, history, goal })
+  const turnCurrent = currentTurnText(turnPrompt)
+
+  const tryGenerate = async (hints = {}) => {
+    const slots = await generateUiHtml({
+      instructions: turnPrompt,
+      data,
+      sourceUrl,
+      look: hints.look || previousPolicy?.look,
+      motion: hints.motion || previousPolicy?.motion,
+      previous: previousPolicy,
+      pack,
+      apiKey,
+      llmProvider,
+      generateUi,
+      history,
+      goal,
+    })
+    if (slots?.error || !slots?.html?.trim()) {
+      return { error: slots?.error || 'Haiku returned empty markup.' }
+    }
+    const policy = applyInstructionUpgrades(generatedPolicy(slots, {
+      motion: hints.motion || previousPolicy?.motion,
+      look: hints.look || previousPolicy?.look,
+      radius: hints.radius || previousPolicy?.radius,
+      summary: typeof data?.notice === 'string' ? data.notice : 'Generated from your prompt.',
+    }), turnPrompt)
+    return {
+      spec: applyPolicy(policy, data, sourceUrl),
+      policy,
+      planner: 'haiku:generate',
+    }
+  }
+
+  const failGenerate = (built, extra = {}) => {
+    const detail = built?.error || extra.reason
+    think(detail || 'Haiku was unavailable. This prompt is not a catalog widget.')
+    return done(missingGenerateResult(turnPrompt, data, { error: detail, apiKey, llmProvider }), extra)
+  }
+
   const replay = selectReplayPolicy({
     fingerprintPolicy: cachedPolicy,
-    iterate,
-    instructions,
+    iterate: sessionFollowUp || isIteratePrompt(turnCurrent),
+    instructions: turnCurrent,
     shape: inferShape(data),
+    fresh,
   })
 
-  if (replay) {
+  if (replay && !sessionFollowUp) {
+    think('Fingerprint matched a stored policy. Replaying without a model.')
     return done(
       {
         spec: applyPolicy(replay, data, sourceUrl),
         policy: replay,
         planner: 'replay',
       },
-      { cached: true },
+      { cached: true, trace: { path: ['replay'], reason: 'Same prompt fingerprint as a stored decision.' } },
     )
   }
 
-  if (iterate) {
-    const policy = mergeIteratePolicy(previousPolicy, null, instructions)
-    return done({
-      spec: applyPolicy(policy, data, sourceUrl),
-      policy,
-      planner: 'iterate',
-    })
-  }
-
   if (typeof askJev === 'function' || jevAvailable(typesafeApiKey)) {
+    think('Asking Jev which catalog widgets fit this turn.')
     try {
       const jev = await planWithJev({
         data,
         sourceUrl,
-        instructions,
+        instructions: turnPrompt,
         designSystem,
         neighbors,
         previousPolicy,
         askJev,
         typesafeApiKey,
+        catalogTypes,
+        pack,
+        history,
+        goal,
       })
       if (jev.ok) {
-        return done(jev, { jevConfidence: jev.confidence, jevAnswers: jev.answers })
+        think(`Jev decided (${Math.round((jev.confidence || 0) * 100)}% confidence). Hydrating with applyPolicy.`)
+        let result = jev
+        if (jev.needsCopy) {
+          const slots = await fillCopySlots({
+            spec: jev.spec,
+            policy: jev.policy,
+            data,
+            sourceUrl,
+            instructions: turnPrompt,
+            apiKey,
+            llmProvider,
+            planner: jev.planner,
+          })
+          if (slots) {
+            think('Haiku filled copy slots on the Jev layout.')
+            result = { ...jev, spec: slots.spec, policy: slots.policy, planner: jev.planner }
+          }
+        }
+        return done(result, {
+          jevConfidence: jev.confidence,
+          jevAnswers: jev.answers,
+          trace: { path: ['jev', jev.planner || 'jev'], reason: 'Catalog can express the ask.' },
+        })
       }
-      const llm = await planWithLlm({
+
+      const outOfCatalog = jev.generate || wantsGeneratedUi(turnPrompt, sourceUrl, previousPolicy)
+      if (outOfCatalog) {
+        think('Jev routed this out of catalog. Haiku is generating the UI.')
+        const built = await tryGenerate(jev.hints)
+        if (built?.spec) {
+          return done(built, {
+            jevConfidence: jev.confidence,
+            jevAnswers: jev.answers,
+            trace: { path: ['jev', 'haiku'], reason: 'Out of catalog; Haiku generated the UI.' },
+          })
+        }
+        return failGenerate(built, {
+          jevConfidence: jev.confidence,
+          jevAnswers: jev.answers,
+          trace: {
+            path: ['jev', 'generate-missing'],
+            reason: built?.error || 'Haiku generate failed.',
+          },
+        })
+      }
+
+      think('Jev is low-confidence. Copy slots on a catalog or heuristic layout.')
+      const fallback = catalogFallbackPolicy(turnPrompt, sourceUrl, data)
+      const basePolicy = fallback || extractPolicy(heuristicPlan(data, sourceUrl, turnPrompt), data)
+      const baseSpec = applyPolicy(basePolicy, data, sourceUrl)
+      const slots = await fillCopySlots({
+        spec: baseSpec,
+        policy: basePolicy,
         data,
         sourceUrl,
-        instructions,
-        designSystem,
+        instructions: turnPrompt,
         apiKey,
         llmProvider,
+        planner: fallback ? 'catalog' : 'heuristic',
       })
-      if (llm) {
-        return done(llm, { jevConfidence: jev.confidence, jevAnswers: jev.answers })
+      if (slots) {
+        think('Haiku filled copy slots. Layout stayed in catalog code.')
+        return done(slots, {
+          jevConfidence: jev.confidence,
+          jevAnswers: jev.answers,
+          trace: { path: ['jev', 'slots'], reason: 'Copy slots on an already-constructed spec.' },
+        })
       }
-      return done(
-        {
-          spec: heuristicPlan(data, sourceUrl, instructions),
-          planner: 'heuristic',
-        },
-        { jevConfidence: jev.confidence, jevAnswers: jev.answers },
-      )
+      return done({
+        spec: baseSpec,
+        policy: basePolicy,
+        planner: fallback ? 'catalog' : 'heuristic',
+      }, {
+        jevConfidence: jev.confidence,
+        jevAnswers: jev.answers,
+        trace: { path: ['jev', fallback ? 'catalog' : 'heuristic'], reason: 'No copy model; constructed layout.' },
+      })
     } catch {
-      // Fall through to LLM / heuristic when Jev or its SDK is unavailable.
+      think('Jev threw. Falling through to catalog or heuristic.')
     }
   }
 
-  const llm = await planWithLlm({
-    data,
-    sourceUrl,
-    instructions,
-    designSystem,
-    apiKey,
-    llmProvider,
-  })
-  if (llm) return done(llm, { cached: false })
+  if (previousPolicy && isIteratePrompt(turnCurrent)) {
+    const generatedFollowUp = (previousPolicy.componentTypes || []).includes('html-block') && !isLookMotionOnly(turnCurrent)
+    if (generatedFollowUp) {
+      think('Follow-up on a generated UI. Haiku is revising it.')
+      const built = await tryGenerate({ look: previousPolicy.look, motion: previousPolicy.motion })
+      if (built?.spec) {
+        return done(built, { trace: { path: ['haiku', 'iterate'], reason: 'Haiku revised the generated UI.' } })
+      }
+    }
+    think('No Jev. Follow-up upgrades the current policy in code.')
+    const policy = mergeIteratePolicy(previousPolicy, null, turnCurrent)
+    return done({
+      spec: applyPolicy(policy, data, sourceUrl),
+      policy,
+      planner: 'iterate',
+    }, { trace: { path: ['iterate'], reason: 'No TypeSafe key; instruction upgrades the session widget.' } })
+  }
 
+  if (wantsGeneratedUi(turnPrompt, sourceUrl, previousPolicy)) {
+    think('Out of catalog. Haiku is generating the UI.')
+    const built = await tryGenerate({ look: previousPolicy?.look, motion: previousPolicy?.motion })
+    if (built?.spec) {
+      return done(built, { trace: { path: ['haiku'], reason: 'Haiku generated the UI.' } })
+    }
+    return failGenerate(built, {
+      trace: { path: ['generate-missing'], reason: built?.error || 'Haiku generate failed.' },
+    })
+  }
+
+  const fallback = catalogFallbackPolicy(turnPrompt, sourceUrl, data)
+  if (fallback) {
+    think('No Jev. Constructing a catalog primitive in code.')
+    return done({
+      spec: applyPolicy(fallback, data, sourceUrl),
+      policy: fallback,
+      planner: 'catalog',
+    }, { trace: { path: ['catalog', fallback.componentTypes[0]], reason: 'No TypeSafe key; catalog fallback.' } })
+  }
+
+  think('Heuristic layout from data shape.')
   return done({
-    spec: heuristicPlan(data, sourceUrl, instructions),
+    spec: heuristicPlan(data, sourceUrl, turnPrompt),
     planner: 'heuristic',
-  })
+  }, { trace: { path: ['heuristic'], reason: 'No Jev key.' } })
+}
+
+function missingGenerateResult(instructions, data, { error, apiKey, llmProvider } = {}) {
+  const title = typeof data?.store === 'string' && data.store.trim() ? data.store : 'Widget'
+  const hasKey = Boolean(apiKey) || aiAvailable(llmProvider)
+  const message = hasKey
+    ? (error || 'Couldn’t generate this UI. Try again.')
+    : 'This UI is not in the catalog. Add an Anthropic key in Settings to generate it from the prompt.'
+  return {
+    spec: {
+      title,
+      summary: message,
+      presentation: 'page',
+      motion: 'none',
+      components: [{ type: 'alert', props: { severity: 'info', message } }],
+    },
+    policy: {
+      presentation: 'page',
+      motion: 'none',
+      title,
+      componentTypes: ['alert'],
+      alert: { severity: 'info', message },
+    },
+    planner: 'generate:missing',
+  }
 }
 
 function scalarKeys(record) {
@@ -272,6 +522,8 @@ function pickNumericKey(keys, record) {
 /** No-key fallback: deterministic spec from data shape. */
 export function heuristicPlan(data, sourceUrl, instructions) {
   const text = instructions || ''
+  const fallback = catalogFallbackPolicy(text, sourceUrl, data)
+  if (fallback) return applyPolicy(fallback, data, sourceUrl)
   const presentation = /\b(popup|modal|dialog|overlay)\b/i.test(text)
     ? 'modal'
     : 'page'

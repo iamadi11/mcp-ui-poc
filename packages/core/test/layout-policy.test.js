@@ -141,4 +141,24 @@ describe('layout policy', () => {
     )
     expect(applied.components.map((c) => c.type)).toEqual(['stat-grid', 'table'])
   })
+
+  it('hydrates demo login data as a login-form, not stats and a table', () => {
+    const data = {
+      store: 'Tata 1mg',
+      channel: 'Sign in',
+      notice: 'Sign in to Tata 1mg.',
+      items: [
+        { field: 'Email', type: 'email', required: 'Yes' },
+        { field: 'Password', type: 'password', required: 'Yes' },
+      ],
+    }
+    const spec = applyPolicy(
+      { presentation: 'page', componentTypes: ['login-form'] },
+      data,
+      'demo:login',
+    )
+    expect(spec.components.map((c) => c.type)).toEqual(['login-form'])
+    expect(spec.components[0].props.brand).toBe('Tata 1mg')
+    expect(spec.components[0].props.fields.map((f) => f.type)).toEqual(['email', 'password'])
+  })
 })

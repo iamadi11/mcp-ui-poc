@@ -2,20 +2,23 @@
 
 ## Status
 
-Accepted
+Accepted (amended)
 
 ## Context
 
-The endpoint form (`EndpointToUI.jsx`) plus glass/mesh chrome reads as a demo. Users think in messages, not HTTP method dropdowns. The durable artifact must be a reusable widget, not a one-off iframe.
+The endpoint form (`EndpointToUI.jsx`) plus glass/mesh chrome reads as a demo. A later lab studio (Chat / History / Examples tabs, Replan, Skip cache, planner traces) taught caching instead of creation. Users think in messages, not HTTP methods or fingerprint indexes.
 
 ## Decision
 
-The product surface is a split **studio**: chat (left) + live preview (right) + Publish. A turn is a message, optionally with API URLs. Output is always a Widget (policy + spec + theme + motion).
+The product surface is a **creation journey**: describe → see → talk → share.
 
-The form-based endpoint builder is retired as the primary UX.
+- Split studio: composer + live preview + Publish. A turn is a **prompt**. JSON API URLs may appear in the message; there is no separate URL field.
+- Output is always a Widget (policy + spec + theme pack + motion).
+- SSE may emit machine traces; the host maps them to human stages (`fetching` → `designing` → `rendering`).
+- The form-based endpoint builder is retired. Lab chrome is not the happy path (`?debug=1` only).
 
 ## Consequences
 
 - `client/src/studio/` owns chrome; `packages/core` stays the composition kernel.
-- SSE (or a streaming POST) reports `routed` → `fetching` → `planned` → `rendered` so perceived latency stays honest.
-- Instruction chips remain as optional prompt starters, not the main IA.
+- Starters must produce the UI they name.
+- Instruction chips after first success are optional, skippable, and never a locked tour.

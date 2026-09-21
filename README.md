@@ -4,25 +4,28 @@
 
 Chat-first studio: a message (optional API URL) becomes a versioned **Widget**.
 [Jev](https://docs.typesafe.ai/introduction) **decides**; code and a ThemeAdapter **construct**.
-Claude Haiku writes only when confidence is low or the catalog cannot express the ask.
+Claude Haiku fills copy slots on catalog layouts (`needs_llm`) **or generates HTML** when the catalog cannot express the ask.
 Publish a public iframe at `/e/:publicId`. Owners sign in with GitHub to edit.
 
 ```
-chat turn ─▶ session iterate (if follow-up) / Redis replay ─▶ Jev fan-out ─▶ applyPolicy / rare Haiku ─▶ shadcn ThemeAdapter ─▶ embed URL
+chat turn ─▶ bind fixture or fetch URL ─▶ Jev fan-out (live; fingerprint replay off) ─▶ applyPolicy + ThemeAdapter pack ─▶ Haiku copy slots or HTML generate ─▶ embed URL
 ```
 
 Glossary: [`CONTEXT.md`](CONTEXT.md). ADRs: [`docs/adr/`](docs/adr/). Visual system: [`design-system/MCP-UI/MASTER.md`](design-system/MCP-UI/MASTER.md).
 
 ## Features
 
-- **Follow-up turns** — “add a tooltip”, “hide the table”, “make it a bar chart” upgrade the current session widget (`Iterate`). **New chat** starts a fresh session so the next prompt is not an iterate.
-- **Examples tab** — Chat | Examples in the studio rail. Each card is a pasted public API URL plus a prompt; **Send** starts a new chat and generates the widget. Checkout / ecommerce prompts with no URL use a demo shoe cart (not the prompt text as records).
-- **Studio chrome** — chat + live preview + Publish. Status stream: `routed` → `fetching` → `planned` → `rendered`. Redis down degrades replay/ratings; generate still works.
-- **Jev-first DecisionAdapter** — one parallel TypeSafe call per turn. Replay → iterate → Jev + `applyPolicy` → Haiku → heuristic.
-- **Never full payloads to Claude** — `inferShape` + instruction excerpt only; `maxTokens` capped.
-- **Redis hot path, Mongo source of truth** — fingerprints and sessions in Upstash; widgets/turns/users on Atlas M0. No long-term raw API dumps.
+- **Follow-up turns** — “add a tooltip”, “hide the table”, “make it a bar chart” upgrade the current session widget. **New chat** starts a fresh session. Then **Publish** to embed `/e/:id`.
+- **Turns** — each successful send is kept on the chat. Restore from Recents (`/?c=:id`), then follow up or **Publish**. Published widgets keep server-side versions; `/e/:id` is live, `/e/:id?v=` is pinned.
+- **Connect your look** — Settings sheet: starter packs, paste CSS variables, or upload tokens.json. The pack restyles the catalog and is stored on the widget so the embed stays branded.
+- **Prompt-first** — describe a UI, paste a JSON URL in the message, or both. No separate API URL field. Text-only prompts bind a demo/sketch so the planner still has records to lay out. Starters: Login, Dashboard, Landing, Checkout.
+- **Chat history** — Recents in an overlay (scrim, not a layout column). **Remove** / **Clear** hide chats from the list (soft delete) and archive prompts + policies for later model training; HTML and API payloads are not kept.
+- **Studio chrome** — canvas-first: describe → see → talk → share. Human stages: Fetching data → Designing layout → Rendering. The chat rail shows live thinking on every turn. Optional `?debug=1` shows planner traces.
+- **Jev-first DecisionAdapter** — one TypeSafe call on every generate path. Redis fingerprint replay is **off**; every Studio send plans live (`fresh: true`). Login, landing, checkout, pricing, and map/editor workspaces are catalog primitives Jev can pick. Out-of-catalog asks (brand, graffiti, games, asking again) go to Haiku HTML generate. Map workspaces load the Google Maps JavaScript API (Drawing library) from `GOOGLE_MAPS_API_KEY`, a Settings Maps key, or a key pasted on the canvas. See `docs/adr/002-jev-routing.md` and `docs/adr/006-design-packs.md`.
+- **Never full payloads to Claude** — `inferShape` + instruction excerpt only. Haiku fills **copy slots** when a catalog layout sets `needs_llm`, or **generates sanitized HTML** when `catalogCannotExpress`.
+- **Redis + Mongo** — sessions and optional cache in Upstash/Redis; widgets/turns/users on Atlas M0. Fingerprint replay is not used on the Studio hot path. No long-term raw API dumps.
 - **Embeds** — `GET /e/:publicId` (pin `?v=`). Owner UI `/w/:publicId` after GitHub OAuth.
-- **Pluggable ThemeAdapter** — `shadcn` (default), `material`, `plain`, `glass`. Catalog stays in `packages/core`; host chrome is shadcn.
+- **Pluggable ThemeAdapter** — default Studio pack (MASTER teal). Developers may `registerDesignSystem` with a custom `render`. Studio users connect packs, not JavaScript.
 - **Safety** — SSRF guard, HTML size cap, rate limits on generate and chat turns.
 
 ## Project structure
@@ -41,16 +44,16 @@ mcp-ui-poc/
 ```bash
 git clone <repository-url> && cd mcp-ui-poc
 npm install && npm run install-all
-cp .env.example .env.local   # TYPESAFE_API_KEY, optional ANTHROPIC_API_KEY
+cp .env.example .env.local   # TYPESAFE_API_KEY, optional ANTHROPIC_API_KEY and GOOGLE_MAPS_API_KEY
 npm run skills:install       # once: Matt Pocock + UI UX Pro Max (then /setup-matt-pocock-skills in chat)
 
 npm run dev      # backend :3001
 npm run client   # frontend :3000 (proxies /api and /e)
 ```
 
-Open http://localhost:3000. Local keys stay in **`.env.local`**. Production should **omit** `TYPESAFE_API_KEY` / `ANTHROPIC_API_KEY` so visitors BYOK in Settings.
+Open http://localhost:3000. Local keys stay in **`.env.local`**. Production should **omit** `TYPESAFE_API_KEY` / `ANTHROPIC_API_KEY` so visitors BYOK in Settings. A referrer-restricted `GOOGLE_MAPS_API_KEY` may stay on the server so published map embeds can load the Maps SDK.
 
-Local Redis + Mongo (optional, for replay cache, ratings, and durable publish):
+Local Redis + Mongo (optional, for sessions, ratings, and durable publish):
 
 ```bash
 # macOS
@@ -82,11 +85,15 @@ Callback URL for the GitHub OAuth App: `https://<host>/api/auth/github/callback`
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/health` | Planner, Jev, Redis, Mongo, OAuth |
-| `POST /api/chat/turn` | `{ message, url?, sessionId?, stream? }` SSE: routed/fetching/planned/rendered |
+| `GET /api/health` | Planner, Jev, Redis, Mongo, OAuth, Maps; `jevFromEnv` / `aiFromEnv` when keys are on the server |
+| `POST /api/chat/turn` | `{ message, url?, sessionId?, stream?, fresh?, history?, goal?, themePack? }` SSE: stage + thinking traces, then rendered |
+| `POST /api/chat/restore` | `{ sessionId, widget }` restore a prior turn into the session |
+| `POST /api/chat/customize` | `{ sessionId, themeId?, themePack?, motion?, look?, sourceUrl?, publicId? }` re-render; PATCH live URL if `publicId` |
+| `GET /api/design-packs` | Starter packs |
+| `POST /api/design-packs/preview` | `{ starter? | css? | tokensJson? | pack? }` login + landing HTML samples |
 | `POST /api/render-endpoint` | Legacy URL generate (same planner) |
-| `POST /api/widgets` | Publish session widget (GitHub session) |
-| `GET/PATCH /api/widgets/:publicId` | Public metadata / owner customize |
+| `POST /api/widgets` | Publish session widget (GitHub session). Pass `publicId` to append a version. |
+| `GET/PATCH /api/widgets/:publicId` | Metadata / owner customize. PATCH `{ restoreVersion }` makes that version live. |
 | `GET /e/:publicId` | Cacheable embed HTML (`?v=` pin) |
 | `GET /api/auth/github` | OAuth login |
 | `POST /api/feedback` | `{ decisionId, rating: "up"\|"down" }` |

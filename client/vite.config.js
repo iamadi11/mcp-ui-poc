@@ -34,6 +34,8 @@ export default defineConfig({
       '/api': {
         target: localApiTarget(),
         changeOrigin: true,
+        timeout: 180_000,
+        proxyTimeout: 180_000,
       },
       '/e': {
         target: localApiTarget(),

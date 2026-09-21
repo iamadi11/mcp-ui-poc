@@ -4,6 +4,8 @@
  * an LLM/heuristic spec so those decisions can be replayed.
  */
 import { findRows, getPath, inferShape, rowsFromValue } from './shape.js'
+import { DEMO_LOGIN_SOURCE, DEMO_LANDING_SOURCE, DEMO_CHECKOUT_SOURCE, DEMO_PRICING_SOURCE, DEMO_FORM_SOURCE, DEMO_SETTINGS_SOURCE, DEMO_CALENDAR_SOURCE, DEMO_GENERATED_SOURCE } from './demo-payload.js'
+import { DEMO_WORKSPACE_SOURCE } from './surface.js'
 
 const MAX_ROWS = 24
 const MAX_CHART = 24
@@ -112,6 +114,89 @@ function inferredTableTitle(shape) {
   return 'Records'
 }
 
+const GENERIC_TITLES = new Set([
+  'Checkout', 'Landing', 'Sign in', 'Data overview', 'Contact', 'Settings',
+  'Calendar', 'Pricing', 'Workspace', 'Plans', 'App', 'Studio', 'Tic-tac-toe', 'Game',
+])
+
+function brandedName(policy, data, fallback) {
+  const title = String(policy?.title || '').trim()
+  const store = typeof data?.store === 'string' ? data.store.trim() : ''
+  if (title && !GENERIC_TITLES.has(title)) return title
+  if (store && !GENERIC_TITLES.has(store)) return store
+  return title || store || fallback
+}
+
+function policyExclusive(policy) {
+  const types = Array.isArray(policy?.componentTypes) ? policy.componentTypes : []
+  const exclusive = [
+    'login-form',
+    'work-stage',
+    'landing-page',
+    'checkout',
+    'pricing',
+    'form',
+    'settings',
+    'calendar',
+    'html-block',
+  ]
+  return exclusive.find((type) => types.includes(type)) || null
+}
+
+function wantsLoginForm(policy, sourceUrl) {
+  const exclusive = policyExclusive(policy)
+  if (exclusive) return exclusive === 'login-form'
+  return String(sourceUrl || '') === DEMO_LOGIN_SOURCE
+}
+
+function wantsWorkStage(policy, sourceUrl) {
+  const exclusive = policyExclusive(policy)
+  if (exclusive) return exclusive === 'work-stage'
+  return String(sourceUrl || '') === DEMO_WORKSPACE_SOURCE
+}
+
+function wantsLanding(policy, sourceUrl) {
+  const exclusive = policyExclusive(policy)
+  if (exclusive) return exclusive === 'landing-page'
+  return String(sourceUrl || '') === DEMO_LANDING_SOURCE
+}
+
+function wantsCheckout(policy, sourceUrl) {
+  const exclusive = policyExclusive(policy)
+  if (exclusive) return exclusive === 'checkout'
+  return String(sourceUrl || '') === DEMO_CHECKOUT_SOURCE
+}
+
+function wantsPricing(policy, sourceUrl) {
+  const exclusive = policyExclusive(policy)
+  if (exclusive) return exclusive === 'pricing'
+  return String(sourceUrl || '') === DEMO_PRICING_SOURCE
+}
+
+function wantsForm(policy, sourceUrl) {
+  const exclusive = policyExclusive(policy)
+  if (exclusive) return exclusive === 'form'
+  return String(sourceUrl || '') === DEMO_FORM_SOURCE
+}
+
+function wantsSettings(policy, sourceUrl) {
+  const exclusive = policyExclusive(policy)
+  if (exclusive) return exclusive === 'settings'
+  return String(sourceUrl || '') === DEMO_SETTINGS_SOURCE
+}
+
+function wantsCalendar(policy, sourceUrl) {
+  const exclusive = policyExclusive(policy)
+  if (exclusive) return exclusive === 'calendar'
+  return String(sourceUrl || '') === DEMO_CALENDAR_SOURCE
+}
+
+function wantsHtmlBlock(policy, sourceUrl) {
+  const exclusive = policyExclusive(policy)
+  if (exclusive) return exclusive === 'html-block'
+  return String(sourceUrl || '') === DEMO_GENERATED_SOURCE && Boolean(policy?.html)
+}
+
 function hostTitle(sourceUrl) {
   try {
     return new URL(sourceUrl).hostname.replace(/^www\./, '')
@@ -124,6 +209,13 @@ function pageTitle(policy, data, sourceUrl) {
   const store = typeof data?.store === 'string' ? data.store.trim() : ''
   const channel = typeof data?.channel === 'string' ? data.channel.trim() : ''
   if (store && /checkout|cart/i.test(channel)) return `${store} checkout`
+  if (store && /workspace/i.test(channel)) return store
+  if (store && /sign in|login/i.test(channel)) return store
+  if (store && /landing/i.test(channel)) return store
+  if (store && /form/i.test(channel)) return store
+  if (store && /settings/i.test(channel)) return store
+  if (store && /calendar/i.test(channel)) return store
+  if (store && /generated/i.test(channel)) return store
   if (store && (!policy?.title || policy.title === 'Data overview')) return store
   if (policy?.title && policy.title !== 'Data overview') return policy.title
   const host = sourceUrl ? hostTitle(sourceUrl) : ''
@@ -412,6 +504,257 @@ function buildActionRow(policy, sourceUrl) {
   }
 }
 
+function fieldInputType(value) {
+  const type = String(value || 'text').toLowerCase()
+  if (type === 'email' || type === 'password' || type === 'text' || type === 'checkbox') return type
+  if (type === 'bool' || type === 'boolean') return 'checkbox'
+  return 'text'
+}
+
+function requiredFlag(value) {
+  if (value === true || value === 'Yes' || value === 'yes') return true
+  if (value === false || value === 'No' || value === 'no') return false
+  return Boolean(value)
+}
+
+function buildLoginForm(policy, data) {
+  const brand = brandedName(policy, data, 'Sign in')
+  const rows = Array.isArray(data?.items) ? data.items : []
+  const fields = rows.length
+    ? rows.map((row, i) => ({
+        name: String(row.field || row.name || `field${i}`)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_|_$/g, '') || `field${i}`,
+        label: String(row.field || row.label || `Field ${i + 1}`),
+        type: fieldInputType(row.type),
+        required: requiredFlag(row.required),
+      }))
+    : [
+        { name: 'email', label: 'Email', type: 'email', required: true },
+        { name: 'password', label: 'Password', type: 'password', required: true },
+      ]
+  return {
+    type: 'login-form',
+    props: {
+      brand,
+      kicker: 'Account',
+      subtitle: typeof data?.notice === 'string' && data.notice.trim()
+        ? data.notice.trim()
+        : `Sign in to ${brand}`,
+      submitLabel: 'Sign in',
+      fields,
+    },
+  }
+}
+
+function buildLandingPage(policy, data) {
+  const brand = brandedName(policy, data, 'Studio')
+  const rows = Array.isArray(data?.items) ? data.items : []
+  const sections = rows.length
+    ? rows.map((row) => ({
+        kind: String(row.block || row.kind || 'block').toLowerCase(),
+        copy: String(row.copy || row.title || ''),
+        cta: String(row.cta || ''),
+      }))
+    : [
+        { kind: 'hero', copy: `Welcome to ${brand}`, cta: 'Get started' },
+        { kind: 'proof', copy: 'Built for teams that ship UI faster.', cta: '' },
+      ]
+  const hero = sections.find((s) => s.kind === 'hero') || sections[0]
+  return {
+    type: 'landing-page',
+    props: {
+      brand,
+      kicker: brand,
+      headline: hero?.copy || `Welcome to ${brand}`,
+      cta: hero?.cta || 'Get started',
+      sections: sections.filter((s) => s !== hero),
+    },
+  }
+}
+
+function buildCheckout(policy, data) {
+  const brand = brandedName(policy, data, 'Checkout')
+  const rows = Array.isArray(data?.items) ? data.items : []
+  const lines = rows.map((row) => ({
+    product: String(row.product || row.name || 'Item'),
+    detail: [row.color, row.size].filter(Boolean).join(' · '),
+    qty: Number(row.qty) || 1,
+    price: row.price,
+  }))
+  const totals = data?.totals && typeof data.totals === 'object' ? data.totals : {}
+  return {
+    type: 'checkout',
+    props: {
+      brand,
+      kicker: 'Checkout',
+      subtitle: typeof data?.notice === 'string' ? data.notice : '',
+      lines,
+      totals: {
+        subtotal: totals.subtotal,
+        shipping: totals.shipping,
+        tax: totals.tax,
+        total: totals.total,
+      },
+    },
+  }
+}
+
+function buildPricing(policy, data) {
+  const brand = (typeof data?.store === 'string' && data.store.trim()) || policy?.title || 'Pricing'
+  const rows = Array.isArray(data?.items) ? data.items : []
+  const plans = rows.map((row, i) => ({
+    name: String(row.plan || row.name || `Plan ${i + 1}`),
+    price: row.price,
+    perks: String(row.perks || row.copy || ''),
+    featured: i === 1,
+  }))
+  return {
+    type: 'pricing',
+    props: {
+      brand,
+      kicker: 'Plans',
+      subtitle: typeof data?.notice === 'string' ? data.notice : `Plans for ${brand}`,
+      plans,
+    },
+  }
+}
+
+function buildForm(policy, data) {
+  const brand = (typeof data?.store === 'string' && data.store.trim()) || policy?.title || 'Contact'
+  const rows = Array.isArray(data?.items) ? data.items : []
+  const fields = rows.length
+    ? rows.map((row, i) => ({
+        name: String(row.field || row.name || `field${i}`)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_|_$/g, '') || `field${i}`,
+        label: String(row.field || row.label || `Field ${i + 1}`),
+        type: fieldInputType(row.type),
+        required: requiredFlag(row.required),
+      }))
+    : [
+        { name: 'name', label: 'Name', type: 'text', required: true },
+        { name: 'email', label: 'Email', type: 'email', required: true },
+        { name: 'message', label: 'Message', type: 'text', required: true },
+      ]
+  return {
+    type: 'form',
+    props: {
+      brand,
+      kicker: brand,
+      subtitle: typeof data?.notice === 'string' ? data.notice : `Send a note to ${brand}`,
+      submitLabel: 'Send',
+      fields,
+    },
+  }
+}
+
+function buildSettings(policy, data) {
+  const brand = (typeof data?.store === 'string' && data.store.trim()) || policy?.title || 'Settings'
+  const rows = Array.isArray(data?.items) ? data.items : []
+  const groups = []
+  const byGroup = new Map()
+  for (const row of rows) {
+    const group = String(row.group || 'General')
+    if (!byGroup.has(group)) {
+      byGroup.set(group, [])
+      groups.push(group)
+    }
+    byGroup.get(group).push({
+      name: String(row.field || row.name || 'field')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, '') || 'field',
+      label: String(row.field || row.label || 'Field'),
+      type: fieldInputType(row.type),
+      required: requiredFlag(row.required),
+    })
+  }
+  const sections = groups.length
+    ? groups.map((name) => ({ name, fields: byGroup.get(name) || [] }))
+    : [
+        { name: 'Profile', fields: [{ name: 'display_name', label: 'Display name', type: 'text', required: true }] },
+        { name: 'Notifications', fields: [{ name: 'product_emails', label: 'Product emails', type: 'checkbox', required: false }] },
+      ]
+  return {
+    type: 'settings',
+    props: {
+      brand,
+      kicker: 'Account',
+      subtitle: typeof data?.notice === 'string' ? data.notice : 'Manage your account.',
+      sections,
+    },
+  }
+}
+
+function buildCalendar(policy, data) {
+  const title =
+    (typeof data?.store === 'string' && data.store.trim())
+    || (policy?.title && policy.title !== 'Data overview' ? policy.title : '')
+    || 'Calendar'
+  const rows = Array.isArray(data?.items) ? data.items : []
+  const events = rows.map((row) => ({
+    title: String(row.title || row.name || 'Event'),
+    when: String(row.subtitle || row.when || ''),
+    duration: String(row.meta || row.duration || ''),
+  }))
+  return {
+    type: 'calendar',
+    props: {
+      title,
+      kicker: 'Week',
+      subtitle: typeof data?.notice === 'string' ? data.notice : '',
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      events,
+    },
+  }
+}
+
+function buildHtmlBlock(policy, data) {
+  const title = brandedName(policy, data, 'Widget')
+  return {
+    type: 'html-block',
+    props: {
+      title,
+      kicker: policy?.kicker || 'Generated',
+      subtitle: typeof data?.notice === 'string' ? data.notice : '',
+      html: String(policy?.html || ''),
+      css: String(policy?.css || ''),
+      script: String(policy?.script || ''),
+    },
+  }
+}
+
+function buildWorkStage(policy, data) {
+  const title =
+    (typeof data?.store === 'string' && data.store.trim())
+    || (policy?.title && policy.title !== 'Data overview' ? policy.title : '')
+    || 'Workspace'
+  const mode = data?.mode === 'map' || policy?.stageMode === 'map' ? 'map' : 'board'
+  const tools = Array.isArray(data?.tools) && data.tools.length
+    ? data.tools.map((tool) => String(tool))
+    : (mode === 'map' ? ['select', 'polygon', 'delete'] : ['select', 'note', 'delete'])
+  const rows = Array.isArray(data?.items) ? data.items : []
+  const layers = rows.map((row) => ({
+    name: String(row.title || row.name || row.block || 'Layer'),
+    kind: String(row.subtitle || row.kind || row.copy || ''),
+    status: String(row.meta || row.status || ''),
+  }))
+  return {
+    type: 'work-stage',
+    props: {
+      mode,
+      title,
+      kicker: mode === 'map' ? 'Map layer' : 'Workspace',
+      subtitle: typeof data?.notice === 'string' ? data.notice.trim() : '',
+      tools,
+      layers,
+    },
+  }
+}
+
 const BUILDERS = {
   'stat-grid': buildStatGrid,
   table: buildTable,
@@ -422,6 +765,15 @@ const BUILDERS = {
   'badge-row': buildBadgeRow,
   alert: buildAlert,
   'action-row': buildActionRow,
+  'login-form': buildLoginForm,
+  'work-stage': buildWorkStage,
+  'landing-page': buildLandingPage,
+  checkout: buildCheckout,
+  pricing: buildPricing,
+  form: buildForm,
+  settings: buildSettings,
+  calendar: buildCalendar,
+  'html-block': buildHtmlBlock,
 }
 
 export function applyPolicy(policy, data, sourceUrl = '') {
@@ -429,20 +781,146 @@ export function applyPolicy(policy, data, sourceUrl = '') {
   const presentation = ['page', 'modal', 'component'].includes(policy?.presentation)
     ? policy.presentation
     : 'page'
+  if (wantsLoginForm(policy, sourceUrl)) {
+    return {
+      title: pageTitle(policy, data, sourceUrl),
+      summary: pageSummary(policy, data, sourceUrl) || `Sign in to ${data?.store || 'your account'}`,
+      presentation,
+      motion: policy?.motion || 'none',
+      look: policy?.look === 'vivid' ? 'vivid' : 'default',
+      radius: policy?.radius || '',
+      drawer: false,
+      shell: 'auth',
+      components: [buildLoginForm(policy, data)],
+    }
+  }
+  if (wantsLanding(policy, sourceUrl)) {
+    return {
+      title: pageTitle(policy, data, sourceUrl),
+      summary: pageSummary(policy, data, sourceUrl) || 'Landing',
+      presentation,
+      motion: policy?.motion || 'none',
+      look: policy?.look === 'vivid' ? 'vivid' : 'default',
+      radius: policy?.radius || '',
+      drawer: false,
+      shell: 'landing',
+      components: [buildLandingPage(policy, data)],
+    }
+  }
+  if (wantsCheckout(policy, sourceUrl)) {
+    return {
+      title: pageTitle(policy, data, sourceUrl),
+      summary: pageSummary(policy, data, sourceUrl) || 'Checkout',
+      presentation,
+      motion: policy?.motion || 'none',
+      look: policy?.look === 'vivid' ? 'vivid' : 'default',
+      radius: policy?.radius || '',
+      drawer: false,
+      shell: 'checkout',
+      components: [buildCheckout(policy, data)],
+    }
+  }
+  if (wantsPricing(policy, sourceUrl)) {
+    return {
+      title: pageTitle(policy, data, sourceUrl),
+      summary: pageSummary(policy, data, sourceUrl) || 'Pricing',
+      presentation,
+      motion: policy?.motion || 'none',
+      look: policy?.look === 'vivid' ? 'vivid' : 'default',
+      radius: policy?.radius || '',
+      drawer: false,
+      shell: 'pricing',
+      components: [buildPricing(policy, data)],
+    }
+  }
+  if (wantsForm(policy, sourceUrl)) {
+    return {
+      title: pageTitle(policy, data, sourceUrl),
+      summary: pageSummary(policy, data, sourceUrl) || 'Form',
+      presentation,
+      motion: policy?.motion || 'none',
+      look: policy?.look === 'vivid' ? 'vivid' : 'default',
+      radius: policy?.radius || '',
+      drawer: false,
+      shell: 'form',
+      components: [buildForm(policy, data)],
+    }
+  }
+  if (wantsSettings(policy, sourceUrl)) {
+    return {
+      title: pageTitle(policy, data, sourceUrl),
+      summary: pageSummary(policy, data, sourceUrl) || 'Settings',
+      presentation,
+      motion: policy?.motion || 'none',
+      look: policy?.look === 'vivid' ? 'vivid' : 'default',
+      radius: policy?.radius || '',
+      drawer: false,
+      shell: 'settings',
+      components: [buildSettings(policy, data)],
+    }
+  }
+  if (wantsHtmlBlock(policy, sourceUrl)) {
+    return {
+      title: pageTitle(policy, data, sourceUrl),
+      summary: pageSummary(policy, data, sourceUrl) || 'Generated from your prompt.',
+      presentation,
+      motion: policy?.motion || 'none',
+      look: policy?.look === 'vivid' ? 'vivid' : 'default',
+      radius: policy?.radius || '',
+      drawer: false,
+      shell: 'generated',
+      components: [buildHtmlBlock(policy, data)],
+    }
+  }
+  if (wantsCalendar(policy, sourceUrl)) {
+    return {
+      title: pageTitle(policy, data, sourceUrl),
+      summary: pageSummary(policy, data, sourceUrl) || 'Calendar',
+      presentation,
+      motion: policy?.motion || 'none',
+      look: policy?.look === 'vivid' ? 'vivid' : 'default',
+      radius: policy?.radius || '',
+      drawer: false,
+      shell: 'calendar',
+      components: [buildCalendar(policy, data)],
+    }
+  }
+  if (wantsWorkStage(policy, sourceUrl)) {
+    return {
+      title: pageTitle(policy, data, sourceUrl),
+      summary: pageSummary(policy, data, sourceUrl) || 'Workspace',
+      presentation,
+      motion: policy?.motion || 'none',
+      look: policy?.look === 'vivid' ? 'vivid' : 'default',
+      radius: policy?.radius || '',
+      drawer: false,
+      shell: 'workspace',
+      components: [buildWorkStage(policy, data)],
+    }
+  }
   const types = Array.isArray(policy?.componentTypes) && policy.componentTypes.length
     ? policy.componentTypes
     : defaultComponentTypes(shape)
 
   const RANK = {
-    'stat-grid': 0,
-    alert: 1,
-    chart: 2,
-    table: 3,
-    list: 4,
-    'key-value': 5,
-    'badge-row': 6,
-    text: 7,
-    'action-row': 8,
+    'login-form': 0,
+    form: 0,
+    settings: 0,
+    calendar: 0,
+    'landing-page': 0,
+    checkout: 0,
+    pricing: 0,
+    'html-block': 0,
+    'work-stage': 0,
+    'stat-grid': 1,
+    alert: 2,
+    chart: 3,
+    table: 4,
+    list: 5,
+    'key-value': 6,
+    'badge-row': 7,
+    text: 8,
+    'action-row': 9,
   }
   const ordered = [...types].sort((a, b) => (RANK[a] ?? 9) - (RANK[b] ?? 9))
 
@@ -466,6 +944,8 @@ export function applyPolicy(policy, data, sourceUrl = '') {
     summary: pageSummary(policy, data, sourceUrl) || `View of ${sourceUrl || 'endpoint data'}`,
     presentation,
     motion: policy?.motion || 'none',
+    look: policy?.look === 'vivid' ? 'vivid' : 'default',
+    radius: policy?.radius || '',
     drawer: Boolean(policy?.drawer),
     components,
   }
@@ -554,6 +1034,8 @@ export function extractPolicy(spec, data) {
   return {
     presentation: spec?.presentation || 'page',
     motion: spec?.motion || 'none',
+    look: spec?.look === 'vivid' ? 'vivid' : 'default',
+    radius: spec?.radius || '',
     drawer: Boolean(spec?.drawer),
     title: spec?.title || 'Data overview',
     summary: spec?.summary || '',
@@ -575,5 +1057,9 @@ export function extractPolicy(spec, data) {
     text: text?.props?.content,
     badges: badges?.props?.items,
     badgeField: undefined,
+    html: components.find((c) => c.type === 'html-block')?.props?.html,
+    css: components.find((c) => c.type === 'html-block')?.props?.css,
+    script: components.find((c) => c.type === 'html-block')?.props?.script,
+    kicker: components.find((c) => c.type === 'html-block')?.props?.kicker,
   }
 }

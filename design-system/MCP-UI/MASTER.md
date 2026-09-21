@@ -38,7 +38,7 @@ Dark is a desaturated sibling of light, not an invert.
 
 ## Layout
 
-- Split: chat rail (primary) + preview (secondary) on ≥1024px; stack on small screens.
+- Split: canvas (primary) + chat rail (secondary) on ≥1024px; stack on small screens. Recents is an overlay with a scrim, not a layout column.
 - Breakpoints: 375 / 768 / 1024 / 1440. No horizontal page scroll.
 - Touch targets ≥ 44px in the composer.
 

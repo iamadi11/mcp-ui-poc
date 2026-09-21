@@ -26,15 +26,39 @@ const { spec, planner } = await planUI({
 const html = designSystem.render(spec) // self-contained <html> document
 ```
 
-Planner cascade: Redis fingerprint replay → session iterate (code upgrades the
-current widget) → Jev (one fan-out of typed questions) → LLM `generateStructured`
-(shape + excerpt only) → `heuristicPlan()`. Same-shape Mongo neighbors are
-few-shot for Jev, never a silent replay of a different prompt. DecisionAdapter
-I/O is frozen: `{ state, questions } → { answers, confidence }` (`JevAdapter`,
-`HeuristicAdapter`, `LlmAdapter`, `LocalAdapter` stub). Code in
-`layout-policy.js` fills props. Motion is a CSS token
+Planner cascade: Jev (one fan-out of typed questions; Studio `fresh: true` so
+fingerprint replay is off) → `applyPolicy` → Haiku copy slots if `needs_llm`,
+or Haiku HTML when the catalog cannot express the ask → catalog / heuristic
+when no TypeSafe key. Same-shape Mongo neighbors are few-shot for Jev, never
+a silent replay of a different prompt. DecisionAdapter I/O is frozen:
+`{ state, questions } → { answers, confidence }`. Motion is a CSS token
 (`none` | `enter` | `stagger` | `live`). Follow-ups like “add a tooltip”
-merge onto `previousPolicy` (`planner: iterate`).
+merge onto `previousPolicy`.
+
+## Design System Packs
+
+A pack restyles the catalog. It does not invent widgets. Studio users paste
+tokens or CSS variables; they never upload JavaScript. Developers may still
+`registerDesignSystem` with a custom `render`.
+
+```js
+{
+  version: 1,
+  id: 'acme',
+  name: 'Acme',
+  tokens: {
+    background, ink, card, border, accent, onAccent, muted, danger,
+    radius, fontUi, fontMono, chartColors: [6],
+  },
+  head: 'https font links only (fonts.googleapis.com)',
+  css: 'optional extra rules (sanitized)',
+  supports: ['login-form', 'landing-page', /* catalog type ids */],
+}
+```
+
+`render(spec, pack)` applies tokens as CSS variables. Jev `state.catalog` is
+`supports` (id + accent only — never raw CSS). Widget versions persist
+`themeId` + `themePack`. Fingerprints include a pack hash.
 
 If no provider is configured/available, `planUI` falls back to a deterministic
 `heuristicPlan()` (no LLM call, no key required).
