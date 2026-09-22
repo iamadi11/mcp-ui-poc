@@ -1,0 +1,562 @@
+[
+  {
+    "id": "wo_1a0c83eb724_8ac8",
+    "title": "Define MVP PRD and acceptance criteria",
+    "why": "Cannot implement safely without problem/MVP/acceptance",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      "docs/product/PRD.md",
+      "docs/product/acceptance-criteria.md",
+      "docs/product/problem.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83eb728_ba66",
+    "title": "POC / host feasibility for STT+LLM latency claims",
+    "why": "Latency claims are risky; need measured or honestly blocked POC",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-poc",
+    "evidence": [
+      "docs/poc/fast-path-POC_REPORT.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83ec51c_69f8",
+    "title": "Lock architecture ADRs for security invariant + LLM provider",
+    "why": "Irreversible boundaries must be ADR-backed before more features",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-architect",
+    "evidence": [
+      "docs/architecture/ADR-001-security-invariant.md",
+      "ARCHITECTURE.md",
+      "SECURITY.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83ec51c_7469",
+    "title": "Run unit/integration suite and record QA report",
+    "why": "Implementation exists but QA evidence gate open",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-qa",
+    "evidence": [
+      "docs/qa/2026-09-22-report.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83ec9bc_0cfe",
+    "title": "Adversarial security audit of policy/sandbox",
+    "why": "Security must be independent of implementer",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-security",
+    "evidence": [
+      "docs/security/2026-09-22-adversarial.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83eccdb_d4fc",
+    "title": "Benchmark deterministic fast path",
+    "why": "Product claims near-instant commands; need numbers",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-perf",
+    "evidence": [
+      "docs/performance/2026-09-22-fast-path.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83ed00a_bb74",
+    "title": "Product validation against acceptance criteria",
+    "why": "Technical green ≠ product success",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      ".agent/state/validation.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83ed00b_347a",
+    "title": "Release readiness vs Definition of Done",
+    "why": "Assess what can ship vs Mac-host blockers",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-release",
+    "evidence": [
+      "docs/release/readiness.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83ed00c_bfaf",
+    "title": "Post-milestone independent review",
+    "why": "Close the loop with critique before idle",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c83ed00c_bfaf/review.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f43ce_2f33",
+    "title": "Define MVP PRD and acceptance criteria",
+    "why": "Cannot implement safely without problem/MVP/acceptance",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      "docs/product/PRD.md",
+      "docs/product/acceptance-criteria.md",
+      "docs/product/problem.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f43d0_fa0c",
+    "title": "POC / host feasibility for STT+LLM latency claims",
+    "why": "Latency claims are risky; need measured or honestly blocked POC",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-poc",
+    "evidence": [
+      "docs/poc/fast-path-POC_REPORT.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f46f1_e580",
+    "title": "Lock architecture ADRs for security invariant + LLM provider",
+    "why": "Irreversible boundaries must be ADR-backed before more features",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-architect",
+    "evidence": [
+      "docs/architecture/ADR-001-security-invariant.md",
+      "ARCHITECTURE.md",
+      "SECURITY.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f46f2_d9f9",
+    "title": "Run unit/integration suite and record QA report",
+    "why": "Implementation exists but QA evidence gate open",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-qa",
+    "evidence": [
+      "docs/qa/2026-09-22-report.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f4af3_fc60",
+    "title": "Adversarial security audit of policy/sandbox",
+    "why": "Security must be independent of implementer",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-security",
+    "evidence": [
+      "docs/security/2026-09-22-adversarial.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f4e51_8da4",
+    "title": "Benchmark deterministic fast path",
+    "why": "Product claims near-instant commands; need numbers",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-perf",
+    "evidence": [
+      "docs/performance/2026-09-22-fast-path.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f51b2_a5cb",
+    "title": "Product validation against acceptance criteria",
+    "why": "Technical green ≠ product success",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      ".agent/state/validation.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f51b3_73d7",
+    "title": "Release readiness vs Definition of Done",
+    "why": "Assess what can ship vs Mac-host blockers",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-release",
+    "evidence": [
+      "docs/release/readiness.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f51b4_bec9",
+    "title": "Post-milestone independent review",
+    "why": "Close the loop with critique before idle",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c83f51b4_bec9/review.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f9da7_1969",
+    "title": "Define MVP PRD and acceptance criteria",
+    "why": "Cannot implement safely without problem/MVP/acceptance",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      "docs/product/PRD.md",
+      "docs/product/acceptance-criteria.md",
+      "docs/product/problem.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83f9da9_b139",
+    "title": "POC / host feasibility for STT+LLM latency claims",
+    "why": "Latency claims are risky; need measured or honestly blocked POC",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-poc",
+    "evidence": [
+      "docs/poc/fast-path-POC_REPORT.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fa0c2_f46a",
+    "title": "Lock architecture ADRs for security invariant + LLM provider",
+    "why": "Irreversible boundaries must be ADR-backed before more features",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-architect",
+    "evidence": [
+      "docs/architecture/ADR-001-security-invariant.md",
+      "ARCHITECTURE.md",
+      "SECURITY.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fa0c3_101f",
+    "title": "Run unit/integration suite and record QA report",
+    "why": "Implementation exists but QA evidence gate open",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-qa",
+    "evidence": [
+      "docs/qa/2026-09-22-report.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fa48a_a5ef",
+    "title": "Adversarial security audit of policy/sandbox",
+    "why": "Security must be independent of implementer",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-security",
+    "evidence": [
+      "docs/security/2026-09-22-adversarial.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fa805_d2bb",
+    "title": "Benchmark deterministic fast path",
+    "why": "Product claims near-instant commands; need numbers",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-perf",
+    "evidence": [
+      "docs/performance/2026-09-22-fast-path.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fab34_d81f",
+    "title": "Product validation against acceptance criteria",
+    "why": "Technical green ≠ product success",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      ".agent/state/validation.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fab35_f935",
+    "title": "Release readiness vs Definition of Done",
+    "why": "Assess what can ship vs Mac-host blockers",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-release",
+    "evidence": [
+      "docs/release/readiness.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fab36_8f32",
+    "title": "Post-milestone independent review",
+    "why": "Close the loop with critique before idle",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c83fab36_8f32/review.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fd089_1581",
+    "title": "Define MVP PRD and acceptance criteria",
+    "why": "Cannot implement safely without problem/MVP/acceptance",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      "docs/product/PRD.md",
+      "docs/product/acceptance-criteria.md",
+      "docs/product/problem.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fd08c_8d81",
+    "title": "POC / host feasibility for STT+LLM latency claims",
+    "why": "Latency claims are risky; need measured or honestly blocked POC",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-poc",
+    "evidence": [
+      "docs/poc/fast-path-POC_REPORT.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fd521_1f59",
+    "title": "Lock architecture ADRs for security invariant + LLM provider",
+    "why": "Irreversible boundaries must be ADR-backed before more features",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-architect",
+    "evidence": [
+      "docs/architecture/ADR-001-security-invariant.md",
+      "ARCHITECTURE.md",
+      "SECURITY.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fd523_1141",
+    "title": "Run unit/integration suite and record QA report",
+    "why": "Implementation exists but QA evidence gate open",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-qa",
+    "evidence": [
+      "docs/qa/2026-09-22-report.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fda3b_e125",
+    "title": "Adversarial security audit of policy/sandbox",
+    "why": "Security must be independent of implementer",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-security",
+    "evidence": [
+      "docs/security/2026-09-22-adversarial.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fddcf_0b16",
+    "title": "Benchmark deterministic fast path",
+    "why": "Product claims near-instant commands; need numbers",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-perf",
+    "evidence": [
+      "docs/performance/2026-09-22-fast-path.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fe141_4c2b",
+    "title": "Product validation against acceptance criteria",
+    "why": "Technical green ≠ product success",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      ".agent/state/validation.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fe142_ce56",
+    "title": "Release readiness vs Definition of Done",
+    "why": "Assess what can ship vs Mac-host blockers",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-release",
+    "evidence": [
+      "docs/release/readiness.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c83fe143_4088",
+    "title": "Post-milestone independent review",
+    "why": "Close the loop with critique before idle",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c83fe143_4088/review.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c84559aa_e99e",
+    "title": "Define MVP PRD and acceptance criteria",
+    "why": "Cannot implement safely without problem/MVP/acceptance",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      "docs/product/PRD.md",
+      "docs/product/acceptance-criteria.md",
+      "docs/product/problem.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c84559ac_e6f9",
+    "title": "POC / host feasibility for STT+LLM latency claims",
+    "why": "Latency claims are risky; need measured or honestly blocked POC",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-poc",
+    "evidence": [
+      "docs/poc/fast-path-POC_REPORT.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8457329_0076",
+    "title": "Lock architecture ADRs for security invariant + LLM provider",
+    "why": "Irreversible boundaries must be ADR-backed before more features",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-architect",
+    "evidence": [
+      "docs/architecture/ADR-001-security-invariant.md",
+      "ARCHITECTURE.md",
+      "SECURITY.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c845732a_4fb6",
+    "title": "Run unit/integration suite and record QA report",
+    "why": "Implementation exists but QA evidence gate open",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-qa",
+    "evidence": [
+      "docs/qa/2026-09-22-report.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8459535_d87e",
+    "title": "Adversarial security audit of policy/sandbox",
+    "why": "Security must be independent of implementer",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-security",
+    "evidence": [
+      "docs/security/2026-09-22-adversarial.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c84599a7_993f",
+    "title": "Benchmark deterministic fast path",
+    "why": "Product claims near-instant commands; need numbers",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-perf",
+    "evidence": [
+      "docs/performance/2026-09-22-fast-path.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8459d4c_0d05",
+    "title": "Product validation against acceptance criteria",
+    "why": "Technical green ≠ product success",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      ".agent/state/validation.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8459d4d_56c3",
+    "title": "Release readiness vs Definition of Done",
+    "why": "Assess what can ship vs Mac-host blockers",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-release",
+    "evidence": [
+      "docs/release/readiness.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8459d4e_7b62",
+    "title": "Post-milestone independent review",
+    "why": "Close the loop with critique before idle",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c8459d4e_7b62/review.md"
+    ]
+  }
+]

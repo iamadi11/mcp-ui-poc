@@ -35,9 +35,18 @@ mcp-ui-poc/
 ├── client/        # React + Vite studio
 ├── server/        # Express: chat SSE, OAuth, widgets, embed
 ├── packages/core/ # ui-compose-kit: planner, DecisionAdapter, design systems
+├── packages/autonomous-company/  # Studio Company OS (`npm run company`)
+├── mac-agent/     # Local-first Mac control app + `/autonomous` Director
 ├── design-system/ # MASTER.md for host chrome
 └── api/           # Vercel serverless entry
 ```
+
+## Autonomous loops
+
+| Entry | Scope | Command |
+|-------|--------|---------|
+| `/autonomous-company` | Studio product Company OS | `npm run company` |
+| `/autonomous` | Mac Agent engineering org (in `mac-agent/`) | `npm run autonomous -- start --ticks 12` |
 
 ## Getting started
 

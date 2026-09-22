@@ -1,0 +1,16 @@
+{
+  "name": "mac-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first macOS computer-control agent",
+  "scripts": {
+    "autonomous": "node tools/autonomous/src/cli.js",
+    "autonomous:test": "node --test tools/autonomous/test/*.test.js",
+    "test:swift": "swift test",
+    "test": "npm run autonomous:test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
