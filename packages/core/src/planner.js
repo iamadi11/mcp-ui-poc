@@ -1,16 +1,17 @@
 /**
- * AI layer: Jev decides look, motion, iterate vs create, and in-catalog.
- * Code hydrates via applyPolicy. Haiku fills copy slots on catalog layouts
+ * AI layer: Laya or Jev decides look, motion, iterate vs create, and in-catalog.
+ * Code hydrates via applyPolicy. An LLM fills copy slots on catalog layouts
  * or generates sanitized HTML when the catalog cannot express the ask.
  *
  * Redis fingerprint replay is off unless fresh === false.
- * Cascade: Jev → copy slots or HTML generate → catalog/heuristic. Never a second layout language.
+ * Cascade: decision engine → copy slots or HTML generate → catalog/heuristic.
  */
 import { getLLMAdapter } from './llm/registry.js'
 import { inferShape, findRows } from './shape.js'
 import { applyPolicy, extractPolicy, isIdLikeKey, sampleRows } from './layout-policy.js'
 import { sanitizeSpecActions } from './sanitize-spec.js'
-import { jevAvailable, planWithJev } from './jev/planner.js'
+import { planWithJev } from './jev/planner.js'
+import { decisionAvailable, resolveAskDecision } from './decisions/provider.js'
 import { isIteratePrompt, mergeIteratePolicy, selectReplayPolicy, applyInstructionUpgrades, isLookMotionOnly } from './iterate.js'
 import { DEMO_LOGIN_SOURCE, isLoginIntent, brandFromPrompt, DEMO_LANDING_SOURCE, DEMO_CHECKOUT_SOURCE, DEMO_PRICING_SOURCE, DEMO_FORM_SOURCE, DEMO_SETTINGS_SOURCE, DEMO_CALENDAR_SOURCE, DEMO_GENERATED_SOURCE } from './demo-payload.js'
 import { classifySurface, catalogCannotExpress, isProductSurface, DEMO_WORKSPACE_SOURCE } from './surface.js'
@@ -31,7 +32,15 @@ const COPY_SLOT_SCHEMA = {
   additionalProperties: false,
 }
 
-export function aiAvailable(provider = process.env.LLM_PROVIDER || 'anthropic', apiKey) {
+function defaultLlmProvider() {
+  if (process.env.LLM_PROVIDER) return process.env.LLM_PROVIDER
+  // Prefer OpenAI-compatible when a local/open base URL is configured.
+  if (process.env.OPENAI_BASE_URL || process.env.OPENAI_API_KEY) return 'openai'
+  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) return 'gemini'
+  return 'anthropic'
+}
+
+export function aiAvailable(provider = defaultLlmProvider(), apiKey) {
   try {
     return getLLMAdapter(provider).isAvailable(apiKey)
   } catch {
@@ -40,8 +49,8 @@ export function aiAvailable(provider = process.env.LLM_PROVIDER || 'anthropic', 
 }
 
 /** Lightweight auth check for a client-supplied key — no completion tokens spent. */
-export async function verifyApiKey(apiKey, provider = process.env.LLM_PROVIDER || 'anthropic') {
-  if (!apiKey) return { valid: false, error: 'No API key provided' }
+export async function verifyApiKey(apiKey, provider = defaultLlmProvider()) {
+  if (!apiKey && !process.env.OPENAI_BASE_URL) return { valid: false, error: 'No API key provided' }
   return getLLMAdapter(provider).verifyApiKey(apiKey)
 }
 
@@ -72,7 +81,7 @@ export function hydrateSpec(spec, data, maxRows = 50) {
 }
 
 async function fillCopySlots({ spec, policy, data, sourceUrl, instructions, apiKey, llmProvider, planner }) {
-  const provider = llmProvider || process.env.LLM_PROVIDER || 'anthropic'
+  const provider = llmProvider || defaultLlmProvider()
   let adapter
   try {
     adapter = getLLMAdapter(provider)
@@ -274,8 +283,8 @@ export async function planUI({
 
   think(
     fresh === false
-      ? 'Cascade: replay identical fingerprints, else Jev, then Haiku generate or copy slots.'
-      : 'Live plan: fingerprint replay skipped. Jev decides this turn.',
+      ? 'Cascade: replay identical fingerprints, else Laya/Jev, then LLM generate or copy slots.'
+      : 'Live plan: fingerprint replay skipped. Laya or Jev decides this turn.',
   )
 
   const pack = themePack ? normalizePack(themePack) : null
@@ -341,8 +350,10 @@ export async function planUI({
     )
   }
 
-  if (typeof askJev === 'function' || jevAvailable(typesafeApiKey)) {
-    think('Asking Jev which catalog widgets fit this turn.')
+  const decision = resolveAskDecision({ askJev, typesafeApiKey })
+  if (decision.ask || typeof askJev === 'function' || decisionAvailable(typesafeApiKey)) {
+    const backend = decision.backend === 'injected' ? 'decision' : decision.backend || 'jev'
+    think(`Asking ${backend === 'laya' ? 'Laya' : backend === 'jev' ? 'Jev' : 'the decision engine'} which catalog widgets fit this turn.`)
     try {
       const jev = await planWithJev({
         data,
@@ -351,16 +362,22 @@ export async function planUI({
         designSystem,
         neighbors,
         previousPolicy,
-        askJev,
+        askJev: decision.ask || askJev,
         typesafeApiKey,
         catalogTypes,
         pack,
         history,
         goal,
       })
+      const plannerPrefix = backend === 'laya' ? 'laya' : 'jev'
       if (jev.ok) {
-        think(`Jev decided (${Math.round((jev.confidence || 0) * 100)}% confidence). Hydrating with applyPolicy.`)
-        let result = jev
+        think(`${backend === 'laya' ? 'Laya' : 'Jev'} decided (${Math.round((jev.confidence || 0) * 100)}% confidence). Hydrating with applyPolicy.`)
+        let result = {
+          ...jev,
+          planner: typeof jev.planner === 'string'
+            ? jev.planner.replace(/^jev:/, `${plannerPrefix}:`)
+            : `${plannerPrefix}:ok`,
+        }
         if (jev.needsCopy) {
           const slots = await fillCopySlots({
             spec: jev.spec,
@@ -370,42 +387,42 @@ export async function planUI({
             instructions: turnPrompt,
             apiKey,
             llmProvider,
-            planner: jev.planner,
+            planner: result.planner,
           })
           if (slots) {
-            think('Haiku filled copy slots on the Jev layout.')
-            result = { ...jev, spec: slots.spec, policy: slots.policy, planner: jev.planner }
+            think('LLM filled copy slots on the decided layout.')
+            result = { ...result, spec: slots.spec, policy: slots.policy }
           }
         }
         return done(result, {
           jevConfidence: jev.confidence,
           jevAnswers: jev.answers,
-          trace: { path: ['jev', jev.planner || 'jev'], reason: 'Catalog can express the ask.' },
+          trace: { path: [plannerPrefix, result.planner || plannerPrefix], reason: 'Catalog can express the ask.' },
         })
       }
 
       const outOfCatalog = jev.generate || wantsGeneratedUi(turnPrompt, sourceUrl, previousPolicy)
       if (outOfCatalog) {
-        think('Jev routed this out of catalog. Haiku is generating the UI.')
+        think(`${backend === 'laya' ? 'Laya' : 'Jev'} routed this out of catalog. LLM is generating the UI.`)
         const built = await tryGenerate(jev.hints)
         if (built?.spec) {
           return done(built, {
             jevConfidence: jev.confidence,
             jevAnswers: jev.answers,
-            trace: { path: ['jev', 'haiku'], reason: 'Out of catalog; Haiku generated the UI.' },
+            trace: { path: [plannerPrefix, 'llm'], reason: 'Out of catalog; LLM generated the UI.' },
           })
         }
         return failGenerate(built, {
           jevConfidence: jev.confidence,
           jevAnswers: jev.answers,
           trace: {
-            path: ['jev', 'generate-missing'],
-            reason: built?.error || 'Haiku generate failed.',
+            path: [plannerPrefix, 'generate-missing'],
+            reason: built?.error || 'LLM generate failed.',
           },
         })
       }
 
-      think('Jev is low-confidence. Copy slots on a catalog or heuristic layout.')
+      think(`${backend === 'laya' ? 'Laya' : 'Jev'} is low-confidence. Copy slots on a catalog or heuristic layout.`)
       const fallback = catalogFallbackPolicy(turnPrompt, sourceUrl, data)
       const basePolicy = fallback || extractPolicy(heuristicPlan(data, sourceUrl, turnPrompt), data)
       const baseSpec = applyPolicy(basePolicy, data, sourceUrl)
@@ -420,11 +437,11 @@ export async function planUI({
         planner: fallback ? 'catalog' : 'heuristic',
       })
       if (slots) {
-        think('Haiku filled copy slots. Layout stayed in catalog code.')
+        think('LLM filled copy slots. Layout stayed in catalog code.')
         return done(slots, {
           jevConfidence: jev.confidence,
           jevAnswers: jev.answers,
-          trace: { path: ['jev', 'slots'], reason: 'Copy slots on an already-constructed spec.' },
+          trace: { path: [plannerPrefix, 'slots'], reason: 'Copy slots on an already-constructed spec.' },
         })
       }
       return done({
@@ -434,10 +451,10 @@ export async function planUI({
       }, {
         jevConfidence: jev.confidence,
         jevAnswers: jev.answers,
-        trace: { path: ['jev', fallback ? 'catalog' : 'heuristic'], reason: 'No copy model; constructed layout.' },
+        trace: { path: [plannerPrefix, fallback ? 'catalog' : 'heuristic'], reason: 'No copy model; constructed layout.' },
       })
     } catch {
-      think('Jev threw. Falling through to catalog or heuristic.')
+      think('Decision engine threw. Falling through to catalog or heuristic.')
     }
   }
 

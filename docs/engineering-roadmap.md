@@ -16,6 +16,8 @@ High-confidence work the company should ship. Discovery emits these as engineeri
 
 | ID | Type | Title | Evidence | Shipped |
 |----|------|-------|----------|---------|
+| EE-004 | feature | Laya DecisionAdapter (HTTP sidecar + optional ONNX) | `docs/research/oss-decision-llm.md`; ADR-007; `packages/core/src/decisions/laya.js`; `services/laya-sidecar` | 2026-09-22 |
+| EE-005 | feature | OpenAI-compatible OSS LLM path (`OPENAI_BASE_URL`) | ADR-007; `packages/core/src/llm/openai.js`; `.env.example` | 2026-09-22 |
 | EE-001 | fix | Fence LLM prompts treating fetched endpoint data as UNTRUSTED (#5 residual) | `packages/core/src/untrusted-data.js`; wired in `planner.js` / `generate-ui.js`; tests in `untrusted-data.test.js` | 2026-09-21 |
 
 ## Deferred
@@ -31,7 +33,7 @@ Low-confidence review only. Triage may defer. Do **not** promote to READY withou
 
 Do not flip without a new ADR:
 
-- Jev decides; ThemeAdapter constructs (`docs/adr/002-jev-routing.md`, `docs/adr/005-surfaces.md`)
+- DecisionAdapter decides; ThemeAdapter constructs (`docs/adr/002-jev-routing.md`, `docs/adr/007-oss-decision-llm.md`, `docs/adr/005-surfaces.md`) — Laya preferred when configured; Jev remains optional BYOK
 - No fingerprint replay on Studio hot path (`CONTEXT.md`)
 - Design packs, not user-uploaded JS (`docs/adr/006-design-packs.md`)
 - Secrets only via env / BYOK headers — never in prompts or commits

@@ -26,11 +26,11 @@ const { spec, planner } = await planUI({
 const html = designSystem.render(spec) // self-contained <html> document
 ```
 
-Planner cascade: Jev (one fan-out of typed questions; Studio `fresh: true` so
-fingerprint replay is off) → `applyPolicy` → Haiku copy slots if `needs_llm`,
-or Haiku HTML when the catalog cannot express the ask → catalog / heuristic
-when no TypeSafe key. Same-shape Mongo neighbors are few-shot for Jev, never
-a silent replay of a different prompt. DecisionAdapter I/O is frozen:
+Planner cascade: Laya or Jev (one fan-out of typed questions; Studio `fresh: true` so
+fingerprint replay is off) → `applyPolicy` → LLM copy slots if `needs_llm`,
+or LLM HTML when the catalog cannot express the ask → catalog / heuristic
+when no decision backend. Same-shape Mongo neighbors are few-shot for the
+DecisionAdapter, never a silent replay of a different prompt. DecisionAdapter I/O is frozen:
 `{ state, questions } → { answers, confidence }`. Motion is a CSS token
 (`none` | `enter` | `stagger` | `live`). Follow-ups like “add a tooltip”
 merge onto `previousPolicy`.
@@ -81,11 +81,13 @@ installing `ui-compose-kit` doesn't force-install them.
 | Var | Purpose |
 | --- | --- |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | Anthropic adapter (default model `claude-haiku-4-5-20251001`) |
-| `OPENAI_API_KEY`, `OPENAI_MODEL` | OpenAI adapter (default model `gpt-4o`) |
+| `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL` | OpenAI-compatible adapter (Ollama / Groq / OpenRouter / vLLM / GPT). Base URL alone is enough for local Ollama. |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Gemini adapter (default model `gemini-2.0-flash`) |
-| `LLM_PROVIDER` | Default LLM fallback id (`anthropic` \| `openai` \| `gemini`) |
-| `TYPESAFE_API_KEY`, `TYPESAFE_MODEL` | Jev planner (default model `jev-1.13.0`) |
-| `JEV_MIN_CONFIDENCE` | Minimum Choice confidence before Jev's policy is used (default `0.5`) |
+| `LLM_PROVIDER` | Default LLM id (`openai` \| `anthropic` \| `gemini`). Auto-prefers `openai` when `OPENAI_BASE_URL` / `OPENAI_API_KEY` is set. |
+| `TYPESAFE_API_KEY`, `TYPESAFE_MODEL` | Jev planner (default model `jev-1.13.0`) — optional when Laya is configured |
+| `DECISION_PROVIDER` | `auto` (default) \| `laya` \| `jev` |
+| `LAYA_BASE_URL`, `LAYA_API_KEY`, `LAYA_MODE`, `LAYA_MODEL_DIR`, `LAYA_ENABLED` | Laya DecisionAdapter (HTTP sidecar or optional ONNX) |
+| `JEV_MIN_CONFIDENCE` | Minimum Choice confidence before the decided policy is used (default `0.5`) |
 | `MCP_DESIGN_SYSTEM` | Default active design system id |
 
 ## Presentation modes

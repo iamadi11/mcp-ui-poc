@@ -38,17 +38,24 @@ export function extractUrls(text) {
 }
 
 function looksLikeMissingKey(message) {
-  return /add (a )?(typesafe|anthropic) key|no anthropic key configured|no typesafe key/i.test(String(message || ''))
+  return /add (a )?(typesafe|anthropic|openai|llm) key|no anthropic key configured|no typesafe key|no llm key/i.test(String(message || ''))
 }
 
 function surfaceGenerateError(message, { apiKey } = {}) {
   const raw = String(message || 'Could not generate this UI.').trim()
-  const hasAi = Boolean(apiKey || process.env.ANTHROPIC_API_KEY)
+  const hasAi = Boolean(
+    apiKey
+      || process.env.ANTHROPIC_API_KEY
+      || process.env.OPENAI_API_KEY
+      || process.env.OPENAI_BASE_URL
+      || process.env.GEMINI_API_KEY
+      || process.env.GOOGLE_API_KEY,
+  )
   if (hasAi && looksLikeMissingKey(raw)) {
-    return 'Haiku could not generate this UI. Try again, or simplify the prompt.'
+    return 'The LLM could not generate this UI. Try again, or simplify the prompt.'
   }
   if (!hasAi && looksLikeMissingKey(raw)) {
-    return 'This UI is not in the catalog. Add an Anthropic key in Settings to generate it from the prompt.'
+    return 'This UI is not in the catalog. Configure an LLM (OPENAI_BASE_URL / Ollama / Groq / Anthropic) in Settings to generate it from the prompt.'
   }
   if (hasAi && raw) return raw
   return raw || 'Could not generate this UI.'
@@ -60,6 +67,7 @@ export function plannerLabel(planner, cached) {
   if (planner === 'catalog') return 'Catalog'
   if (planner === 'generate:missing') return 'Generate failed'
   if (typeof planner === 'string' && planner.startsWith('haiku')) return 'Haiku'
+  if (typeof planner === 'string' && planner.startsWith('laya:')) return 'Laya'
   if (typeof planner === 'string' && planner.startsWith('jev:')) return 'Jev'
   if (planner === 'heuristic') return 'Heuristic'
   if (planner) return 'LLM'

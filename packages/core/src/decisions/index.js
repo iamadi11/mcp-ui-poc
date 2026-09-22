@@ -1,4 +1,12 @@
 export { jevAdapter } from './jev.js'
+export { layaAdapter, layaAvailable, layaModel, defaultAskLaya } from './laya.js'
+export {
+  decisionProviderPreference,
+  decideBackend,
+  decisionAvailable,
+  decisionModel,
+  resolveAskDecision,
+} from './provider.js'
 export { heuristicAdapter } from './heuristic.js'
 export { llmAdapter } from './llm.js'
 export { localAdapter } from './local.js'

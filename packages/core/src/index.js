@@ -24,6 +24,13 @@ export { normalizeChatHistory, mergeChatHistory, sessionGoal, effectivePrompt, c
 export { jevAvailable, jevModel, verifyJevKey, buildJevQuestions } from './jev/planner.js'
 export {
   jevAdapter,
+  layaAdapter,
+  layaAvailable,
+  layaModel,
+  decisionAvailable,
+  decideBackend,
+  decisionProviderPreference,
+  resolveAskDecision,
   heuristicAdapter,
   llmAdapter,
   localAdapter,
@@ -76,5 +83,5 @@ registerLLMAdapter(geminiAdapter)
 
 const envChoice = process.env.LLM_PROVIDER
 if (envChoice && !['anthropic', 'openai', 'gemini'].includes(envChoice)) {
-  console.warn(`Unknown LLM_PROVIDER "${envChoice}"; falling back to "anthropic"`)
+  console.warn(`Unknown LLM_PROVIDER "${envChoice}"; falling back to default provider selection`)
 }

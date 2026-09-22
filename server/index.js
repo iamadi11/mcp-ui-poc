@@ -14,6 +14,10 @@ import {
   verifyJevKey,
   sanitizeGoogleMapsKey,
   runWithGoogleMapsKey,
+  layaAvailable,
+  layaModel,
+  decideBackend,
+  decisionProviderPreference,
 } from 'ui-compose-kit';
 import { createGenerateLimiter, createFeedbackLimiter } from './rate-limits.js';
 import { isHtmlPayloadError, sendHtmlTooLarge } from './generated-html-limit.js';
@@ -63,7 +67,14 @@ if (!isVercel) {
 app.get('/api/health', async (req, res) => {
   const [store, mongo] = await Promise.all([storeStatus(), mongoStatus()])
   const jevFromEnv = Boolean(process.env.TYPESAFE_API_KEY)
-  const aiFromEnv = Boolean(process.env.ANTHROPIC_API_KEY)
+  const aiFromEnv = Boolean(
+    process.env.ANTHROPIC_API_KEY
+      || process.env.OPENAI_API_KEY
+      || process.env.OPENAI_BASE_URL
+      || process.env.GEMINI_API_KEY
+      || process.env.GOOGLE_API_KEY,
+  )
+  const decisionBackend = decideBackend({})
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
@@ -71,6 +82,16 @@ app.get('/api/health', async (req, res) => {
     aiFromEnv,
     ai: { available: aiAvailable(), fromEnv: aiFromEnv, model: anthropicAdapter.model },
     jev: { available: jevAvailable(), fromEnv: jevFromEnv, model: jevModel() },
+    laya: {
+      available: layaAvailable(),
+      model: layaModel(),
+      baseUrl: Boolean(process.env.LAYA_BASE_URL),
+      mode: process.env.LAYA_MODE || (process.env.LAYA_BASE_URL ? 'http' : null),
+    },
+    decision: {
+      preference: decisionProviderPreference(),
+      backend: decisionBackend,
+    },
     store,
     mongo,
     oauth: oauthConfigured(),

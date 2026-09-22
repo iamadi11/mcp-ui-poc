@@ -129,8 +129,10 @@ export function SettingsSheet({
         {tab === 'keys' ? (
           <div className="flex flex-col gap-6 p-4">
             <section className="flex flex-col gap-2">
-              <Label htmlFor="typesafe-api-key">TypeSafe / Jev key</Label>
-              <p className="text-sm text-muted-foreground">Optional. The server uses `.env.local` when this field is empty.</p>
+              <Label htmlFor="typesafe-api-key">TypeSafe / Jev key (optional)</Label>
+              <p className="text-sm text-muted-foreground">
+                Paid decision engine. Prefer open Laya via server env <code className="font-mono text-xs">LAYA_BASE_URL</code> (see ADR-007). This field is only needed for TypeSafe BYOK.
+              </p>
               <Input
                 id="typesafe-api-key"
                 type="password"
@@ -151,7 +153,7 @@ export function SettingsSheet({
                         ? 'Connected from the server (.env.local).'
                         : jevStatus === 'checking'
                           ? 'Checking…'
-                          : 'Optional here. Local servers use TYPESAFE_API_KEY from .env.local.'}
+                          : 'Optional. Open path: LAYA_BASE_URL sidecar. Paid path: TYPESAFE_API_KEY.'}
               </p>
               <div className="flex gap-2">
                 <Button type="button" size="sm" variant="outline" onClick={() => { onTypesafeKeyChange(''); setJevStatus(jevFromEnv ? 'env' : 'none') }}>Clear</Button>
@@ -159,14 +161,16 @@ export function SettingsSheet({
               </div>
             </section>
             <section className="flex flex-col gap-2">
-              <Label htmlFor="anthropic-api-key">Anthropic API key</Label>
-              <p className="text-sm text-muted-foreground">Optional copy and out-of-catalog generate. Kept in this tab session only (cleared when the tab closes).</p>
+              <Label htmlFor="anthropic-api-key">LLM API key (Anthropic / optional)</Label>
+              <p className="text-sm text-muted-foreground">
+                Copy slots and out-of-catalog HTML. Prefer open models on the server with <code className="font-mono text-xs">OPENAI_BASE_URL</code> (Ollama, Groq, OpenRouter) — no paste needed when that env is set.
+              </p>
               <Input
                 id="anthropic-api-key"
                 type="password"
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                placeholder="sk-ant-…"
+                placeholder="sk-ant-… (or leave empty if OPENAI_BASE_URL is set)"
                 autoComplete="off"
                 spellCheck={false}
               />
@@ -174,14 +178,14 @@ export function SettingsSheet({
                 {status === 'connected'
                   ? 'Connected.'
                   : status === 'invalid'
-                    ? 'Anthropic rejected this key.'
+                    ? 'Provider rejected this key.'
                     : status === 'error'
                       ? 'Could not verify this key.'
                       : status === 'env' || aiFromEnv
                         ? 'Connected from the server (.env.local).'
                         : status === 'checking'
                           ? 'Checking…'
-                          : 'Optional copy and generate. Local servers use ANTHROPIC_API_KEY from .env.local.'}
+                          : 'Optional BYOK. Open path: OPENAI_BASE_URL + OPENAI_MODEL.'}
               </p>
               <div className="flex gap-2">
                 <Button type="button" size="sm" variant="outline" onClick={() => { writeApiKey(''); setKey(''); setStatus(aiFromEnv ? 'env' : 'none') }}>Clear</Button>
