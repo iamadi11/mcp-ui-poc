@@ -20,6 +20,8 @@
     "test:server": "node --test server/data-source.test.js server/plan-cache.test.js server/rate-limits.test.js",
     "company": "node packages/autonomous-company/src/cli.js",
     "company:test": "npm test --workspace=autonomous-company",
+    "autonomous": "node mac-agent/tools/autonomous/src/cli.js",
+    "autonomous:test": "npm test --prefix mac-agent",
     "infra:start": "brew services start redis && brew services start mongodb-community@8.0",
     "skills:install": "bash scripts/skills-install.sh",
     "skills:update": "bash scripts/skills-update.sh",

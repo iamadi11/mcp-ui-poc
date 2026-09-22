@@ -37,4 +37,6 @@ Paid optional: TypeSafe (Jev) and Anthropic. Open defaults: Laya sidecar + OpenA
 
 Non-trivial work: `/ask-matt` then `docs/AI_WORKFLOW.md`. UI work: UI UX Pro Max skill + this MASTER.md. After clone: `npm run skills:install`.
 
-Long-running autonomous SDLC: `/autonomous-company` (skill) and `npm run company` (durable controller). See `docs/autonomous-company/`.
+Long-running autonomous SDLC for the **studio**: `/autonomous-company` (skill) and `npm run company` (durable controller). See `docs/autonomous-company/`.
+
+**Mac Agent** (local-first macOS control app) lives in-repo at `mac-agent/` (Swift AgentCore + docs). Single-entry Director: `/autonomous` and `npm run autonomous` (decide→delegate→verify loop with `.agent/state` under `mac-agent/`). Distinct from Company OS — do not conflate the two entry points.

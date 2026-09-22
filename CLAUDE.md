@@ -27,7 +27,7 @@ Use these **first** (see `docs/AI_WORKFLOW.md` for order):
 
 ## Skills
 
-Playbooks: **`.claude/skills/`** plus Matt Pocock skills after `npm run skills:install`. Matt `tdd` / `code-review` replace duplicates — do not run two TDD skills. Staffing the studio (PM+EM, parallel Dev/QA/AI Engineer): **`studio-staff`**. Autonomous company loop: **`autonomous-company`** / `/autonomous-company`. See **`docs/agents/README.md`**.
+Playbooks: **`.claude/skills/`** plus Matt Pocock skills after `npm run skills:install`. Matt `tdd` / `code-review` replace duplicates — do not run two TDD skills. Staffing the studio (PM+EM, parallel Dev/QA/AI Engineer): **`studio-staff`**. Studio Company OS: **`autonomous-company`** / `/autonomous-company`. Mac Agent Director (in `mac-agent/`): **`autonomous`** / `/autonomous` (`npm run autonomous`). See **`docs/agents/README.md`**.
 
 ## Agent skills
 
