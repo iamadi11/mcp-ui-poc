@@ -3,12 +3,12 @@
 **Live demo:** [mcp-ui-poc.vercel.app](https://mcp-ui-poc.vercel.app/)
 
 Chat-first studio: a message (optional API URL) becomes a versioned **Widget**.
-[Jev](https://docs.typesafe.ai/introduction) **decides**; code and a ThemeAdapter **construct**.
-Claude Haiku fills copy slots on catalog layouts (`needs_llm`) **or generates HTML** when the catalog cannot express the ask.
+A System 1 **DecisionAdapter** ([Laya](https://laya.convaiinnovations.com/) open-weight, or [Jev](https://docs.typesafe.ai/introduction) BYOK) **decides**; code and a ThemeAdapter **construct**.
+An LLM fills copy slots on catalog layouts (`needs_llm`) **or generates HTML** when the catalog cannot express the ask — prefer OpenAI-compatible open models via `OPENAI_BASE_URL`.
 Publish a public iframe at `/e/:publicId`. Owners sign in with GitHub to edit.
 
 ```
-chat turn ─▶ bind fixture or fetch URL ─▶ Jev fan-out (live; fingerprint replay off) ─▶ applyPolicy + ThemeAdapter pack ─▶ Haiku copy slots or HTML generate ─▶ embed URL
+chat turn ─▶ bind fixture or fetch URL ─▶ Laya/Jev fan-out (live; fingerprint replay off) ─▶ applyPolicy + ThemeAdapter pack ─▶ LLM copy slots or HTML generate ─▶ embed URL
 ```
 
 Glossary: [`CONTEXT.md`](CONTEXT.md). ADRs: [`docs/adr/`](docs/adr/). Visual system: [`design-system/MCP-UI/MASTER.md`](design-system/MCP-UI/MASTER.md).
@@ -21,8 +21,8 @@ Glossary: [`CONTEXT.md`](CONTEXT.md). ADRs: [`docs/adr/`](docs/adr/). Visual sys
 - **Prompt-first** — describe a UI, paste a JSON URL in the message, or both. No separate API URL field. Text-only prompts bind a demo/sketch so the planner still has records to lay out. Starters: Login, Dashboard, Landing, Checkout.
 - **Chat history** — Recents in an overlay (scrim, not a layout column). **Remove** / **Clear** hide chats from the list (soft delete) and archive prompts + policies for later model training; HTML and API payloads are not kept.
 - **Studio chrome** — canvas-first: describe → see → talk → share. Human stages: Fetching data → Designing layout → Rendering. The chat rail shows live thinking on every turn. Optional `?debug=1` shows planner traces.
-- **Jev-first DecisionAdapter** — one TypeSafe call on every generate path. Redis fingerprint replay is **off**; every Studio send plans live (`fresh: true`). Login, landing, checkout, pricing, and map/editor workspaces are catalog primitives Jev can pick. Out-of-catalog asks (brand, graffiti, games, asking again) go to Haiku HTML generate. Map workspaces load the Google Maps JavaScript API (Drawing library) from `GOOGLE_MAPS_API_KEY`, a Settings Maps key, or a key pasted on the canvas. See `docs/adr/002-jev-routing.md` and `docs/adr/006-design-packs.md`.
-- **Never full payloads to Claude** — `inferShape` + instruction excerpt only. Haiku fills **copy slots** when a catalog layout sets `needs_llm`, or **generates sanitized HTML** when `catalogCannotExpress`.
+- **DecisionAdapter (Laya or Jev)** — one System 1 fan-out per generate. Prefer open **Laya** (`LAYA_BASE_URL` sidecar or ONNX); TypeSafe **Jev** remains optional BYOK. Redis fingerprint replay is **off**; every Studio send plans live (`fresh: true`). Login, landing, checkout, pricing, and map/editor workspaces are catalog primitives. Out-of-catalog asks go to LLM HTML generate. See `docs/adr/002-jev-routing.md`, `docs/adr/007-oss-decision-llm.md`, and `docs/adr/006-design-packs.md`.
+- **Never full payloads to the LLM** — `inferShape` + instruction excerpt only. Copy slots when a catalog layout sets `needs_llm`, or **sanitized HTML** when `catalogCannotExpress`. Default open path: `OPENAI_BASE_URL` (Ollama / Groq / OpenRouter).
 - **Redis + Mongo** — sessions and optional cache in Upstash/Redis; widgets/turns/users on Atlas M0. Fingerprint replay is not used on the Studio hot path. No long-term raw API dumps.
 - **Embeds** — `GET /e/:publicId` (pin `?v=`). Owner UI `/w/:publicId` after GitHub OAuth.
 - **Pluggable ThemeAdapter** — default Studio pack (MASTER teal). Developers may `registerDesignSystem` with a custom `render`. Studio users connect packs, not JavaScript.
@@ -44,7 +44,7 @@ mcp-ui-poc/
 ```bash
 git clone <repository-url> && cd mcp-ui-poc
 npm install && npm run install-all
-cp .env.example .env.local   # TYPESAFE_API_KEY, optional ANTHROPIC_API_KEY and GOOGLE_MAPS_API_KEY
+cp .env.example .env.local   # optional: LAYA_BASE_URL, OPENAI_BASE_URL, or TYPESAFE/ANTHROPIC BYOK
 npm run skills:install       # once: Matt Pocock + UI UX Pro Max (then /setup-matt-pocock-skills in chat)
 
 npm run dev      # backend :3001

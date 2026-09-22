@@ -53,17 +53,17 @@ export function sanitizeGeneratedHtml(html) {
 
 export function publicGenerateError(error) {
   const status = error?.status || error?.statusCode
-  const msg = String(error?.message || error?.error?.message || 'Haiku failed to generate this UI.')
+  const msg = String(error?.message || error?.error?.message || 'LLM failed to generate this UI.')
   if (/api key|authentication|unauthorized|401/i.test(msg) || status === 401) {
-    return 'Anthropic rejected the API key. Check Settings or ANTHROPIC_API_KEY in .env.local.'
+    return 'The LLM provider rejected the API key. Check Settings or your LLM_* / OPENAI_* / ANTHROPIC_* env.'
   }
   if (status === 429 || /rate limit/i.test(msg)) {
-    return 'Anthropic rate-limited this generate. Wait a moment and try again.'
+    return 'The LLM provider rate-limited this generate. Wait a moment and try again.'
   }
   if (/timeout|timed out/i.test(msg)) {
-    return 'Haiku timed out while generating this UI. Try again.'
+    return 'The LLM timed out while generating this UI. Try again.'
   }
-  return 'Haiku could not generate this UI. Try again, or simplify the prompt.'
+  return 'The LLM could not generate this UI. Try again, or simplify the prompt.'
 }
 
 export function sanitizeGeneratedScript(script) {
@@ -331,15 +331,24 @@ export async function generateUiHtml({
     }
   }
 
-  const provider = llmProvider || process.env.LLM_PROVIDER || 'anthropic'
+  const provider = llmProvider || process.env.LLM_PROVIDER || (
+    process.env.OPENAI_BASE_URL || process.env.OPENAI_API_KEY
+      ? 'openai'
+      : process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
+        ? 'gemini'
+        : 'anthropic'
+  )
   let adapter
   try {
     adapter = getLLMAdapter(provider)
   } catch {
-    return { error: 'No Anthropic adapter is configured.' }
+    return { error: 'No LLM adapter is configured for the selected provider.' }
   }
   if (!adapter.isAvailable(apiKey)) {
-    return { error: 'No Anthropic key configured. Add one in Settings or set ANTHROPIC_API_KEY.' }
+    return {
+      error:
+        'No LLM key/endpoint configured. Set OPENAI_BASE_URL (Ollama/Groq/OpenRouter), OPENAI_API_KEY, GEMINI_API_KEY, or ANTHROPIC_API_KEY — or paste a key in Settings.',
+    }
   }
 
   const excerpt = String(instructions || '').slice(0, 2000)

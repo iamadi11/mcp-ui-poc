@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (amended)
+Accepted (amended by **ADR-007**)
 
 ## Context
 
@@ -10,15 +10,15 @@ Jev (TypeSafe System One) returns typed Choice/Score/Noul — not HTML or spec J
 
 ## Decision
 
-`DecisionAdapter` seam with **one Jev fan-out per turn**. Studio does **not** replay Redis fingerprints — asking again generates a new UI.
+`DecisionAdapter` seam with **one System 1 fan-out per turn** (originally Jev-only; ADR-007 adds open **Laya** as a preferred peer). Studio does **not** replay Redis fingerprints — asking again generates a new UI.
 
-Cascade: **Jev** (intent, look, motion, in_catalog, named_widget, patches) →
+Cascade: **DecisionAdapter** (intent, look, motion, in_catalog, named_widget, patches) →
 
-1. **Catalog hit** (`in_catalog` high / named exclusive, and the prompt is expressible): code `applyPolicy` + ThemeAdapter. Haiku fills copy slots only if `needs_llm`.
-2. **Catalog miss** (unknown surface, custom brand/look such as graffiti, follow-up on a generated widget that is not look/motion-only, or the same session asking for a new widget): **Haiku generates** a sanitized HTML widget (`html-block`). ThemeAdapter wraps pack tokens, `data-look`, and `data-motion`.
-3. **No TypeSafe key:** regex catalog for named primitives; Haiku generate for the rest if an Anthropic key exists.
+1. **Catalog hit** (`in_catalog` high / named exclusive, and the prompt is expressible): code `applyPolicy` + ThemeAdapter. LLM fills copy slots only if `needs_llm`.
+2. **Catalog miss** (unknown surface, custom brand/look such as graffiti, follow-up on a generated widget that is not look/motion-only, or the same session asking for a new widget): **LLM generates** a sanitized HTML widget (`html-block`). ThemeAdapter wraps pack tokens, `data-look`, and `data-motion`.
+3. **No decision backend:** regex catalog for named primitives; LLM generate for the rest if a generative provider is configured.
 
-Jev never emits HTML. Haiku never invents React. Packs remain tokens/CSS — generated `script` is sanitized (no fetch/eval/storage). Never send full JSON to Claude — `inferShape` + prompt excerpt only. Never send design-system CSS files to Jev.
+The DecisionAdapter never emits HTML. The generative LLM never invents React. Packs remain tokens/CSS — generated `script` is sanitized (no fetch/eval/storage). Never send full JSON to the LLM — `inferShape` + prompt excerpt only. Never send design-system CSS files to the DecisionAdapter.
 
 Motion is a **token** (`none` | `enter` | `stagger` | `live`) implemented in CSS on the host.
 
@@ -27,4 +27,5 @@ Motion is a **token** (`none` | `enter` | `stagger` | `live`) implemented in CSS
 - New product UIs do not require a new catalog primitive.
 - Catalog questions stay cheap (parallel evaluation).
 - Cost log fields (`planner`, `latencyMs`, `jevConfidence`) go to Mongo turns — never API keys.
-- Look/motion follow-ups on generated UIs stay on Jev + CSS; content follow-ups re-call Haiku with the previous HTML.
+- Look/motion follow-ups on generated UIs stay on DecisionAdapter + CSS; content follow-ups re-call the LLM with the previous HTML.
+- See **ADR-007** for Laya + OpenAI-compatible OSS defaults.

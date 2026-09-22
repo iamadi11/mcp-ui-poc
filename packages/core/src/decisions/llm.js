@@ -7,7 +7,13 @@ export const llmAdapter = {
   id: 'llm',
   maxTokens: LLM_MAX_TOKENS,
   async generate({ apiKey, llmProvider, system, userContent, schema }) {
-    const provider = llmProvider || process.env.LLM_PROVIDER || 'anthropic'
+    const provider = llmProvider || process.env.LLM_PROVIDER || (
+      process.env.OPENAI_BASE_URL || process.env.OPENAI_API_KEY
+        ? 'openai'
+        : process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
+          ? 'gemini'
+          : 'anthropic'
+    )
     const adapter = getLLMAdapter(provider)
     const spec = await adapter.generateStructured({
       apiKey,
