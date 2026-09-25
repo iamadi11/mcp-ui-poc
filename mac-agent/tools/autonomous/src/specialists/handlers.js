@@ -929,6 +929,76 @@ swift run mac-agent-cli "What's my battery?"
     evidence.push('docs/ui/MENU_BAR.md', 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
   }
 
+  if (workOrder.mode === 'mac-permission-status') {
+    const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+    const menu = existsSync(menuSrc) ? readFileSync(menuSrc, 'utf8') : ''
+    if (!menu.includes('AccessibilityStatusLine')) {
+      return {
+        ok: false,
+        error: 'AGENT_IMPLEMENT: show Accessibility granted or needed on the menu bar',
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    evidence.push('Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+  }
+
+  if (workOrder.mode === 'mac-voice-surface') {
+    const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+    const menu = existsSync(menuSrc) ? readFileSync(menuSrc, 'utf8') : ''
+    if (!menu.includes('VoiceToolsDisclosure') || !menu.includes('Stop listening')) {
+      return {
+        ok: false,
+        error: 'AGENT_IMPLEMENT: collapse probes under Tools and make Listen become Stop',
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    evidence.push('Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+  }
+
+  if (workOrder.mode === 'mac-next-action') {
+    const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+    const menu = existsSync(menuSrc) ? readFileSync(menuSrc, 'utf8') : ''
+    if (!menu.includes('NextActionLine') || !menu.includes('waveform.circle"')) {
+      return {
+        ok: false,
+        error: 'AGENT_IMPLEMENT: show the next action and a distinct idle menu icon',
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    evidence.push('Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+  }
+
+  if (workOrder.mode === 'mac-personal-install') {
+    const r = spawnSync('bash', ['scripts/package-macos-app.sh', '--install', '--open'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: swiftEnv(),
+      timeout: 180000,
+    })
+    const report = out(
+      repoRoot,
+      '.agent/artifacts/personal-install.txt',
+      `exit=${r.status}\n${(r.stdout || '').slice(-1500)}\n${(r.stderr || '').slice(-800)}`,
+    )
+    evidence.push(report)
+    if (r.status !== 0) {
+      return {
+        ok: false,
+        error: `personal install failed exit=${r.status}`,
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    return {
+      ok: true,
+      evidence,
+      gateUpdates: { implementation_complete: true, release_ready: true },
+    }
+  }
+
   if (workOrder.mode === 'mac-ui-appeal') {
     const pass = join(repoRoot, 'docs/ui/VISUAL_PASS.md')
     const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')

@@ -1,6 +1,6 @@
 # Project state
 
 Status: idle
-Reason: NO_ACTIONABLE_HIGH_VALUE_TASK
-Cycle: 25
+Reason: AWAITING_USER_GUIDANCE
+Cycle: 40
 Phase: monitor

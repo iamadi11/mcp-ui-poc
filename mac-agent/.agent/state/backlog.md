@@ -349,13 +349,13 @@
 - Owner: auto-review
 
 ## m7-act-once-spec — Define Act once (confirm-to-act) slice
-- Status: ready
+- Status: done
 - Priority: P1
 - Why: Dry-run-only menu bar never acts; sticky live mode is the wrong default
 - Owner: auto-product
 
 ## m7-act-once-build — Ship Act once toggle on the menu bar
-- Status: ready
+- Status: done
 - Priority: P1
 - Why: Arm exactly one Listen, Battery, Ollama, or AX journey to run live
 - Owner: auto-engineer
@@ -377,3 +377,87 @@
 - Priority: P1
 - Why: Confirm live is one-shot and dry-run remains the default
 - Owner: auto-review
+
+## slice-ui-appeal — Menu bar visual pass
+- Status: done
+- Priority: P1
+- Why: The panel is a control list; ship a designed Mac agent surface
+- Owner: auto-engineer
+
+## wo_1a0d746530b_a55d — Queue Menu bar visual pass
+- Status: done
+- Priority: P1
+- Why: The panel is a control list; ship a designed Mac agent surface
+- Owner: auto-product
+
+## wo_1a0d7476bf9_6d75 — Menu bar visual pass
+- Status: done
+- Priority: P1
+- Why: The panel is a control list; ship a designed Mac agent surface
+- Owner: auto-engineer
+
+## slice-ax-live — Record live AX click/type journey
+- Status: done
+- Priority: P0
+- Why: Prove Accessibility actions after the user grants permission
+- Owner: auto-poc
+
+## wo_1a0d747834a_343c — Queue Record live AX click/type journey
+- Status: done
+- Priority: P1
+- Why: Prove Accessibility actions after the user grants permission
+- Owner: auto-product
+
+## wo_1a0d747834d_73c3 — Record live AX click/type journey
+- Status: done
+- Priority: P0
+- Why: Prove Accessibility actions after the user grants permission
+- Owner: auto-poc
+
+## slice-permission-status — Show Accessibility status on the menu bar
+- Status: done
+- Priority: P1
+- Why: Live clicks failed in the CLI because that binary is a different TCC client than Mac Agent.app
+- Owner: auto-engineer
+
+## wo_1a0d749bfd2_379a — Show Accessibility status on the menu bar
+- Status: done
+- Priority: P1
+- Why: Live clicks failed in the CLI because that binary is a different TCC client than Mac Agent.app
+- Owner: auto-engineer
+
+## slice-voice-surface — Voice remote: Listen/Stop and collapsed Tools
+- Status: done
+- Priority: P1
+- Why: The panel still shows probe buttons beside Listen; a voice remote keeps one primary control
+- Owner: auto-engineer
+
+## wo_1a0d7c9d6c7_cbdc — Voice remote: Listen/Stop and collapsed Tools
+- Status: done
+- Priority: P1
+- Why: The panel still shows probe buttons beside Listen; a voice remote keeps one primary control
+- Owner: auto-engineer
+
+## slice-next-action — Show the next action and a distinct idle icon
+- Status: done
+- Priority: P1
+- Why: A voice remote states what will run, and the menu icon must differ when idle
+- Owner: auto-engineer
+
+## wo_1a0d7cadc6b_4abb — Show the next action and a distinct idle icon
+- Status: done
+- Priority: P1
+- Why: A voice remote states what will run, and the menu icon must differ when idle
+- Owner: auto-engineer
+
+## slice-personal-install — Install the voice-remote menu bar
+- Status: done
+- Priority: P1
+- Why: The signed app in ~/Applications still has the previous panel
+- Owner: auto-engineer
+
+## wo_1a0d7cb955e_a2b5 — Install the voice-remote menu bar
+- Status: done
+- Priority: P1
+- Why: The signed app in ~/Applications still has the previous panel
+- Owner: auto-engineer

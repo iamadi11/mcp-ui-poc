@@ -783,5 +783,201 @@
     "evidence": [
       ".agent/artifacts/wo_1a0d739ceae_7ec8/review.md"
     ]
+  },
+  {
+    "id": "slice-ui-appeal",
+    "title": "Menu bar visual pass",
+    "why": "The panel is a control list; ship a designed Mac agent surface",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-ui-appeal",
+    "evidence": [],
+    "acceptance": [
+      "docs/ui/VISUAL_PASS.md",
+      "AgentChrome in MacAgentMenuBarApp.swift"
+    ]
+  },
+  {
+    "id": "wo_1a0d746530b_a55d",
+    "title": "Queue Menu bar visual pass",
+    "why": "The panel is a control list; ship a designed Mac agent surface",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      "docs/product/next-slice.md",
+      ".agent/state/backlog.json"
+    ]
+  },
+  {
+    "id": "wo_1a0d7476bf9_6d75",
+    "title": "Menu bar visual pass",
+    "why": "The panel is a control list; ship a designed Mac agent surface",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "docs/ui/VISUAL_PASS.md",
+      "Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "slice-ax-live",
+    "title": "Record live AX click/type journey",
+    "why": "Prove Accessibility actions after the user grants permission",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-poc",
+    "skill": "auto-poc",
+    "mode": "mac-ax-live",
+    "evidence": [],
+    "acceptance": [
+      "docs/poc/mac-ax-journey-live.md"
+    ]
+  },
+  {
+    "id": "wo_1a0d747834a_343c",
+    "title": "Queue Record live AX click/type journey",
+    "why": "Prove Accessibility actions after the user grants permission",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      "docs/product/next-slice.md",
+      ".agent/state/backlog.json"
+    ]
+  },
+  {
+    "id": "wo_1a0d747834d_73c3",
+    "title": "Record live AX click/type journey",
+    "why": "Prove Accessibility actions after the user grants permission",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-poc",
+    "evidence": [
+      "docs/poc/mac-ax-journey-live.md"
+    ]
+  },
+  {
+    "id": "slice-permission-status",
+    "title": "Show Accessibility status on the menu bar",
+    "why": "Live clicks failed in the CLI because that binary is a different TCC client than Mac Agent.app",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-permission-status",
+    "evidence": [],
+    "acceptance": [
+      "AccessibilityStatusLine in MacAgentMenuBarApp.swift"
+    ]
+  },
+  {
+    "id": "wo_1a0d749bfd2_379a",
+    "title": "Show Accessibility status on the menu bar",
+    "why": "Live clicks failed in the CLI because that binary is a different TCC client than Mac Agent.app",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "slice-voice-surface",
+    "title": "Voice remote: Listen/Stop and collapsed Tools",
+    "why": "The panel still shows probe buttons beside Listen; a voice remote keeps one primary control",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-voice-surface",
+    "acceptance": [
+      "VoiceToolsDisclosure in MacAgentMenuBarApp.swift"
+    ]
+  },
+  {
+    "id": "wo_1a0d7c9d6c7_cbdc",
+    "title": "Voice remote: Listen/Stop and collapsed Tools",
+    "why": "The panel still shows probe buttons beside Listen; a voice remote keeps one primary control",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "slice-next-action",
+    "title": "Show the next action and a distinct idle icon",
+    "why": "A voice remote states what will run, and the menu icon must differ when idle",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-next-action",
+    "acceptance": [
+      "NextActionLine in MacAgentMenuBarApp.swift"
+    ]
+  },
+  {
+    "id": "wo_1a0d7cadc6b_4abb",
+    "title": "Show the next action and a distinct idle icon",
+    "why": "A voice remote states what will run, and the menu icon must differ when idle",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "slice-personal-install",
+    "title": "Install the voice-remote menu bar",
+    "why": "The signed app in ~/Applications still has the previous panel",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-personal-install",
+    "acceptance": [
+      "~/Applications/Mac Agent.app"
+    ]
+  },
+  {
+    "id": "wo_1a0d7cb955e_a2b5",
+    "title": "Install the voice-remote menu bar",
+    "why": "The signed app in ~/Applications still has the previous panel",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      ".agent/artifacts/personal-install.txt"
+    ]
   }
 ]
