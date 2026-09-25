@@ -60,7 +60,7 @@ test('decideNext asks for POC before architecture when report missing', () => {
   rmSync(dir, { recursive: true, force: true })
 })
 
-test('decideNext idles after post-release review completes', () => {
+test('decideNext queues the next product slice after the foundation ladder', () => {
   const dir = mkdtempSync(join(tmpdir(), 'auto-'))
   writeFileSync(join(dir, 'TECHNOLOGY_DECISIONS.md'), '# tech\n')
   writeFileSync(join(dir, 'ARCHITECTURE.md'), '# arch\n')
@@ -132,7 +132,9 @@ test('decideNext idles after post-release review completes', () => {
     }),
     dir,
   )
-  assert.equal(d.idle, true)
+  assert.equal(d.order.skill, 'auto-product')
+  assert.equal(d.order.mode, 'plan-next')
+  assert.equal(d.order.meta.sliceId, 'slice-ui-appeal')
   rmSync(dir, { recursive: true, force: true })
 })
 
@@ -172,5 +174,13 @@ test('decideNext schedules Mac app shell on Darwin when App is placeholder', () 
   )
   assert.equal(d.order.skill, 'auto-engineer')
   assert.equal(d.order.mode, 'mac-app-shell')
+  rmSync(dir, { recursive: true, force: true })
+})
+
+test('decideNext holds only when the user sets userHold', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'auto-'))
+  const d = decideNext(emptyRun({ userHold: true }), dir)
+  assert.equal(d.idle, true)
+  assert.equal(d.stopReason, 'USER_HOLD')
   rmSync(dir, { recursive: true, force: true })
 })

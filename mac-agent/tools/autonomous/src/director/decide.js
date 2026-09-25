@@ -1,11 +1,25 @@
 /**
  * Decision engine: pick highest-value next specialist action from evidence.
- * Not a rigid pipeline — may jump backward when gates fail.
+ * Foundation ladder first, then ready backlog items, then the slice catalog.
+ * Idle only on an explicit user hold or when the catalog has nothing left to queue.
  */
 
-import { inspectRepo } from '../state/store.js'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { inspectRepo, loadBacklog } from '../state/store.js'
+import { SLICE_CATALOG } from './catalog.js'
 
 export function decideNext(run, repoRoot) {
+  if (run.userHold) {
+    return {
+      gates: { ...run.gates },
+      phase: 'monitor',
+      order: null,
+      idle: true,
+      stopReason: 'USER_HOLD',
+    }
+  }
+
   const snap = inspectRepo(repoRoot)
   const gates = { ...run.gates }
 
@@ -488,11 +502,72 @@ export function decideNext(run, repoRoot) {
     }
   }
 
+  return scheduleContinuous(run, repoRoot, gates, mk)
+}
+
+function scheduleContinuous(run, repoRoot, gates, mk) {
+  if (run.userHold) {
+    return {
+      gates,
+      phase: 'monitor',
+      order: null,
+      idle: true,
+      stopReason: 'USER_HOLD',
+    }
+  }
+
+  let items = []
+  try {
+    items = loadBacklog(repoRoot)
+  } catch {
+    items = []
+  }
+  const ready = items.find(
+    (it) =>
+      (it.status === 'ready' || it.status === 'open') &&
+      it.skill &&
+      !run.completed?.includes(it.id),
+  )
+  if (ready) {
+    return {
+      gates,
+      phase: ready.skill === 'auto-product' ? 'product' : 'implementation',
+      order: mk({
+        skill: ready.skill,
+        title: ready.title,
+        why: ready.why,
+        classification: ready.risk || 'KNOWN',
+        mode: ready.mode,
+        acceptance: ready.acceptance || [],
+        meta: { markCompleteKey: ready.id, backlogId: ready.id },
+      }),
+    }
+  }
+
+  const next = SLICE_CATALOG.find(
+    (slice) => !existsSync(join(repoRoot, slice.evidence)) && !run.completed?.includes(slice.id),
+  )
+  if (next) {
+    return {
+      gates,
+      phase: 'product',
+      order: mk({
+        skill: 'auto-product',
+        title: `Queue ${next.title}`,
+        why: next.why,
+        classification: 'KNOWN',
+        mode: 'plan-next',
+        acceptance: [`backlog item ${next.id}`],
+        meta: { sliceId: next.id, markCompleteKey: `queued-${next.id}` },
+      }),
+    }
+  }
+
   return {
     gates,
     phase: 'monitor',
     order: null,
     idle: true,
-    stopReason: 'NO_ACTIONABLE_HIGH_VALUE_TASK',
+    stopReason: 'AWAITING_USER_GUIDANCE',
   }
 }

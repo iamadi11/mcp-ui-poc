@@ -1,12 +1,10 @@
 ---
 name: autonomous
 description: >-
-  Single entry-point autonomous software company for this repository. One
-  invocation owns the SDLC loop: inspect state, pick the highest-value next
-  action, delegate to specialist skills, verify with evidence, update persistent
-  state, and continue. Use when the user invokes /autonomous or asks to run the
-  autonomous engineering organization. Optional goal text is the product
-  objective, not a one-shot coding task.
+  Runs the Mac Agent autonomous company: plans the next product slice, creates
+  backlog tasks, and keeps shipping (including UI) until the user explicitly
+  sets a goal, says stop, or a human-only blocker appears. Use when the user
+  invokes /autonomous or asks the Mac Agent director to keep working on its own.
 disable-model-invocation: true
 ---
 
@@ -30,9 +28,11 @@ When operating under Cursor without the CLI loop finishing:
 npm run autonomous -- tick
 ```
 
-Continue until status is `idle` / `stopped` / `blocked` with an honest stop reason (or budgets exhausted).
+Continue until the user explicitly guides this run, or a stop condition below is met.
 
-Forbidden as the primary autonomy mechanism: saying “continue”, role-playing departments in one prompt, inventing busywork, or stopping after a single commit.
+A finished milestone ladder, `NO_ACTIONABLE_HIGH_VALUE_TASK`, or `AWAITING_USER_GUIDANCE` is not a stop. Queue the next user-visible slice and run again.
+
+Forbidden as the primary autonomy mechanism: saying “continue”, role-playing departments in one prompt, inventing duplicate docs, or stopping after a single commit.
 
 ## Boot (mandatory)
 
@@ -122,14 +122,29 @@ Director may move **backward** when evidence disappears or a specialist fails a 
 | EXPERIMENTAL | isolated experiment |
 | VALIDATED | production implementation |
 
+## Continuous autonomy
+
+Default mode is open-ended product work. The CLI ladder (research through M7) is only the foundation. After it, `decide.js` queues ready backlog items, then slices in `tools/autonomous/src/director/catalog.js` (menu-bar visual pass, then live AX).
+
+On every `/autonomous` with no goal in the user message:
+
+1. `npm run autonomous -- start --ticks 12`
+2. Read `stopReason`.
+3. `AGENT_IMPLEMENT` or `blocked` on net-new UI/code: implement that work order yourself. For menu-bar UI, follow `ui-ux-pro-max` and write `docs/ui/VISUAL_PASS.md` plus `AgentChrome` in `MacAgentMenuBarApp.swift`. Then start again.
+4. `AWAITING_USER_GUIDANCE` or `NO_ACTIONABLE_HIGH_VALUE_TASK`: append one `ready` backlog item for the next user-visible improvement (UI quality before another internal report). Set `skill`, `mode`, `title`, `why`. Implement it if the handler cannot. Then start again.
+5. Do not end the turn on those stop reasons.
+
+When the user names a goal in this message, that goal is the only ready item until it is done. Do not start a catalog slice ahead of it.
+
+`npm run autonomous -- stop` sets `userHold`. The next `start` clears the hold and resumes.
+
 ## Stop only when
 
-- Genuine blocker (credentials, hardware, irreversible product choice)
-- Milestone DoD met with evidence
-- Budgets exhausted (`maxCycles` / `--ticks`)
-- Explicit `npm run autonomous -- stop`
+- The user explicitly said stop, or named a single task and that task is done
+- Human-only blocker (TCC prompt, credentials, hardware) recorded in `.agent/state/blockers.md`
+- This invocation's tick budget is exhausted (`maxCycles` / `--ticks`)
 
-Do **not** ask “Should I continue?”
+Do **not** ask “Should I continue?” A completed milestone is not a stop.
 
 ## Evidence rule
 

@@ -45,6 +45,7 @@ export function startAutonomous(repoRoot, { goal, ticks = 8, fresh = false } = {
     }
     run.status = 'running'
     run.stopReason = null
+    run.userHold = false
     if (goal) run.goal = goal
     saveRun(repoRoot, run)
     appendEvent(repoRoot, { type: 'start', runId: run.runId, goal: run.goal })
@@ -139,6 +140,10 @@ export function tickAutonomous(repoRoot) {
     }
     // backlog bookkeeping
     const backlog = loadBacklog(repoRoot)
+    if (order.meta?.backlogId) {
+      const queued = backlog.find((it) => it.id === order.meta.backlogId)
+      if (queued) queued.status = 'done'
+    }
     backlog.push({
       id: order.id,
       title: order.title,
@@ -179,6 +184,7 @@ export function tickAutonomous(repoRoot) {
 export function stopAutonomous(repoRoot, reason = 'user_stop') {
   const run = loadRun(repoRoot)
   run.status = 'stopped'
+  run.userHold = true
   run.stopReason = reason
   saveRun(repoRoot, run)
   appendEvent(repoRoot, { type: 'stop', reason })

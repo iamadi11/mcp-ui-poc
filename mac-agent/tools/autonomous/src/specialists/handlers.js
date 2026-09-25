@@ -1,7 +1,8 @@
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { appendStateSection, inspectRepo, writeStateMarkdown } from '../state/store.js'
+import { appendStateSection, inspectRepo, loadBacklog, saveBacklog, writeStateMarkdown } from '../state/store.js'
+import { SLICE_CATALOG } from '../director/catalog.js'
 
 function out(repoRoot, rel, body) {
   const fp = join(repoRoot, rel)
@@ -106,6 +107,41 @@ Derived from \`docs/research/stack-comparison.md\`.
 }
 
 function runProduct(repoRoot, workOrder) {
+  if (workOrder.mode === 'plan-next') {
+    const slice = SLICE_CATALOG.find((s) => s.id === workOrder.meta?.sliceId)
+    if (!slice) {
+      return { ok: false, error: 'plan-next missing sliceId', evidence: [], gateUpdates: {} }
+    }
+    const items = loadBacklog(repoRoot)
+    if (!items.some((it) => it.id === slice.id)) {
+      items.push({
+        id: slice.id,
+        title: slice.title,
+        why: slice.why,
+        priority: slice.priority,
+        risk: slice.risk,
+        status: 'ready',
+        owner: slice.skill,
+        skill: slice.skill,
+        mode: slice.mode,
+        evidence: [],
+        acceptance: slice.acceptance,
+      })
+      saveBacklog(repoRoot, items)
+    }
+    out(
+      repoRoot,
+      'docs/product/next-slice.md',
+      `# Next slice\n\n- id: ${slice.id}\n- title: ${slice.title}\n- why: ${slice.why}\n- owner: ${slice.skill}\n`,
+    )
+    return {
+      ok: true,
+      evidence: ['docs/product/next-slice.md', '.agent/state/backlog.json'],
+      gateUpdates: {},
+      summary: `Queued ${slice.id}`,
+      meta: workOrder.meta,
+    }
+  }
   if (workOrder.mode === 'mac-m7-slice') {
     const path = out(
       repoRoot,
@@ -283,6 +319,9 @@ Local-first; TCC respected; Linux CI can only verify non-AppKit core.
 }
 
 function runPoc(repoRoot, workOrder) {
+  if (workOrder.mode === 'mac-ax-live') {
+    return runMacAXLive(repoRoot)
+  }
   if (workOrder.mode === 'mac-voice-e2e') {
     return runMacVoiceE2E(repoRoot)
   }
@@ -409,6 +448,32 @@ Voice MVP path is validated on this personal Mac. Optional next: live mode toggl
     evidence: [path, '.agent/state/blockers.md'],
     gateUpdates: { feasibility_proven: true, product_validation_acceptable: true },
     summary: 'WhisperKit mic→runtime E2E evidence recorded (user-verified)',
+  }
+}
+
+function runMacAXLive(repoRoot) {
+  const bench = join(repoRoot, 'Benchmarks/ax_journey.sh')
+  if (!existsSync(bench)) {
+    return { ok: false, error: 'Benchmarks/ax_journey.sh missing', evidence: [], gateUpdates: {} }
+  }
+  const live = spawnSync('bash', [bench, '--live'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    env: swiftEnv(),
+    timeout: 120_000,
+  })
+  const output = ((live.stdout || '') + (live.stderr || '')).trim()
+  const ok = /ax_journey_ok=true/.test(output)
+  const path = out(
+    repoRoot,
+    'docs/poc/mac-ax-journey-live.md',
+    `# Live AX journey\n\nDate: ${new Date().toISOString()}\n\n\`\`\`\n${output.slice(-2000)}\n\`\`\`\n\nResult: ${ok ? 'PASS' : 'FAIL'}\n`,
+  )
+  return {
+    ok: true,
+    evidence: [path],
+    gateUpdates: {},
+    summary: ok ? 'Live AX journey passed' : 'Live AX journey recorded (not all steps passed)',
   }
 }
 
@@ -864,6 +929,22 @@ swift run mac-agent-cli "What's my battery?"
     evidence.push('docs/ui/MENU_BAR.md', 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
   }
 
+  if (workOrder.mode === 'mac-ui-appeal') {
+    const pass = join(repoRoot, 'docs/ui/VISUAL_PASS.md')
+    const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+    const menu = existsSync(menuSrc) ? readFileSync(menuSrc, 'utf8') : ''
+    if (!existsSync(pass) || !menu.includes('AgentChrome')) {
+      return {
+        ok: false,
+        error:
+          'AGENT_IMPLEMENT: menu bar visual pass is net-new UI. Write docs/ui/VISUAL_PASS.md and AgentChrome in MacAgentMenuBarApp.swift, then tick again.',
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    evidence.push('docs/ui/VISUAL_PASS.md', 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+  }
+
   const r = spawnSync('swift', ['test'], {
     cwd: repoRoot,
     encoding: 'utf8',
@@ -877,15 +958,17 @@ swift run mac-agent-cli "What's my battery?"
   evidence.push(report)
   const summary =
     r.status === 0
-      ? workOrder.mode === 'mac-m7-confirm'
-        ? 'Act once verified; swift test green'
-        : workOrder.mode === 'mac-ui-polish'
-          ? 'Menu-bar UX polish verified; swift test green'
-        : workOrder.mode === 'mac-mic-install'
-          ? 'Mic entitlement + personal install path verified; swift test green'
-          : workOrder.mode === 'mac-app-shell'
-            ? 'Mac App menu-bar shell scaffolded; swift test green'
-            : 'swift test green — foundation present'
+      ? workOrder.mode === 'mac-ui-appeal'
+        ? 'Menu bar visual pass verified; swift test green'
+        : workOrder.mode === 'mac-m7-confirm'
+          ? 'Act once verified; swift test green'
+          : workOrder.mode === 'mac-ui-polish'
+            ? 'Menu-bar UX polish verified; swift test green'
+            : workOrder.mode === 'mac-mic-install'
+              ? 'Mic entitlement + personal install path verified; swift test green'
+              : workOrder.mode === 'mac-app-shell'
+                ? 'Mac App menu-bar shell scaffolded; swift test green'
+                : 'swift test green — foundation present'
       : 'swift test failed'
   return {
     ok: r.status === 0,
