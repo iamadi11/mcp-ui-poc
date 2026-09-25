@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "MacAgent",
     platforms: [
-        .macOS(.v13),
+        .macOS(.v14),
     ],
     products: [
         .library(name: "MacAgentSecurity", targets: ["MacAgentSecurity"]),
@@ -14,6 +14,11 @@ let package = Package(
         .library(name: "MacAgentInterfaces", targets: ["MacAgentInterfaces"]),
         .library(name: "MacAgentVoice", targets: ["MacAgentVoice"]),
         .executable(name: "mac-agent-cli", targets: ["MacAgentCLI"]),
+        .executable(name: "MacAgentMenuBar", targets: ["MacAgentMenuBar"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/openclaw/AXorcist.git", from: "0.1.6"),
+        .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "1.0.0"),
     ],
     targets: [
         .target(
@@ -27,7 +32,10 @@ let package = Package(
         ),
         .target(
             name: "MacAgentTools",
-            dependencies: ["MacAgentSecurity"],
+            dependencies: [
+                "MacAgentSecurity",
+                .product(name: "AXorcist", package: "AXorcist"),
+            ],
             path: "Sources/MacAgentTools"
         ),
         .target(
@@ -42,13 +50,35 @@ let package = Package(
         ),
         .target(
             name: "MacAgentVoice",
-            dependencies: ["MacAgentCore", "MacAgentSecurity"],
+            dependencies: [
+                "MacAgentCore",
+                "MacAgentSecurity",
+                .product(name: "WhisperKit", package: "argmax-oss-swift"),
+            ],
             path: "Sources/MacAgentVoice"
         ),
         .executableTarget(
             name: "MacAgentCLI",
-            dependencies: ["MacAgentCore", "MacAgentInterfaces"],
+            dependencies: ["MacAgentCore", "MacAgentInterfaces", "MacAgentLLM", "MacAgentVoice", "MacAgentSecurity", "MacAgentTools"],
             path: "Sources/MacAgentCLI"
+        ),
+        .executableTarget(
+            name: "MacAgentMenuBar",
+            dependencies: [
+                "MacAgentCore",
+                "MacAgentSecurity",
+                "MacAgentVoice",
+                "MacAgentLLM",
+                "MacAgentTools",
+            ],
+            path: "Sources/MacAgentMenuBar",
+            exclude: ["Info.plist", "MacAgent.entitlements"],
+            linkerSettings: [
+                .linkedFramework("AppKit"),
+                .linkedFramework("SwiftUI"),
+                .linkedFramework("AVFoundation"),
+                .linkedFramework("Speech"),
+            ]
         ),
         .testTarget(
             name: "MacAgentSecurityTests",
@@ -62,7 +92,7 @@ let package = Package(
         ),
         .testTarget(
             name: "MacAgentCoreTests",
-            dependencies: ["MacAgentCore", "MacAgentInterfaces", "MacAgentLLM", "MacAgentSecurity", "MacAgentVoice"],
+            dependencies: ["MacAgentCore", "MacAgentInterfaces", "MacAgentLLM", "MacAgentSecurity", "MacAgentVoice", "MacAgentTools"],
             path: "Tests/MacAgentCoreTests"
         ),
         .testTarget(

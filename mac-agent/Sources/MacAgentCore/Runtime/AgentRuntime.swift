@@ -23,13 +23,23 @@ public struct TaskRecord: Sendable {
     public var instruction: String
     public var results: [ToolResult]
     public var lastError: String?
+    /// Plain assistant reply when the model answers without tools (not an OS action).
+    public var assistantText: String?
 
-    public init(id: String = UUID().uuidString, state: TaskState = .planned, instruction: String, results: [ToolResult] = [], lastError: String? = nil) {
+    public init(
+        id: String = UUID().uuidString,
+        state: TaskState = .planned,
+        instruction: String,
+        results: [ToolResult] = [],
+        lastError: String? = nil,
+        assistantText: String? = nil
+    ) {
         self.id = id
         self.state = state
         self.instruction = instruction
         self.results = results
         self.lastError = lastError
+        self.assistantText = assistantText
     }
 }
 
@@ -84,8 +94,26 @@ public final class AgentRuntime: @unchecked Sendable {
         } else if let fast = FastPathRouter.route(request.instruction) {
             calls = [fast]
         } else {
+            let trimmed = request.instruction.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.count < 2 {
+                record.state = .failed
+                record.lastError = "empty_transcript"
+                store(record)
+                return record
+            }
             let response = try? await llm.generate(
-                messages: [Message(role: .user, content: request.instruction)],
+                messages: [
+                    Message(
+                        role: .system,
+                        content: """
+                        You are Mac Agent, a local computer-control runtime.
+                        For actionable requests you MUST call one of the provided tools (never invent shell).
+                        Map battery/CPU/memory/system status → get_system_status.
+                        Only reply with short plain text (no tools) for greetings or when you need clarification.
+                        """
+                    ),
+                    Message(role: .user, content: request.instruction),
+                ],
                 tools: gate.registry.all
             )
             if response?.claimsPreapproved == true {
@@ -97,8 +125,17 @@ public final class AgentRuntime: @unchecked Sendable {
             }
             calls = response?.toolCalls ?? []
             if calls.isEmpty {
+                let reply = (response?.content ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if !reply.isEmpty {
+                    // Conversational reply — not an OS action; not a hard failure.
+                    record.state = .succeeded
+                    record.assistantText = reply
+                    record.results.append(ToolResult(ok: true, output: reply, data: ["kind": "assistant_text"]))
+                    store(record)
+                    return record
+                }
                 record.state = .failed
-                record.lastError = response?.content ?? "no_tool_calls"
+                record.lastError = "no_tool_calls"
                 store(record)
                 return record
             }
@@ -214,7 +251,11 @@ public final class AgentRuntime: @unchecked Sendable {
 public enum FastPathRouter {
     public static func route(_ raw: String) -> ToolCall? {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if text.contains("battery") || text.contains("cpu") || text.contains("memory") || text == "system status" || text.contains("what's using") {
+        if text.isEmpty { return nil }
+        if text.contains("battery") || text.contains("cpu") || text.contains("memory")
+            || text.contains("ram") || text == "system status" || text.contains("what's using")
+            || text.contains("system status") || text.contains("how much memory")
+            || text.contains("processor") {
             return ToolCall(name: "get_system_status", arguments: [:])
         }
         if text.hasPrefix("open ") {
@@ -224,7 +265,6 @@ public enum FastPathRouter {
             }
         }
         if text.hasPrefix("lock") {
-            // Lock is high-risk / OS specific — not auto in MVP fast path without dedicated tool.
             return nil
         }
         return nil

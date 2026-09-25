@@ -1,16 +1,23 @@
-# Host blockers
+# Host status
 
-This Cloud Agent runs on **Linux**, not macOS.
+This Director / engineer session is on **macOS** (`darwin` / `arm64`).
 
 | MVP item | Status here |
 |----------|-------------|
-| Security gate / sandbox / audit / tests | Implemented & green |
-| Fast path + runtime | Implemented & green |
-| Voice pipeline protocols + mock STT | Implemented |
-| WhisperKit / real mic / TCC | **Needs Mac** |
-| AX click/type via AXorcist | **Needs Mac** |
-| SwiftUI menu bar app | **Needs Mac** |
-| Notarized `.app` | **Needs Mac** |
-| `gh repo create` / push to new GitHub repo | **Token cannot create repos** — see `docs/REMOTE_SETUP.md` |
+| Security gate / sandbox / audit / tests | Implemented — `swift test` green |
+| Fast path + runtime | Implemented |
+| Ollama local tool-calling | **Installed** — warm tool-call **285ms** (`docs/performance/2026-09-22-ollama-tool-call.md`) |
+| Voice pipeline + WhisperKit + Apple Speech | Wired in `MacAgentVoice` (model downloads on first WhisperKit use) |
+| Microphone TCC | Plumbing ready — grant via menu-bar app (“Request microphone”) |
+| AX click/type via AXorcist | Wired (`ClickElementTool` / `TypeTextTool`) |
+| SwiftUI menu bar app | `swift run MacAgentMenuBar` + `dist/MacAgent.app` via `scripts/package-macos-app.sh` |
+| Codesign / notarized `.app` | **Not required** for personal use — ad-hoc local install via `./scripts/package-macos-app.sh --install --open` |
 
-Continue locally on a Mac: open this package in Xcode, add App target, grant Accessibility + Microphone, pull Ollama, run `swift test`.
+## Next human steps
+
+```bash
+cd mac-agent
+./scripts/package-macos-app.sh --install --open
+```
+
+Then grant Microphone (and Accessibility if automating UI) from the menu-bar app.

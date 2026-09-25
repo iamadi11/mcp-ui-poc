@@ -1,5 +1,8 @@
 import Foundation
 import MacAgentSecurity
+#if canImport(AppKit)
+import AppKit
+#endif
 
 public struct GetSystemStatusTool: AgentTool {
     public let definition = ToolDefinition(
@@ -47,11 +50,27 @@ public struct OpenApplicationTool: AgentTool {
 
     public func execute(arguments: [String: ToolArgumentValue], context: ToolContext) async throws -> ToolResult {
         let name = arguments["name"]?.stringValue ?? ""
-        // Real NSWorkspace open on macOS; dry-run elsewhere.
+        if context.dryRun {
+            return ToolResult(ok: true, output: "Would open application '\(name)' (dryRun=true)", data: ["name": name])
+        }
         #if canImport(AppKit)
-        // Imported only when AppKit present — left as future hook.
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: name) {
+            let ok = NSWorkspace.shared.open(url)
+            return ToolResult(ok: ok, output: ok ? "Opened '\(name)'" : "Failed to open '\(name)'", data: ["name": name])
+        }
+        let candidates = [
+            "/Applications/\(name).app",
+            "/System/Applications/\(name).app",
+            "/Applications/\(name.capitalized).app",
+        ]
+        for path in candidates where FileManager.default.fileExists(atPath: path) {
+            let ok = NSWorkspace.shared.open(URL(fileURLWithPath: path))
+            return ToolResult(ok: ok, output: ok ? "Opened \(path)" : "Failed \(path)", data: ["name": name])
+        }
+        return ToolResult(ok: false, output: "Application not found: \(name)", data: ["name": name])
+        #else
+        return ToolResult(ok: true, output: "Would open application '\(name)' (no AppKit)", data: ["name": name])
         #endif
-        return ToolResult(ok: true, output: "Would open application '\(name)' (dryRun=\(context.dryRun))", data: ["name": name])
     }
 }
 

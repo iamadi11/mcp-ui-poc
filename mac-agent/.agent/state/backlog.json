@@ -558,5 +558,230 @@
     "evidence": [
       ".agent/artifacts/wo_1a0c8459d4e_7b62/review.md"
     ]
+  },
+  {
+    "id": "wo_1a0c878671d_7ecc",
+    "title": "Post-milestone independent review",
+    "why": "Close the loop with critique before idle",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c878671d_7ecc/review.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c87ded92_ab6e",
+    "title": "Scaffold SwiftUI menu-bar app shell on Mac",
+    "why": "M2: App/ is README-only; menu-bar UX required for product DoD",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "App/MacAgentApp.swift",
+      "App/README.md",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "wo_1a0c87e4238_d0a2",
+    "title": "Mac voice pipeline POC (STT mock + runtime + Ollama probe)",
+    "why": "M2: Linux fast-path POC does not prove Apple Silicon voice/LLM latency",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-poc",
+    "evidence": [
+      "docs/poc/mac-voice-POC_REPORT.md",
+      "docs/HOST_BLOCKERS.md",
+      ".agent/state/blockers.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c87e6320_b4fe",
+    "title": "Refresh release readiness for Mac host M2",
+    "why": "Stale Linux-host release doc must reflect Mac laptop evidence",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-release",
+    "evidence": [
+      "docs/release/readiness.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c87e632c_cb2f",
+    "title": "M2 Mac host independent review",
+    "why": "Critique App shell + Mac voice POC before declaring M2 idle",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c87e632c_cb2f/review.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c89d0284_2bf4",
+    "title": "Document personal Mac install + mic TCC DoD",
+    "why": "Notarization out of scope; capture local install + entitlement evidence",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-release",
+    "evidence": [
+      "docs/release/personal-install.md",
+      "docs/release/readiness.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c89d02a9_a150",
+    "title": "M3 personal-install independent review",
+    "why": "Confirm mic entitlement + local install path before idle",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c89d02a9_a150/review.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8add123_937c",
+    "title": "Record WhisperKit mic→runtime E2E evidence",
+    "why": "User confirmed Listen succeeded; persist measured evidence for DoD",
+    "priority": "P1",
+    "risk": "VALIDATED",
+    "status": "done",
+    "owner": "auto-poc",
+    "evidence": [
+      "docs/poc/mac-voice-e2e.md",
+      ".agent/state/blockers.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8add126_b5d7",
+    "title": "Refresh product validation after voice E2E",
+    "why": "Mic+WhisperKit path now user-verified",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      ".agent/state/validation.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8add130_03b0",
+    "title": "M4 voice E2E independent review",
+    "why": "Close loop after WhisperKit Listen success",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c8add130_03b0/review.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8b17144_12d8",
+    "title": "M5 menu-bar UI independent review",
+    "why": "Confirm Listen-first hierarchy and a11y labels",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c8b17144_12d8/review.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8cbe7d0_ac35",
+    "title": "AX click/type journeys (TextEdit menu + type)",
+    "why": "Prove Accessibility automation beyond dry-run stubs",
+    "priority": "P0",
+    "risk": "RISKY",
+    "status": "done",
+    "owner": "auto-poc",
+    "evidence": [
+      "docs/poc/mac-ax-journey.md",
+      "Benchmarks/ax_journey.sh",
+      ".agent/state/blockers.md"
+    ]
+  },
+  {
+    "id": "wo_1a0c8cc028a_1a6e",
+    "title": "M6 AX journeys independent review",
+    "why": "Close loop after Accessibility click/type evidence",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0c8cc028a_1a6e/review.md"
+    ]
+  },
+  {
+    "id": "m7-act-once-spec",
+    "title": "Define Act once (confirm-to-act) slice",
+    "why": "Dry-run-only menu bar never acts; sticky live mode is the wrong default",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": []
+  },
+  {
+    "id": "m7-act-once-build",
+    "title": "Ship Act once toggle on the menu bar",
+    "why": "Arm exactly one Listen, Battery, Ollama, or AX journey to run live",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": []
+  },
+  {
+    "id": "wo_1a0d7397f06_bf8d",
+    "title": "Define Act once (confirm-to-act) slice",
+    "why": "Menu bar is dry-run only; users need an explicit one-shot live arm, not a sticky god mode",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-product",
+    "evidence": [
+      "docs/product/m7-confirm-to-act.md"
+    ]
+  },
+  {
+    "id": "wo_1a0d7397f10_94b7",
+    "title": "Ship Act once toggle on the menu bar",
+    "why": "Default stays dry-run; the next Listen, Battery, Ollama, or AX journey can run live once",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "docs/product/m7-confirm-to-act.md",
+      "Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift",
+      "Sources/MacAgentVoice/VoicePipeline.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "wo_1a0d739ceae_7ec8",
+    "title": "M7 Act once independent review",
+    "why": "Confirm live is one-shot and dry-run remains the default",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-review",
+    "evidence": [
+      ".agent/artifacts/wo_1a0d739ceae_7ec8/review.md"
+    ]
   }
 ]

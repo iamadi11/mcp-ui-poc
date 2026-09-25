@@ -53,6 +53,8 @@ public struct ToolHost: Sendable {
             CreateFileTool(),
             DeleteFileTool(),
             RunSafeCommandTool(),
+            ClickElementTool(),
+            TypeTextTool(),
         ])
     }
 

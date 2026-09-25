@@ -3,6 +3,7 @@ import XCTest
 import MacAgentLLM
 import MacAgentSecurity
 import MacAgentVoice
+import MacAgentTools
 
 final class FastPathTests: XCTestCase {
     func testBatteryFastPath() {
@@ -47,6 +48,27 @@ final class VoicePipelineTests: XCTestCase {
         let pipeline = VoicePipeline(stt: stt, tts: MockTTSProvider(), runtime: runtime)
         let record = try await pipeline.handleAudio(Data())
         XCTAssertEqual(record.state, .succeeded)
+    }
+}
+
+final class AXToolsTests: XCTestCase {
+    func testClickElementDryRun() async throws {
+        let tool = ClickElementTool()
+        let result = try await tool.execute(
+            arguments: ["role": .string("AXButton"), "title": .string("OK"), "focused": .bool(false)],
+            context: ToolContext(taskId: "t", requestId: "r", source: "test", dryRun: true)
+        )
+        XCTAssertTrue(result.ok)
+        XCTAssertTrue(result.output.contains("dry-run"))
+    }
+
+    func testTypeTextDryRun() async throws {
+        let tool = TypeTextTool()
+        let result = try await tool.execute(
+            arguments: ["text": .string("hello")],
+            context: ToolContext(taskId: "t", requestId: "r", source: "test", dryRun: true)
+        )
+        XCTAssertTrue(result.ok)
     }
 }
 

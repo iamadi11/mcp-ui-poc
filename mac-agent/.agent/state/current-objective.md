@@ -1,3 +1,3 @@
 # Current objective
 
-Build the local-first Mac AI control application.
+**Idle** — M7 Act once shipped (one-shot live arm, dry-run default). Live AX still needs Accessibility re-granted.

@@ -2,7 +2,7 @@
 # Latency micro-benchmark for deterministic fast path (Linux/macOS).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-export PATH="${SWIFT_PATH:-/home/ubuntu/swift/usr/bin}:$PATH"
+export PATH="/usr/bin:${SWIFT_PATH:-/home/ubuntu/swift/usr/bin}:$PATH"
 swift build -c release 2>/dev/null || swift build -c release
 BIN=".build/release/mac-agent-cli"
 START=$(date +%s%N)

@@ -269,3 +269,111 @@
 - Priority: P1
 - Why: Close the loop with critique before idle
 - Owner: auto-review
+
+## wo_1a0c878671d_7ecc — Post-milestone independent review
+- Status: done
+- Priority: P1
+- Why: Close the loop with critique before idle
+- Owner: auto-review
+
+## wo_1a0c87ded92_ab6e — Scaffold SwiftUI menu-bar app shell on Mac
+- Status: done
+- Priority: P1
+- Why: M2: App/ is README-only; menu-bar UX required for product DoD
+- Owner: auto-engineer
+
+## wo_1a0c87e4238_d0a2 — Mac voice pipeline POC (STT mock + runtime + Ollama probe)
+- Status: done
+- Priority: P0
+- Why: M2: Linux fast-path POC does not prove Apple Silicon voice/LLM latency
+- Owner: auto-poc
+
+## wo_1a0c87e6320_b4fe — Refresh release readiness for Mac host M2
+- Status: done
+- Priority: P1
+- Why: Stale Linux-host release doc must reflect Mac laptop evidence
+- Owner: auto-release
+
+## wo_1a0c87e632c_cb2f — M2 Mac host independent review
+- Status: done
+- Priority: P1
+- Why: Critique App shell + Mac voice POC before declaring M2 idle
+- Owner: auto-review
+
+## wo_1a0c89d0284_2bf4 — Document personal Mac install + mic TCC DoD
+- Status: done
+- Priority: P1
+- Why: Notarization out of scope; capture local install + entitlement evidence
+- Owner: auto-release
+
+## wo_1a0c89d02a9_a150 — M3 personal-install independent review
+- Status: done
+- Priority: P1
+- Why: Confirm mic entitlement + local install path before idle
+- Owner: auto-review
+
+## wo_1a0c8add123_937c — Record WhisperKit mic→runtime E2E evidence
+- Status: done
+- Priority: P1
+- Why: User confirmed Listen succeeded; persist measured evidence for DoD
+- Owner: auto-poc
+
+## wo_1a0c8add126_b5d7 — Refresh product validation after voice E2E
+- Status: done
+- Priority: P1
+- Why: Mic+WhisperKit path now user-verified
+- Owner: auto-product
+
+## wo_1a0c8add130_03b0 — M4 voice E2E independent review
+- Status: done
+- Priority: P1
+- Why: Close loop after WhisperKit Listen success
+- Owner: auto-review
+
+## wo_1a0c8b17144_12d8 — M5 menu-bar UI independent review
+- Status: done
+- Priority: P1
+- Why: Confirm Listen-first hierarchy and a11y labels
+- Owner: auto-review
+
+## wo_1a0c8cbe7d0_ac35 — AX click/type journeys (TextEdit menu + type)
+- Status: done
+- Priority: P0
+- Why: Prove Accessibility automation beyond dry-run stubs
+- Owner: auto-poc
+
+## wo_1a0c8cc028a_1a6e — M6 AX journeys independent review
+- Status: done
+- Priority: P1
+- Why: Close loop after Accessibility click/type evidence
+- Owner: auto-review
+
+## m7-act-once-spec — Define Act once (confirm-to-act) slice
+- Status: ready
+- Priority: P1
+- Why: Dry-run-only menu bar never acts; sticky live mode is the wrong default
+- Owner: auto-product
+
+## m7-act-once-build — Ship Act once toggle on the menu bar
+- Status: ready
+- Priority: P1
+- Why: Arm exactly one Listen, Battery, Ollama, or AX journey to run live
+- Owner: auto-engineer
+
+## wo_1a0d7397f06_bf8d — Define Act once (confirm-to-act) slice
+- Status: done
+- Priority: P1
+- Why: Menu bar is dry-run only; users need an explicit one-shot live arm, not a sticky god mode
+- Owner: auto-product
+
+## wo_1a0d7397f10_94b7 — Ship Act once toggle on the menu bar
+- Status: done
+- Priority: P1
+- Why: Default stays dry-run; the next Listen, Battery, Ollama, or AX journey can run live once
+- Owner: auto-engineer
+
+## wo_1a0d739ceae_7ec8 — M7 Act once independent review
+- Status: done
+- Priority: P1
+- Why: Confirm live is one-shot and dry-run remains the default
+- Owner: auto-review

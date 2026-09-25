@@ -6,7 +6,7 @@ Local-first **macOS computer-control agent**: voice, text, MCP, and localhost AP
 
 ## Status
 
-Architecture and security-critical core are under active development. See `PROJECT_PLAN.md`.
+Developer Mac milestone: AgentCore + Ollama tool-calling + AXorcist AX tools + WhisperKit/mic plumbing + menu-bar `.app` bundle. Notarization requires your Apple Developer ID.
 
 **Home:** this tree is `mac-agent/` inside [`iamadi11/mcp-ui-poc`](https://github.com/iamadi11/mcp-ui-poc) — not a separate GitHub repository.
 
@@ -32,15 +32,20 @@ Distinct from studio `/autonomous-company` / `npm run company`.
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers & invariant |
 | [SECURITY.md](SECURITY.md) | Policy, sandbox, threats |
 
-## Build (AgentCore on Linux or macOS)
+## Build (macOS)
 
 ```bash
-export PATH="/path/to/swift/usr/bin:$PATH"   # if needed
 swift test
-npm test   # autonomous director tests
+swift run mac-agent-cli "What's my battery?"
+swift run mac-agent-cli --ollama "Call get_system_status for a quick summary."
+swift run MacAgentMenuBar
+./scripts/package-macos-app.sh --install --open   # personal local install, no Developer ID
+./Benchmarks/ollama_tool_call.sh
 ```
 
-macOS app target (`App/`) requires Xcode on a Mac (Accessibility, menu bar, TCC).
+Ollama: `brew install ollama && brew services start ollama && ollama pull qwen2.5:0.5b`
+
+Menu-bar app TCC: enable **Microphone** (and Accessibility when automating UI). See `App/README.md`.
 
 ## Security invariant
 

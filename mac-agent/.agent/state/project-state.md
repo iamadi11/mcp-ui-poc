@@ -2,5 +2,5 @@
 
 Status: idle
 Reason: NO_ACTIONABLE_HIGH_VALUE_TASK
-Cycle: 10
+Cycle: 25
 Phase: monitor

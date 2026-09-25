@@ -145,6 +145,8 @@ export function appendEvent(repoRoot, event) {
 export function inspectRepo(repoRoot) {
   const has = (rel) => existsSync(join(repoRoot, rel))
   const list = (rel) => (has(rel) ? readdirSync(join(repoRoot, rel)) : [])
+  const appFiles = list('App')
+  const pocFiles = list('docs/poc')
   return {
     hasPackageSwift: has('Package.swift'),
     hasSecurityMd: has('SECURITY.md'),
@@ -154,7 +156,7 @@ export function inspectRepo(repoRoot) {
     hasProductPrd: has('docs/product/PRD.md'),
     hasAcceptance: has('docs/product/acceptance-criteria.md'),
     hasAdr: list('docs/architecture').some((f) => f.startsWith('ADR-')),
-    hasPocReport: list('docs/poc').some((f) => f.toUpperCase().includes('POC')),
+    hasPocReport: pocFiles.some((f) => f.toUpperCase().includes('POC')),
     hasQaReport: list('docs/qa').length > 0,
     hasSecurityReport: list('docs/security').length > 0,
     hasPerfReport: list('docs/performance').length > 0,
@@ -164,6 +166,43 @@ export function inspectRepo(repoRoot) {
     hasSwiftSources: has('Sources/MacAgentSecurity'),
     hasAutonomousCli: has('tools/autonomous/src/cli.js'),
     hasHostBlockers: has('docs/HOST_BLOCKERS.md'),
+    /** True when the Director host is macOS (developer laptop / Mac CI). */
+    isDarwin: process.platform === 'darwin',
+    /** SwiftUI menu-bar shell present (not README-only placeholder). */
+    hasMacAppShell:
+      appFiles.some((f) => f.endsWith('.swift')) || has('Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift'),
+    /** Mac voice / STT+LLM feasibility report (distinct from Linux fast-path POC). */
+    hasMacVoicePoc: pocFiles.some(
+      (f) => /mac|voice|stt/i.test(f) && f.toUpperCase().includes('POC'),
+    ),
+    /** Hardened-runtime mic entitlement file (required for TCC listing). */
+    hasMicEntitlements:
+      has('Sources/MacAgentMenuBar/MacAgent.entitlements') &&
+      readFileSync(join(repoRoot, 'Sources/MacAgentMenuBar/MacAgent.entitlements'), 'utf8').includes(
+        'device.audio-input',
+      ),
+    /** Ollama tool-call bench evidence on this Mac. */
+    hasOllamaPerf: list('docs/performance').some((f) => /ollama/i.test(f)),
+    /** Personal local install path (no notarization). */
+    hasPersonalInstallScript:
+      has('scripts/package-macos-app.sh') &&
+      readFileSync(join(repoRoot, 'scripts/package-macos-app.sh'), 'utf8').includes('--install'),
+    /** M3 evidence that mic entitlement + personal install were verified. */
+    hasM3InstallEvidence: has('docs/release/personal-install.md'),
+    /** M4: live WhisperKit mic → runtime evidence on this Mac. */
+    hasVoiceE2EEvidence: has('docs/poc/mac-voice-e2e.md'),
+    /** M5: menu-bar UI polish notes. */
+    hasMenuBarUIDoc: has('docs/ui/MENU_BAR.md'),
+    /** M6: AX click/type journey evidence. */
+    hasAXJourneyEvidence: has('docs/poc/mac-ax-journey.md'),
+    /** M7 product slice: one-shot live arm. */
+    hasConfirmToActSpec: has('docs/product/m7-confirm-to-act.md'),
+    /** M7: menu bar exposes Act once. */
+    hasActOnce:
+      has('Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift') &&
+      readFileSync(join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift'), 'utf8').includes(
+        'Act once',
+      ),
   }
 }
 

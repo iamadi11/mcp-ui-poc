@@ -5,14 +5,14 @@
 | Item | Status |
 |------|--------|
 | Capability tools / no free shell | YES |
-| Security docs + adversarial report | YES |
-| QA report | YES |
-| Perf bench | YES |
-| Product PRD/acceptance | YES |
-| Native macOS app packaged | **NO — NOT VERIFIED** (Linux host) |
-| Voice E2E | **NO — BLOCKED** |
+| Ollama tool-call perf | YES |
+| Mic audio-input entitlement | YES |
+| Personal local `.app` install | YES (`./scripts/package-macos-app.sh --install`) |
+| Notarized distribution | **Skipped** (personal project) |
+| Mic TCC user grant | **YES** (user granted 2026-09-22) |
+| WhisperKit first transcription | OPEN |
 
 ## Decision
 
-**Internal milestone release** of AgentCore + autonomous OS: YES.  
-**User-facing Mac App Store/notarized build:** NO until Mac host.
+**Personal laptop usable build:** YES (permissions granted).  
+**Public notarized ship:** not required.
