@@ -461,3 +461,75 @@
 - Priority: P1
 - Why: The signed app in ~/Applications still has the previous panel
 - Owner: auto-engineer
+
+## slice-heard-first — Show the transcript before tools run
+- Status: done
+- Priority: P1
+- Why: A voice remote shows what it heard before it acts, and Stop should end the recording
+- Owner: auto-engineer
+
+## wo_1a0d7ce290f_8b11 — Show the transcript before tools run
+- Status: done
+- Priority: P1
+- Why: A voice remote shows what it heard before it acts, and Stop should end the recording
+- Owner: auto-engineer
+
+## slice-listen-control — Large Listen control and plain permission failures
+- Status: done
+- Priority: P1
+- Why: The panel still reads as a form; a voice remote leads with one big Listen control
+- Owner: auto-engineer
+
+## wo_1a0d7d7119d_0916 — Large Listen control and plain permission failures
+- Status: done
+- Priority: P1
+- Why: The panel still reads as a form; a voice remote leads with one big Listen control
+- Owner: auto-engineer
+
+## slice-live-transcript — Show words as the user speaks
+- Status: done
+- Priority: P0
+- Why: Listen currently waits until the recording ends before any text appears
+- Owner: auto-engineer
+
+## wo_1a0d7da62f5_6cb1 — Show words as the user speaks
+- Status: done
+- Priority: P1
+- Why: Listen currently waits until the recording ends before any text appears
+- Owner: auto-engineer
+
+## slice-plain-answer — Plain battery answer and a quieter panel
+- Status: done
+- Priority: P0
+- Why: Battery percentage returned machine text, and the panel read as a form
+- Owner: auto-engineer
+
+## wo_1a0d7e04924_3edb — Plain battery answer and a quieter panel
+- Status: done
+- Priority: P1
+- Why: Battery percentage returned machine text, and the panel read as a form
+- Owner: auto-engineer
+
+## slice-spoken-open — Plain answers for spoken open commands
+- Status: done
+- Priority: P0
+- Why: Phrases like please open Chrome missed the fast path and the reply was a machine string
+- Owner: auto-engineer
+
+## wo_1a0d7e3cfd8_fc8a — Plain answers for spoken open commands
+- Status: done
+- Priority: P1
+- Why: Phrases like please open Chrome missed the fast path and the reply was a machine string
+- Owner: auto-engineer
+
+## slice-hear-words — Hear speech and show one sentence
+- Status: done
+- Priority: P0
+- Why: Streaming transcription returned empty, so every command said it heard nothing
+- Owner: auto-engineer
+
+## wo_1a0d7f1047d_605e — Hear speech and show one sentence
+- Status: done
+- Priority: P1
+- Why: Streaming transcription returned empty, so every command said it heard nothing
+- Owner: auto-engineer

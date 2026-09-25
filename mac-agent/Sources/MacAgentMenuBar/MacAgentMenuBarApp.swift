@@ -27,226 +27,150 @@ struct AgentPanel: View {
     @ObservedObject var session: AgentSessionModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AgentChrome.stack) {
-            header
-            statusCard
-            primaryActions
-            Divider().opacity(0.35)
+        VStack(alignment: .leading, spacing: 16) {
+            if let status = voiceCopy.status {
+                Text(status)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            Text(voiceCopy.hero)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier(voiceCopy.identifier)
+            listenControl
+            actOnceControl
+            toolsDisclosure
             DisclosureGroup(isExpanded: $session.permissionsExpanded) {
                 permissionsBody
                     .padding(.top, 8)
             } label: {
-                Label("Permissions", systemImage: "lock.shield")
-                    .font(.subheadline.weight(.medium))
+                Text("Permissions")
+                    .font(.system(size: 12))
             }
-            .tint(AgentChrome.teal)
-            Divider().opacity(0.35)
             Button {
                 NSApplication.shared.terminate(nil)
             } label: {
-                Label("Quit Mac Agent", systemImage: "xmark.circle")
+                Text("Quit")
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .font(.system(size: 12))
+            .foregroundStyle(.tertiary)
             .accessibilityLabel("Quit Mac Agent")
         }
-        .padding(AgentChrome.pad)
-        .frame(width: 320)
+        .padding(16)
+        .frame(width: 300)
         .background(AgentChrome.surface)
+        .accessibilityElement(children: .contain)
     }
 
-    private var header: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: "waveform")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(AgentChrome.teal)
-                .frame(width: 32, height: 32)
-                .background(AgentChrome.teal.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Mac Agent")
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
-                Text(session.phase.label)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(session.phase.tint)
+    private var voiceCopy: (status: String?, hero: String, identifier: String) {
+        let heard = clean(session.lastHeard)
+        let result = clean(session.resultDetail)
+        switch session.phase {
+        case .listening:
+            if let heard { return ("Listening", heard, "LiveTranscriptLine") }
+            return (nil, "Listening", "LiveTranscriptLine")
+        case .running:
+            if let heard { return ("Working", heard, "AnswerLine") }
+            return (nil, "Working", "AnswerLine")
+        default:
+            if result == "Stopped" {
+                return ("Stopped", heard ?? "Stopped", "AnswerLine")
             }
-            Spacer(minLength: 8)
+            if let result, let heard, result != heard {
+                return (heard, result, result.contains("didn't hear") ? "PlainFailureLine" : "AnswerLine")
+            }
+            if let result {
+                return (nil, result, result.contains("didn't hear") ? "PlainFailureLine" : "AnswerLine")
+            }
+            if let heard { return (nil, heard, "AnswerLine") }
+            if !session.microphoneGranted {
+                return (nil, "Microphone needed to listen", "PlainFailureLine")
+            }
+            return (nil, "Say a command", "AnswerLine")
         }
-        .accessibilityElement(children: .combine)
     }
 
-    private var statusCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if session.isBusy {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text(session.busyLabel)
-                        .font(.caption.weight(.medium))
+    private func clean(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return nil }
+        return trimmed
+    }
+
+    private var listenControl: some View {
+        Button {
+            if session.phase == .listening {
+                session.stopListening()
+            } else {
+                session.listenTask = Task { await session.listenOnce() }
+            }
+        } label: {
+            Text(session.phase == .listening ? "Stop" : "Listen")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(AgentChrome.teal, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .accessibilityIdentifier("ListenControl")
+        }
+        .buttonStyle(.plain)
+        .disabled(session.isBusy && session.phase != .listening)
+        .accessibilityLabel(session.phase == .listening ? "Stop listening" : "Listen")
+    }
+
+    private var actOnceControl: some View {
+        Toggle(isOn: $session.actOnce) {
+            Text(session.actOnce ? "Act once" : "Preview")
+                .font(.system(size: 12))
+        }
+        .toggleStyle(.switch)
+        .disabled(session.isBusy)
+        .accessibilityLabel("Act once")
+        .accessibilityValue(session.actOnce ? "On" : "Off")
+        .accessibilityIdentifier("NextActionLine")
+    }
+
+    private var toolsDisclosure: some View {
+        DisclosureGroup(isExpanded: $session.toolsExpanded) {
+            VStack(spacing: 8) {
+                Button {
+                    Task { await session.runBattery() }
+                } label: {
+                    Text("Battery")
+                        .frame(maxWidth: .infinity)
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(session.busyLabel)
-            }
+                .disabled(session.isBusy)
+                .accessibilityLabel("Run battery status")
 
-            if let heard = session.lastHeard, !heard.isEmpty {
-                labeledRow(title: "Heard", value: heard, mono: false)
-            }
-            if let detail = session.resultDetail, !detail.isEmpty {
-                labeledRow(title: "Result", value: detail, mono: false)
-            }
-            Text(session.nextActionLine)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(session.actOnce ? AgentChrome.teal : .secondary)
-                .accessibilityIdentifier("NextActionLine")
-            if let meta = session.metaLine, !meta.isEmpty {
-                Text(meta)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .textSelection(.enabled)
-            }
-            if session.lastHeard == nil && session.resultDetail == nil && !session.isBusy {
-                Text(session.idleHint)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AgentChrome.card, in: RoundedRectangle(cornerRadius: AgentChrome.radius, style: .continuous))
-        .overlay(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(session.phase.tint)
-                .frame(width: 3)
-                .padding(.vertical, 10)
-                .accessibilityHidden(true)
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: AgentChrome.radius, style: .continuous)
-                .strokeBorder(AgentChrome.border, lineWidth: 1)
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(statusAccessibilityLabel)
-    }
-
-    private func labeledRow(title: String, value: String, mono: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title.uppercased())
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .tracking(0.4)
-            Text(value)
-                .font(title == "Heard" ? .body : (mono ? .system(.caption, design: .monospaced) : .caption))
-                .foregroundStyle(.primary)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title): \(value)")
-    }
-
-    private var statusAccessibilityLabel: String {
-        var parts = ["Status \(session.phase.label)"]
-        if session.isBusy { parts.append(session.busyLabel) }
-        if let heard = session.lastHeard, !heard.isEmpty { parts.append("Heard \(heard)") }
-        if let detail = session.resultDetail, !detail.isEmpty { parts.append(detail) }
-        if parts.count == 1 { parts.append(session.idleHint) }
-        return parts.joined(separator: ". ")
-    }
-
-    private var primaryActions: some View {
-        VStack(spacing: 8) {
-            Button {
-                if session.phase == .listening {
-                    session.stopListening()
-                } else {
-                    Task { await session.listenOnce() }
+                Button {
+                    Task { await session.runOllamaProbe() }
+                } label: {
+                    Text("Ollama")
+                        .frame(maxWidth: .infinity)
                 }
-            } label: {
-                Label(
-                    session.phase == .listening ? "Stop" : "Listen",
-                    systemImage: session.phase == .listening ? "stop.fill" : "waveform"
-                )
-                    .font(.body.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(AgentChrome.teal)
-            .disabled(session.isBusy && session.phase != .listening)
-            .accessibilityLabel(session.phase == .listening ? "Stop listening" : "Listen")
-            .accessibilityHint(session.actOnce
-                ? "Armed. This listen runs tools for real, then Act once turns off."
-                : "Records microphone audio, transcribes locally, then shows what it heard")
+                .disabled(session.isBusy)
+                .accessibilityLabel("Run Ollama tool call probe")
 
-            Toggle(isOn: $session.actOnce) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Act once")
-                        .font(.subheadline.weight(.medium))
-                    Text(session.actOnce
-                        ? "Next action runs for real, then this turns off."
-                        : "Stays dry-run until you arm the next action.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                Button {
+                    Task { await session.runAXJourney() }
+                } label: {
+                    Text(session.actOnce ? "AX journey, live" : "AX journey")
+                        .frame(maxWidth: .infinity)
                 }
+                .disabled(session.isBusy)
+                .accessibilityLabel("Run Accessibility journey")
             }
-            .toggleStyle(.switch)
-            .disabled(session.isBusy)
-            .accessibilityLabel("Act once")
-            .accessibilityValue(session.actOnce ? "On" : "Off")
-            .accessibilityHint("Arms the next Listen, Battery, Ollama, or AX journey to run for real")
-            .padding(10)
-            .background(
-                session.actOnce ? AgentChrome.teal.opacity(0.12) : AgentChrome.card,
-                in: RoundedRectangle(cornerRadius: AgentChrome.radius, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: AgentChrome.radius, style: .continuous)
-                    .strokeBorder(session.actOnce ? AgentChrome.teal.opacity(0.45) : AgentChrome.border, lineWidth: 1)
-            )
-
-            DisclosureGroup(isExpanded: $session.toolsExpanded) {
-                VStack(spacing: 8) {
-                    HStack(spacing: 8) {
-                        Button {
-                            Task { await session.runBattery() }
-                        } label: {
-                            Label("Battery", systemImage: "battery.100")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .disabled(session.isBusy)
-                        .accessibilityLabel("Run battery status")
-
-                        Button {
-                            Task { await session.runOllamaProbe() }
-                        } label: {
-                            Label("Ollama", systemImage: "cpu")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .disabled(session.isBusy)
-                        .accessibilityLabel("Run Ollama tool call probe")
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button {
-                        Task { await session.runAXJourney() }
-                    } label: {
-                        Label(session.actOnce ? "AX journey (live)" : "AX journey", systemImage: "hand.tap")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(session.isBusy)
-                    .accessibilityLabel("Run Accessibility journey")
-                }
-                .padding(.top, 8)
-            } label: {
-                Label("Tools", systemImage: "wrench.and.screwdriver")
-                    .font(.subheadline.weight(.medium))
-            }
-            .accessibilityIdentifier("VoiceToolsDisclosure")
+            .buttonStyle(.bordered)
+            .padding(.top, 8)
+        } label: {
+            Text("Tools")
+                .font(.system(size: 12))
         }
+        .accessibilityIdentifier("VoiceToolsDisclosure")
     }
 
     private var permissionsBody: some View {
@@ -359,6 +283,7 @@ final class AgentSessionModel: ObservableObject {
     @Published var permissionRows: [PermissionRow] = []
     /// One-shot live arm. Default off so menu-bar actions stay dry-run.
     @Published var actOnce = false
+    @Published var microphoneGranted = false
     @Published var accessibilityGranted = false
     @Published var accessibilityStatusLine = "Checking Accessibility…"
 
@@ -396,8 +321,9 @@ final class AgentSessionModel: ObservableObject {
             let mic = snap.first(where: { $0.id == "microphone" })?.status ?? "?"
             idleHint = mic == "granted"
                 ? "Press Listen, then say “what's my battery”."
-                : "Microphone not granted — expand Permissions."
+                : "Microphone needed to listen."
         }
+        microphoneGranted = snap.first(where: { $0.id == "microphone" })?.status == "granted"
         accessibilityGranted = PermissionDoctor.status(for: "accessibility") == "granted"
         accessibilityStatusLine = accessibilityGranted
             ? "Accessibility granted"
@@ -432,10 +358,26 @@ final class AgentSessionModel: ObservableObject {
     }
 
     private var listenGeneration = 0
+    var listenTask: Task<Void, Never>?
 
     func stopListening() {
         listenGeneration += 1
+        listenTask?.cancel()
         finish(success: false, heard: lastHeard, result: "Stopped", meta: nil)
+    }
+
+    func publishPartial(_ heard: String) {
+        let trimmed = heard.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != "Waiting for speech..." else { return }
+        lastHeard = trimmed
+    }
+
+    func publishHeard(_ heard: String) {
+        let trimmed = heard.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        lastHeard = trimmed
+        phase = .running
+        busyLabel = "Running…"
     }
 
     func listenOnce() async {
@@ -445,27 +387,49 @@ final class AgentSessionModel: ObservableObject {
         do {
             let stt = await STTFactory.makeDefault(fallbackTranscript: "What's my battery?")
             guard generation == listenGeneration else { return }
-            phase = .running
-            busyLabel = "Transcribing…"
-            let pipeline = VoicePipeline(stt: stt, tts: MockTTSProvider(), runtime: runtimeOllama)
-            let start = Date()
-            let turn = try await pipeline.handleMicrophoneTurn(seconds: 3.0, dryRun: !live)
-            guard generation == listenGeneration else { return }
-            let ms = Int(Date().timeIntervalSince(start) * 1000)
-            let heard = turn.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-            let out = turn.record.results.first?.output
-                ?? turn.record.assistantText
-                ?? turn.record.lastError
-                ?? "(no output)"
-            let ok = turn.record.state == .succeeded
+            let heard: String
+            let record: TaskRecord
+            if let whisper = stt as? WhisperKitSTTProvider {
+                let text = try await whisper.transcribeLive(maxSeconds: 6) { partial in
+                    await MainActor.run { self.publishPartial(partial) }
+                }
+                guard generation == listenGeneration else { return }
+                let spokenNow = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if spokenNow.count < 2 {
+                    finish(success: false, heard: nil, result: "I didn't hear a command.", meta: nil)
+                    return
+                }
+                phase = .running
+                busyLabel = "Running…"
+                record = await runtimeOllama.submit(
+                    TaskRequest(instruction: spokenNow, source: "voice", dryRun: !live)
+                )
+                heard = spokenNow
+            } else {
+                phase = .running
+                busyLabel = "Transcribing…"
+                let pipeline = VoicePipeline(stt: stt, tts: MockTTSProvider(), runtime: runtimeOllama)
+                let turn = try await pipeline.handleMicrophoneTurn(seconds: 3.0, dryRun: !live) { partial in
+                    await MainActor.run { self.publishHeard(partial) }
+                }
+                guard generation == listenGeneration else { return }
+                record = turn.record
+                heard = turn.transcript
+            }
+            let spoken = heard.trimmingCharacters(in: .whitespacesAndNewlines)
+            let out = record.results.first?.output
+                ?? record.assistantText
+                ?? record.lastError
+                ?? "I don't have a command for that."
             finish(
-                success: ok,
-                heard: heard.isEmpty ? "(empty — try again)" : heard,
+                success: record.state == .succeeded,
+                heard: spoken.count >= 2 ? spoken : nil,
                 result: out,
-                meta: "stt=\(stt.id) · \(ms)ms · \(turn.record.state.rawValue) · \(live ? "live" : "dry-run")"
+                meta: nil
             )
         } catch {
-            finish(success: false, heard: nil, result: "Listen failed: \(error)", meta: nil)
+            guard generation == listenGeneration else { return }
+            finish(success: false, heard: lastHeard, result: "Listen failed: \(error)", meta: nil)
         }
     }
 

@@ -97,7 +97,7 @@ public final class AgentRuntime: @unchecked Sendable {
             let trimmed = request.instruction.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.count < 2 {
                 record.state = .failed
-                record.lastError = "empty_transcript"
+                record.lastError = "I didn't hear a command."
                 store(record)
                 return record
             }
@@ -135,7 +135,7 @@ public final class AgentRuntime: @unchecked Sendable {
                     return record
                 }
                 record.state = .failed
-                record.lastError = "no_tool_calls"
+                record.lastError = "I don't have a command for that."
                 store(record)
                 return record
             }
@@ -252,21 +252,36 @@ public enum FastPathRouter {
     public static func route(_ raw: String) -> ToolCall? {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if text.isEmpty { return nil }
-        if text.contains("battery") || text.contains("cpu") || text.contains("memory")
+        if text.contains("battery") || text.contains("charge") || text.contains("cpu") || text.contains("memory")
             || text.contains("ram") || text == "system status" || text.contains("what's using")
             || text.contains("system status") || text.contains("how much memory")
             || text.contains("processor") {
             return ToolCall(name: "get_system_status", arguments: [:])
         }
-        if text.hasPrefix("open ") {
-            let name = String(text.dropFirst(5)).trimmingCharacters(in: .whitespaces)
-            if !name.isEmpty {
-                return ToolCall(name: "open_application", arguments: ["name": .string(name.capitalized)])
-            }
+        if let name = Self.applicationName(from: text) {
+            return ToolCall(name: "open_application", arguments: ["name": .string(name)])
         }
         if text.hasPrefix("lock") {
             return nil
         }
         return nil
+    }
+
+    /// Pulls an app name from phrases like "please open Safari".
+    public static func applicationName(from raw: String) -> String? {
+        let cleaned = raw
+            .lowercased()
+            .replacingOccurrences(of: #"[^a-z0-9 ]+"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+        let markers = ["open ", "launch ", "start "]
+        guard let marker = markers.first(where: { cleaned.contains($0) }),
+              let range = cleaned.range(of: marker) else { return nil }
+        var name = String(cleaned[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+        for suffix in [" please", " now", " app", " application"] where name.hasSuffix(suffix) {
+            name = String(name.dropLast(suffix.count)).trimmingCharacters(in: .whitespaces)
+        }
+        guard !name.isEmpty else { return nil }
+        return AppNames.canonical(name)
     }
 }

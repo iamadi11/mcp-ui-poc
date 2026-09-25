@@ -146,6 +146,16 @@ else
   echo "notarize=skipped (not required for personal local install)"
 fi
 
+# A second launch with the same bundle id quits itself and leaves the old menu bar up.
+if pgrep -f "Mac Agent.app/Contents/MacOS/MacAgentMenuBar" >/dev/null 2>&1; then
+  osascript -e 'tell application id "com.mcpui.mac-agent" to quit' >/dev/null 2>&1 || true
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    pgrep -f "Mac Agent.app/Contents/MacOS/MacAgentMenuBar" >/dev/null 2>&1 || break
+    sleep 0.2
+  done
+  pkill -f "Mac Agent.app/Contents/MacOS/MacAgentMenuBar" >/dev/null 2>&1 || true
+fi
+
 TARGET="$APP"
 if [[ "$DO_INSTALL" -eq 1 ]]; then
   mkdir -p "$INSTALL_DIR"

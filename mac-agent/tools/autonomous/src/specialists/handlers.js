@@ -999,6 +999,101 @@ swift run mac-agent-cli "What's my battery?"
     }
   }
 
+  if (workOrder.mode === 'mac-heard-first') {
+    const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+    const voiceSrc = join(repoRoot, 'Sources/MacAgentVoice/VoicePipeline.swift')
+    const menu = existsSync(menuSrc) ? readFileSync(menuSrc, 'utf8') : ''
+    const voice = existsSync(voiceSrc) ? readFileSync(voiceSrc, 'utf8') : ''
+    if (!menu.includes('publishHeard') || !voice.includes('onTranscript')) {
+      return {
+        ok: false,
+        error: 'AGENT_IMPLEMENT: show the transcript before the tool runs, and let Stop cancel the recording',
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    evidence.push(menuSrc, voiceSrc)
+  }
+
+  if (workOrder.mode === 'mac-listen-control') {
+    const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+    const menu = existsSync(menuSrc) ? readFileSync(menuSrc, 'utf8') : ''
+    if (!menu.includes('ListenControl') || !menu.includes('PlainFailureLine')) {
+      return {
+        ok: false,
+        error: 'AGENT_IMPLEMENT: make Listen the large primary control and state permission failures in words',
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    evidence.push(menuSrc)
+  }
+
+  if (workOrder.mode === 'mac-live-transcript') {
+    const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+    const voiceSrc = join(repoRoot, 'Sources/MacAgentVoice/VoicePipeline.swift')
+    const menu = existsSync(menuSrc) ? readFileSync(menuSrc, 'utf8') : ''
+    const voice = existsSync(voiceSrc) ? readFileSync(voiceSrc, 'utf8') : ''
+    if (!menu.includes('publishPartial') || !voice.includes('transcribeLive')) {
+      return {
+        ok: false,
+        error: 'AGENT_IMPLEMENT: show WhisperKit partial text while the microphone is open',
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    evidence.push(menuSrc, voiceSrc)
+  }
+
+  if (workOrder.mode === 'mac-plain-answer') {
+    const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+    const toolSrc = join(repoRoot, 'Sources/MacAgentTools/Catalog.swift')
+    const menu = existsSync(menuSrc) ? readFileSync(menuSrc, 'utf8') : ''
+    const tool = existsSync(toolSrc) ? readFileSync(toolSrc, 'utf8') : ''
+    if (!menu.includes('AnswerLine') || !tool.includes('Battery is')) {
+      return {
+        ok: false,
+        error: 'AGENT_IMPLEMENT: show a plain battery sentence and a minimal status line',
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    evidence.push(menuSrc, toolSrc)
+  }
+
+  if (workOrder.mode === 'mac-spoken-open') {
+    const router = join(repoRoot, 'Sources/MacAgentCore/Runtime/AgentRuntime.swift')
+    const toolSrc = join(repoRoot, 'Sources/MacAgentTools/Catalog.swift')
+    const runtime = existsSync(router) ? readFileSync(router, 'utf8') : ''
+    const tool = existsSync(toolSrc) ? readFileSync(toolSrc, 'utf8') : ''
+    if (!runtime.includes('please open') || !tool.includes('Turn on Act once to open it')) {
+      return {
+        ok: false,
+        error: 'AGENT_IMPLEMENT: route spoken open phrases and answer in a plain sentence',
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    evidence.push(router, toolSrc)
+  }
+
+  if (workOrder.mode === 'mac-hear-words') {
+    const voiceSrc = join(repoRoot, 'Sources/MacAgentVoice/VoicePipeline.swift')
+    const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')
+    const voice = existsSync(voiceSrc) ? readFileSync(voiceSrc, 'utf8') : ''
+    const menu = existsSync(menuSrc) ? readFileSync(menuSrc, 'utf8') : ''
+    const live = voice.slice(voice.indexOf('func transcribeLive') ?? 0)
+    if (!live.includes('recordPCM16Mono16kHz') || !menu.includes('Say a command') || menu.includes('(empty — try again)')) {
+      return {
+        ok: false,
+        error: 'AGENT_IMPLEMENT: transcribe the microphone WAV and show one sentence in the panel',
+        evidence,
+        gateUpdates: {},
+      }
+    }
+    evidence.push(voiceSrc, menuSrc)
+  }
+
   if (workOrder.mode === 'mac-ui-appeal') {
     const pass = join(repoRoot, 'docs/ui/VISUAL_PASS.md')
     const menuSrc = join(repoRoot, 'Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift')

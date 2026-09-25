@@ -979,5 +979,183 @@
       "Sources/MacAgentSecurity",
       ".agent/artifacts/personal-install.txt"
     ]
+  },
+  {
+    "id": "slice-heard-first",
+    "title": "Show the transcript before tools run",
+    "why": "A voice remote shows what it heard before it acts, and Stop should end the recording",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-heard-first",
+    "acceptance": [
+      "publishHeard in MacAgentMenuBarApp.swift",
+      "onTranscript in VoicePipeline.swift"
+    ]
+  },
+  {
+    "id": "wo_1a0d7ce290f_8b11",
+    "title": "Show the transcript before tools run",
+    "why": "A voice remote shows what it heard before it acts, and Stop should end the recording",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentVoice/VoicePipeline.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "slice-listen-control",
+    "title": "Large Listen control and plain permission failures",
+    "why": "The panel still reads as a form; a voice remote leads with one big Listen control",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-listen-control",
+    "acceptance": [
+      "ListenControl in MacAgentMenuBarApp.swift"
+    ]
+  },
+  {
+    "id": "wo_1a0d7d7119d_0916",
+    "title": "Large Listen control and plain permission failures",
+    "why": "The panel still reads as a form; a voice remote leads with one big Listen control",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "slice-live-transcript",
+    "title": "Show words as the user speaks",
+    "why": "Listen currently waits until the recording ends before any text appears",
+    "priority": "P0",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-live-transcript",
+    "acceptance": [
+      "transcribeLive in VoicePipeline.swift",
+      "publishPartial in MacAgentMenuBarApp.swift"
+    ]
+  },
+  {
+    "id": "wo_1a0d7da62f5_6cb1",
+    "title": "Show words as the user speaks",
+    "why": "Listen currently waits until the recording ends before any text appears",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentVoice/VoicePipeline.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "slice-plain-answer",
+    "title": "Plain battery answer and a quieter panel",
+    "why": "Battery percentage returned machine text, and the panel read as a form",
+    "priority": "P0",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-plain-answer",
+    "acceptance": [
+      "AnswerLine in MacAgentMenuBarApp.swift",
+      "Battery is in Catalog.swift"
+    ]
+  },
+  {
+    "id": "wo_1a0d7e04924_3edb",
+    "title": "Plain battery answer and a quieter panel",
+    "why": "Battery percentage returned machine text, and the panel read as a form",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentTools/Catalog.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "slice-spoken-open",
+    "title": "Plain answers for spoken open commands",
+    "why": "Phrases like please open Chrome missed the fast path and the reply was a machine string",
+    "priority": "P0",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-spoken-open",
+    "acceptance": [
+      "please open in AgentRuntime.swift",
+      "Turn on Act once to open it in Catalog.swift"
+    ]
+  },
+  {
+    "id": "wo_1a0d7e3cfd8_fc8a",
+    "title": "Plain answers for spoken open commands",
+    "why": "Phrases like please open Chrome missed the fast path and the reply was a machine string",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentCore/Runtime/AgentRuntime.swift",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentTools/Catalog.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
+  },
+  {
+    "id": "slice-hear-words",
+    "title": "Hear speech and show one sentence",
+    "why": "Streaming transcription returned empty, so every command said it heard nothing",
+    "priority": "P0",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "skill": "auto-engineer",
+    "mode": "mac-hear-words",
+    "acceptance": [
+      "recordPCM16Mono16kHz inside transcribeLive",
+      "Say a command in the menu bar"
+    ]
+  },
+  {
+    "id": "wo_1a0d7f1047d_605e",
+    "title": "Hear speech and show one sentence",
+    "why": "Streaming transcription returned empty, so every command said it heard nothing",
+    "priority": "P1",
+    "risk": "KNOWN",
+    "status": "done",
+    "owner": "auto-engineer",
+    "evidence": [
+      "Sources/MacAgentSecurity",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentVoice/VoicePipeline.swift",
+      "/Users/adityaraj/Desktop/My Projects/mcp-ui-poc/mac-agent/Sources/MacAgentMenuBar/MacAgentMenuBarApp.swift",
+      ".agent/artifacts/engineer-verify.txt"
+    ]
   }
 ]

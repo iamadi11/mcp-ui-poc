@@ -1,5 +1,6 @@
 import Foundation
 import MacAgentSecurity
+import IOKit.ps
 #if canImport(AppKit)
 import AppKit
 #endif
@@ -17,14 +18,86 @@ public struct GetSystemStatusTool: AgentTool {
     public func validate(arguments: [String: ToolArgumentValue]) throws {}
 
     public func execute(arguments: [String: ToolArgumentValue], context: ToolContext) async throws -> ToolResult {
-        let processCount = ProcessInfo.processInfo.activeProcessorCount
-        let mem = ProcessInfo.processInfo.physicalMemory
-        let host = ProcessInfo.processInfo.hostName
-        let body = "processors=\(processCount) memoryBytes=\(mem) host=\(host) dryRun=\(context.dryRun)"
-        return ToolResult(ok: true, output: body, data: [
-            "processors": String(processCount),
-            "memoryBytes": String(mem),
-        ])
+        let processors = ProcessInfo.processInfo.activeProcessorCount
+        let memory = ProcessInfo.processInfo.physicalMemory
+        let power = Self.batteryReading()
+        let body = Self.sentence(
+            batteryPercent: power?.percent,
+            charging: power?.charging ?? false,
+            processors: processors,
+            memoryBytes: memory
+        )
+        var data = [
+            "processors": String(processors),
+            "memoryBytes": String(memory),
+        ]
+        if let power {
+            data["batteryPercent"] = String(power.percent)
+        }
+        return ToolResult(ok: true, output: body, data: data)
+    }
+
+    static func sentence(batteryPercent: Int?, charging: Bool, processors: Int, memoryBytes: UInt64) -> String {
+        let gigabytes = Double(memoryBytes) / 1_073_741_824
+        let memory = String(format: "%.0f GB memory", gigabytes)
+        let cores = "\(processors) processors"
+        if let batteryPercent {
+            let power = charging ? ", charging" : ""
+            return "Battery is \(batteryPercent)%\(power). \(cores), \(memory)."
+        }
+        return "Battery unavailable. \(cores), \(memory)."
+    }
+
+    private static func batteryReading() -> (percent: Int, charging: Bool)? {
+        guard let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue() else { return nil }
+        guard let sources = IOPSCopyPowerSourcesList(snapshot)?.takeRetainedValue() as? [CFTypeRef] else { return nil }
+        for source in sources {
+            guard let raw = IOPSGetPowerSourceDescription(snapshot, source)?.takeUnretainedValue() as? [String: Any] else { continue }
+            guard let current = number(raw[kIOPSCurrentCapacityKey as String]),
+                  let max = number(raw[kIOPSMaxCapacityKey as String]),
+                  max > 0 else { continue }
+            let percent = Int((Double(current) / Double(max) * 100).rounded())
+            let charging = (raw[kIOPSIsChargingKey as String] as? Bool)
+                ?? ((raw[kIOPSIsChargingKey as String] as? Int) == 1)
+            return (percent, charging)
+        }
+        return nil
+    }
+
+    private static func number(_ value: Any?) -> Int? {
+        if let value = value as? Int { return value }
+        if let value = value as? NSNumber { return value.intValue }
+        return nil
+    }
+}
+
+public enum AppNames {
+    public static func canonical(_ raw: String) -> String {
+        let key = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let aliases = [
+            "chrome": "Google Chrome",
+            "google chrome": "Google Chrome",
+            "safari": "Safari",
+            "notes": "Notes",
+            "textedit": "TextEdit",
+            "text edit": "TextEdit",
+            "finder": "Finder",
+            "terminal": "Terminal",
+            "music": "Music",
+            "mail": "Mail",
+            "messages": "Messages",
+            "calendar": "Calendar",
+            "preview": "Preview",
+            "system settings": "System Settings",
+            "settings": "System Settings",
+            "vscode": "Visual Studio Code",
+            "code": "Visual Studio Code",
+            "visual studio code": "Visual Studio Code",
+            "slack": "Slack",
+            "spotify": "Spotify",
+        ]
+        if let known = aliases[key] { return known }
+        return key.split(separator: " ").map { $0.capitalized }.joined(separator: " ")
     }
 }
 
@@ -49,27 +122,27 @@ public struct OpenApplicationTool: AgentTool {
     }
 
     public func execute(arguments: [String: ToolArgumentValue], context: ToolContext) async throws -> ToolResult {
-        let name = arguments["name"]?.stringValue ?? ""
+        let name = AppNames.canonical(arguments["name"]?.stringValue ?? "")
         if context.dryRun {
-            return ToolResult(ok: true, output: "Would open application '\(name)' (dryRun=true)", data: ["name": name])
+            return ToolResult(ok: true, output: "Would open \(name). Turn on Act once to open it.", data: ["name": name])
         }
         #if canImport(AppKit)
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: name) {
             let ok = NSWorkspace.shared.open(url)
-            return ToolResult(ok: ok, output: ok ? "Opened '\(name)'" : "Failed to open '\(name)'", data: ["name": name])
+            return ToolResult(ok: ok, output: ok ? "Opened \(name)." : "Couldn't open \(name).", data: ["name": name])
         }
         let candidates = [
             "/Applications/\(name).app",
             "/System/Applications/\(name).app",
-            "/Applications/\(name.capitalized).app",
+            "/System/Applications/Utilities/\(name).app",
         ]
         for path in candidates where FileManager.default.fileExists(atPath: path) {
             let ok = NSWorkspace.shared.open(URL(fileURLWithPath: path))
-            return ToolResult(ok: ok, output: ok ? "Opened \(path)" : "Failed \(path)", data: ["name": name])
+            return ToolResult(ok: ok, output: ok ? "Opened \(name)." : "Couldn't open \(name).", data: ["name": name])
         }
-        return ToolResult(ok: false, output: "Application not found: \(name)", data: ["name": name])
+        return ToolResult(ok: false, output: "Couldn't find \(name).", data: ["name": name])
         #else
-        return ToolResult(ok: true, output: "Would open application '\(name)' (no AppKit)", data: ["name": name])
+        return ToolResult(ok: true, output: "Would open \(name). Turn on Act once to open it.", data: ["name": name])
         #endif
     }
 }

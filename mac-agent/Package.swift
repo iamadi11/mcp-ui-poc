@@ -36,7 +36,10 @@ let package = Package(
                 "MacAgentSecurity",
                 .product(name: "AXorcist", package: "AXorcist"),
             ],
-            path: "Sources/MacAgentTools"
+            path: "Sources/MacAgentTools",
+            linkerSettings: [
+                .linkedFramework("IOKit"),
+            ]
         ),
         .target(
             name: "MacAgentLLM",

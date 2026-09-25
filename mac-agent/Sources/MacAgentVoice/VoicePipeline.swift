@@ -120,6 +120,26 @@ public final class WhisperKitSTTProvider: SpeechToTextProvider, @unchecked Senda
         let results = try await kit.transcribe(audioPath: tmp.path)
         return results.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    /// Records microphone audio, then transcribes the WAV. Snapshots update the panel while the mic is open.
+    public func transcribeLive(
+        maxSeconds: Double = 6,
+        onPartial: @escaping @Sendable (String) async -> Void
+    ) async throws -> String {
+        let pcm = try await MicCapture.recordPCM16Mono16kHz(seconds: maxSeconds) { snapshot in
+            let text = (try? await self.transcribe(pcm16leMono16kHz: snapshot)) ?? ""
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.count >= 2 {
+                await onPartial(trimmed)
+            }
+        }
+        let final = try await transcribe(pcm16leMono16kHz: pcm)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if final.count >= 2 {
+            await onPartial(final)
+        }
+        return final
+    }
 }
 #endif
 
@@ -148,7 +168,11 @@ public enum MicCapture {
     }
 
     /// Capture up to `seconds` of mic audio as PCM16LE mono 16kHz.
-    public static func recordPCM16Mono16kHz(seconds: Double = 3.0) async throws -> Data {
+    /// `onSnapshot` receives the audio so far about every two seconds, while the mic stays open.
+    public static func recordPCM16Mono16kHz(
+        seconds: Double = 3.0,
+        onSnapshot: (@Sendable (Data) async -> Void)? = nil
+    ) async throws -> Data {
         #if canImport(AVFoundation)
         guard await requestAccess() else {
             throw VoiceError.microphoneOrSpeechDenied("Microphone TCC denied")
@@ -183,11 +207,38 @@ public enum MicCapture {
             }
         }
         try engine.start()
-        try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+        func snapshot() -> Data {
+            let copy: [Int16] = { lock.lock(); defer { lock.unlock() }; return samples }()
+            return copy.withUnsafeBufferPointer { Data(buffer: $0) }
+        }
+        do {
+            var left = seconds
+            var untilSnapshot = 2.0
+            while left > 0 {
+                let slice = min(0.2, left)
+                try await Task.sleep(nanoseconds: UInt64(slice * 1_000_000_000))
+                left -= slice
+                untilSnapshot -= slice
+                if untilSnapshot <= 0, let onSnapshot {
+                    untilSnapshot = 2.0
+                    let snap = snapshot()
+                    if !snap.isEmpty {
+                        await onSnapshot(snap)
+                    }
+                }
+            }
+        } catch {
+            engine.stop()
+            input.removeTap(onBus: 0)
+            let snap = snapshot()
+            if error is CancellationError, !snap.isEmpty {
+                return snap
+            }
+            throw error
+        }
         engine.stop()
         input.removeTap(onBus: 0)
-        let out: [Int16] = { lock.lock(); defer { lock.unlock() }; return samples }()
-        return out.withUnsafeBufferPointer { Data(buffer: $0) }
+        return snapshot()
         #else
         throw VoiceError.unavailable("AVFoundation unavailable")
         #endif
@@ -249,8 +300,13 @@ public struct VoicePipeline: Sendable {
         try await handleAudioTurn(data).record
     }
 
-    public func handleAudioTurn(_ data: Data, dryRun: Bool = true) async throws -> VoiceTurn {
+    public func handleAudioTurn(
+        _ data: Data,
+        dryRun: Bool = true,
+        onTranscript: (@Sendable (String) async -> Void)? = nil
+    ) async throws -> VoiceTurn {
         let text = try await stt.transcribe(pcm16leMono16kHz: data)
+        await onTranscript?(text)
         let record = await runtime.submit(TaskRequest(instruction: text, source: "voice", dryRun: dryRun))
         if speakResults {
             let speak = record.results.last?.output ?? record.assistantText
@@ -263,8 +319,12 @@ public struct VoicePipeline: Sendable {
         try await handleMicrophoneTurn(seconds: seconds).record
     }
 
-    public func handleMicrophoneTurn(seconds: Double = 3.0, dryRun: Bool = true) async throws -> VoiceTurn {
+    public func handleMicrophoneTurn(
+        seconds: Double = 3.0,
+        dryRun: Bool = true,
+        onTranscript: (@Sendable (String) async -> Void)? = nil
+    ) async throws -> VoiceTurn {
         let pcm = try await MicCapture.recordPCM16Mono16kHz(seconds: seconds)
-        return try await handleAudioTurn(pcm, dryRun: dryRun)
+        return try await handleAudioTurn(pcm, dryRun: dryRun, onTranscript: onTranscript)
     }
 }

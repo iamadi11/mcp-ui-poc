@@ -14,6 +14,12 @@ final class FastPathTests: XCTestCase {
     func testOpenAppFastPath() {
         let call = FastPathRouter.route("open safari")
         XCTAssertEqual(call?.name, "open_application")
+        XCTAssertEqual(call?.arguments["name"]?.stringValue, "Safari")
+    }
+
+    func testSpokenOpenPhrase() {
+        let call = FastPathRouter.route("please open chrome")
+        XCTAssertEqual(call?.arguments["name"]?.stringValue, "Google Chrome")
     }
 
     func testFastPathExecutesWithoutLLM() async {
